@@ -22,6 +22,7 @@ RUN yum -y install gcc automake autoconf libtool make
 RUN yum install -y gdb
 # 安装flex bison
 RUN yum install -y flex
+RUN yum install -y flex-devel
 RUN yum install -y bison
 # 安装 LLVM/Clang 二进制文件
 RUN yum install llvm clang
