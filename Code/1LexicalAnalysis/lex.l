@@ -16,8 +16,8 @@ assginop (:=)
 relop (>= | > | <= | < | <> | =)
 addop (\+ | or)
 mulop (\* | \/ | div | mod | and)
-divop (\( | \) | \[ | \] | : | , | ; | \.)
 noteop (\(\* | \*\) | \{ | \})
+divop (\( | \) | \[ | \] | : | , | ; | \.)
 
 
 
