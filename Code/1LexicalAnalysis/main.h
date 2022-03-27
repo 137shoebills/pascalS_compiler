@@ -2,10 +2,11 @@
 #define MAIN_H
 #define YYERROR_VERBOSE
 #define YYDEBUG 1
-#define LEXDEBUG
+#define LEXDEBUG 1
 
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,6 @@ public:
     Token(string tp, string val, int ln): type(tp), value(val), lineNo(ln){}
 };
 
-#define YYSTYPE Type*
+#define YYSTYPE Token*
 
 #endif
