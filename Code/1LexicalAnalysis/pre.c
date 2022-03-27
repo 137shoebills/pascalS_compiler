@@ -27,8 +27,12 @@ int main(int argc, char *args[]){
 
     //转换字母
     sp = s;
+    int flag=1;
     while(*sp){
-        if(isupper(*sp))
+        if((*sp) == '\''){
+            flag=!flag;
+        }
+        if(flag==1 && isupper(*sp))
             *sp = tolower(*sp);
         sp++;
     }
