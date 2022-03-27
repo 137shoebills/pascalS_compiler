@@ -29,14 +29,16 @@ enum tokentype {
 	until = 327,
 	var = 328,
 	while = 329,
-	algeop = 330,//算数运算符
-	logiop = 331,//逻辑运算符
-	assiop = 332,//赋值号
-	sublimit = 333,//子界符
-	divop = 334,//分界符
-	noteop = 335,//注释起止符
-	integer = 336,
-	float = 337,
-	enumber = 338,//指数
-	identifier = 339
+	addop = 330,//算数运算符
+	mulop = 331
+	logiop = 332,//逻辑运算符
+	assignop = 333,//赋值号
+	sublimit = 334,//子界符
+	divop = 335,//分界符
+	noteop = 336,//注释起止符
+	integer = 337,
+	float = 338,
+	enumber = 339,//指数
+	identifier = 340,
+	char = 341
    };
