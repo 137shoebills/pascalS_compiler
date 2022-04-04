@@ -9,3 +9,5 @@
 
 对main.h做出以下修改：
 * 在class Token中新增构造函数`Token(string val) : value(val) {}`,便于构建语法树；
+
+同时makefile中增加了对yacc.y的编译命令以及编译链接命令;
