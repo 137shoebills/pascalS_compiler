@@ -405,12 +405,12 @@ divop (\(|\)|\[|\]|:|,|;|\.)
 {divop} {
     yylval=new Token;
     yylval->value=yytext;
-    yylval->type="DIVOP";
+    yylval->type=yytext;
     yylval->lineNo = yylineno;
 #ifdef LEXDEBUG
     cout << "divop:" << yylval->value << endl;
 #endif
-    return DIVOP;
+    return yytext[0];
 }
 
 {integer} {
