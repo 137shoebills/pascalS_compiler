@@ -34,7 +34,7 @@ void yyerror(const char *s, int startLine, int startCol, int endLine, int endCol
 %token OF 
 %token PROCEDURE 
 %token FUNCTION 
-%token BEGIN 
+%token _BEGIN 
 %token END 
 %token IF 
 %token THEN 
@@ -572,12 +572,12 @@ value_parameter : idlist ':' standard_type {
                     yyerror("missing a base type keyword here", @1.last_line, @1.last_column+1);
 				} ;
 
-compound_statement : BEGIN statement_list END {
+compound_statement : _BEGIN statement_list END {
                     $$ = new Token("compound_statement");
                     $$->children.push_back($1);
                     $$->children.push_back($2);
                     $$->children.push_back($3);
-                } | BEGIN statement_list error{ //ERROR 缺少END关键字 checked
+                } | _BEGIN statement_list error{ //ERROR 缺少END关键字 checked
                     $$ = new Token("compound_statement");
                     yyerror("missing keyword \"end\"", @2.last_line, @2.last_column+1);
 				};

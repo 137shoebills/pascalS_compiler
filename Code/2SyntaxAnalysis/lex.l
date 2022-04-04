@@ -77,7 +77,7 @@ divop (\(|\)|\[|\]|:|,|;|\.)
 #ifdef LEXDEBUG
     cout << "keyword: " << yylval->value << endl;
 #endif
-	return BEGIN;
+	return _BEGIN;
 }
 
 "boolean" {
