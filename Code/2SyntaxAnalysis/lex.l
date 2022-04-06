@@ -5,23 +5,13 @@
 //处理位置信息
 int yycolumn = 1;
 extern YYLTYPE yylloc;
-#define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno - 1; \
-    yylloc.first_column = yycolumn; yylloc.last_column = yycolumn+yyleng-1; \
-    yycolumn += yyleng;
     
 vector<string >lexicalErrorInformation;
 string charTemp; //保存字符常量
 void addLexicalErrorInformation(char* word, string info);
 string itos(int num);
 
-#if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef int YYSTYPE;
-# define YYSTYPE_IS_TRIVIAL 1
-# define yystype YYSTYPE /* obsolescent; will be withdrawn */
-# define YYSTYPE_IS_DECLARED 1
-#endif
-
-extern YYSTYPE yylval;
+// extern YYSTYPE yylval;
 
 //函数声明
 extern "C"
@@ -486,7 +476,7 @@ divop (\(|\)|\[|\]|:|,|;|\.)
     BEGIN MCMT;
 }
 
-. {//非法字符 错误3
+. {//非法字符错误
     addLexicalErrorInformation(yytext, "Invalid character!");
 	//cout << "error: invalid char" << endl;
 }
@@ -528,18 +518,59 @@ divop (\(|\)|\[|\]|:|,|;|\.)
 }
 <CH>("'"|"\n") {
     int len = charTemp.length();
-    if(yytext[0] == '\n'){
-        addLexicalErrorInformation(yytext,"Right quote missing!");
+    if(yytext[0] == '\'' && len == 0){  //双引号之间无空格,错误处理为\0
+        addLexicalErrorInformation(yytext,"Missing character!");
+        yylval = new Token;
+        yylval -> value = "\0";
+        yylval -> type = "LETTER";
+        yylval -> lineNo = yylineno;
+#ifdef LEXDEBUGs
+		cout << "char: " << yylval->value << endl;
+#endif
+        BEGIN INITIAL;
+        return LETTER;
     }
-    yylval = new Token;
-    yylval -> value = charTemp;
-    yylval -> type = "LETTER";
-    yylval -> lineNo = yylineno;
+    else if(yytext[0] == '\'' && len == 1){ //正确识别字符
+        yylval = new Token;
+        yylval -> value = charTemp;
+        yylval -> type = "LETTER";
+        yylval -> lineNo = yylineno;
+#ifdef LEXDEBUGs
+		cout << "char: " << yylval->value << endl;
+#endif
+        BEGIN INITIAL;
+        return LETTER;
+    }
+    else if(yytext[0] == '\''){ //引号之间有多个字符，错误处理为第一个字符
+        addLexicalErrorInformation(yytext,"Too many characters!");
+        yylval = new Token;
+        yylval -> value = charTemp[0];
+        yylval -> type = "LETTER";
+        yylval -> lineNo = yylineno;
+#ifdef LEXDEBUGs
+		cout << "char: " << yylval->value << endl;
+#endif
+        BEGIN INITIAL;
+        return LETTER;
+    }
+    else if(yytext[0] == '\n'){ //缺失单引号
+        addLexicalErrorInformation(yytext,"Right quote missing!");
+        yyless(0);
+        yylval = new Token;
+        if(len == 0){
+            yylval -> value = "\0";
+        }
+        else{
+            yylval -> value = charTemp[0];   
+        }
+        yylval -> type = "LETTER";
+        yylval -> lineNo = yylineno;
 #ifdef LEXDEBUG
 		cout << "char: " << yylval->value << endl;
 #endif
-    BEGIN INITIAL;
-    return LETTER; 
+        BEGIN INITIAL;
+        return LETTER; 
+    }
 }
 <CH>. {charTemp+=yytext[0];}
 
