@@ -21,7 +21,6 @@ extern string itos(int num);
 bool haveSemanticError=false;
 vector<string> syntaxErrorInformation; //存放语法错误信息
 
-void yyerror( const char *s);
 void yyerror( const char *s, YYLTYPE *loc);
 void yyerror( const char *s, int line, int col);
 void yyerror( const char *s, int startLine, int startCol, int endLine, int endCol);
@@ -64,6 +63,7 @@ void yyerror( const char *s, int startLine, int startCol, int endLine, int endCo
 %token RECORD 
 %token REAL 
 %token BOOLEAN
+%token BOOL_CONSTANT    //布尔型常量
 
 %start programstruct	//%start 文法开始符号
 
@@ -875,6 +875,9 @@ unsign_const : IDENTIFIER {
                     $$->children.push_back($1);
                     $$->children.push_back($2);
                     $$->children.push_back($3);
+                } | BOOL_CONSTANT {     //布尔型常量
+                    $$ = new Token("unsign_const");
+                    $$->children.push_back($1);
                 };
 
 %%

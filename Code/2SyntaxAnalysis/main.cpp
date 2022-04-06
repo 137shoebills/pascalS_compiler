@@ -3,16 +3,17 @@
 #include <sstream>
 
 extern FILE *yyin;
+extern Token *ParseTreeHead;
 extern vector<string> lexicalErrorInformation; //存放词法分析错误
 extern vector<string> syntaxErrorInformation;  //存放语法错误信息
-extern Token *ParseTreeHead;
-void dfs(Token *root);
+
 string itos(int num)
 {
     stringstream sin;
     sin << num;
     return sin.str();
 }
+void dfs(Token *root);
 void outputErrorInformation(vector<string> &error);
 
 int main(int argc, char **argv)
