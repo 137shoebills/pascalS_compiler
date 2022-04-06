@@ -28,6 +28,7 @@ extern "C"
 
 line \n
 digit [0-9]
+bool {true|false}
 letter [a-zA-Z]
 identifier {letter}({letter}|{digit})*
 integer ({digit}+)
@@ -79,6 +80,17 @@ divop (\(|\)|\[|\]|:|,|;|\.)
     cout << "keyword: " << yylval->value << endl;
 #endif
 	return BOOLEAN;
+}
+
+{bool} {
+    yylval=new Token;
+    yylval->value=yytext;
+    yylval->type="BOOL_CONSTANT";
+    yylval->lineNo = yylineno;
+#ifdef LEXDEBUG
+    cout << "bool_constant: " << yylval->value << endl;
+#endif
+	return BOOL_CONSTANT;
 }
 
 "case" {
