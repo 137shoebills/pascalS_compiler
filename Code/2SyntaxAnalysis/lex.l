@@ -5,13 +5,13 @@
 //处理位置信息
 int yycolumn = 1;
 extern YYLTYPE yylloc;
+extern YYSTYPE yylval;
     
-vector<string >lexicalErrorInformation;
+vector<string >lexicalErrorInformation; //存放词法分析错误
 string charTemp; //保存字符常量
 void addLexicalErrorInformation(char* word, string info);
-string itos(int num);
+extern string itos(int num);
 
-// extern YYSTYPE yylval;
 
 //函数声明
 extern "C"
@@ -581,12 +581,6 @@ void addLexicalErrorInformation(char* word, string info){
     string errorInformation = "[" + info + "] " + itos(yylineno) + ":" + string(word) + "\n";
     //cout << errorInformation << endl;
     lexicalErrorInformation.push_back(errorInformation);
-}
-
-string itos(int num){
-	stringstream sin;
-	sin<<num;
-	return sin.str();
 }
 
 //这个函数是必须的，不用动

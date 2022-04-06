@@ -5,4 +5,4 @@ all:
 	flex lex.l
 	mv lex.yy.c lex.yy.cpp
 	mv yacc.tab.c yacc.tab.cpp
-	g++ -o test yacc.tab.cpp lex.yy.cpp
+	g++ yacc.tab.cpp lex.yy.cpp main.cpp -o test.exe

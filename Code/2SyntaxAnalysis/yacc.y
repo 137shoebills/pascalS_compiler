@@ -908,9 +908,9 @@ void yyerror(const char *s, int startLine, int startCol, int endLine, int endCol
 	syntaxErrorInformation.push_back(errorInformation);
 }
 
-int main()
-{
-    printf("-----begin parsing\n");  
-    yyparse();//使yacc开始读取输入和解析，它会调用lex的yylex()读取记号  
-    puts("-----end parsing"); 
-}
+// int main()
+// {
+//     printf("-----begin parsing\n");  
+//     yyparse();//使yacc开始读取输入和解析，它会调用lex的yylex()读取记号  
+//     puts("-----end parsing"); 
+// }
