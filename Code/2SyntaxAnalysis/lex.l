@@ -28,7 +28,6 @@ extern "C"
 
 line \n
 digit [0-9]
-bool (true|false)
 letter [a-zA-Z]
 identifier {letter}({letter}|{digit})*
 integer ({digit}+)
@@ -41,6 +40,7 @@ relop (>=|>|<=|<|<>|=)
 addop (\+|or)
 mulop (\*|\/|div|mod|and)
 divop (\(|\)|\[|\]|:|,|;|\.)
+
 
 
 
@@ -392,17 +392,6 @@ divop (\(|\)|\[|\]|:|,|;|\.)
     return ASSIGNOP;
 }
 
-{bool} {    //布尔型常量true/false
-    yylval=new Token;
-    yylval->value=yytext;
-    yylval->type="BOOL_CONSTANT";
-    yylval->lineNo=yylineno;
-    #ifdef LEXDEBUG
-		cout << "bool_constant: " << yylval->value << endl;
-	#endif
-	return BOOL_CONSTANT;
-}
-
 {divop} {
     yylval=new Token;
     yylval->value=yytext;
@@ -459,6 +448,11 @@ divop (\(|\)|\[|\]|:|,|;|\.)
 }
 
 {identifier} {
+    if(yyleng > 8){
+        addLexicalErrorInformation(yytext, "IDENTIFIER TOO LONG");
+        yytext[8]=0; //截断处理
+        yyleng=8;
+    }
     yylval=new Token;
 	yylval->value=yytext;
 	yylval->type = "IDENTIFIER";
@@ -512,9 +506,6 @@ divop (\(|\)|\[|\]|:|,|;|\.)
     return 0;
 }
 
-<MCMT>{line} {
-    yyless(0);
-}
 
 <MCMT>. {}
 

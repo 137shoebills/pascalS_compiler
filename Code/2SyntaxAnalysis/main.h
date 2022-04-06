@@ -31,7 +31,7 @@ public:
     vector<Token *> children; //语法树子节点
 
     Token() {}
-    Token(string val) : value(val) {}
+    Token(string val) : type(val) {}
     Token(string tp, string val, int ln) : type(tp), value(val), lineNo(ln) {}
 };
 
