@@ -64,6 +64,8 @@ void yyerror(const char *s, int startLine, int startCol, int endLine, int endCol
 %token REAL 
 %token BOOLEAN
 
+%token BOOL_CONSTANT    //布尔型常量
+
 %start programstruct	//%start 文法开始符号
 
 %left '+' '-' ADD
@@ -874,6 +876,9 @@ unsign_const : IDENTIFIER {
                     $$->children.push_back($1);
                     $$->children.push_back($2);
                     $$->children.push_back($3);
+                } | BOOL_CONSTANT {     //布尔型常量
+                    $$ = new Token("unsign_const");
+                    $$->children.push_back($1);
                 };
 
 %%
