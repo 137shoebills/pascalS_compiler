@@ -513,7 +513,7 @@ divop (\(|\)|\[|\]|:|,|;|\.)
 }
 
 <MCMT>{line} {
-    yyless(0);
+    // yyless(0);
 }
 
 <MCMT>. {}
@@ -561,7 +561,7 @@ divop (\(|\)|\[|\]|:|,|;|\.)
     }
     else if(yytext[0] == '\n'){ //缺失单引号
         addLexicalErrorInformation(yytext,"Right quote missing!");
-        yyless(0);
+        // yyless(0);
         yylval = new Token;
         if(len == 0){
             yylval -> value = "\0";
