@@ -57,6 +57,7 @@ void yyerror( const char *s, int startLine, int startCol, int endLine, int endCo
 %token TYPE 
 %token ASSIGNOP
 %token RELOP 
+%token EQUAL
 %token ADDOP 
 %token MULOP 
 %token NOT 
@@ -142,7 +143,7 @@ idlist: idlist ',' IDENTIFIER {
 			            $$->children.push_back($1);
                 };
 
-const_declarations: CONST const_declaration ';' {
+const_declarations : CONST const_declaration ';' {
                         $$=new Token("const_declarations");
                         $$->children.push_back($1);
                         $$->children.push_back($2);
@@ -157,40 +158,40 @@ const_declarations: CONST const_declaration ';' {
                         $$=new Token("const_declarations");
                 };
 
-const_declaration: const_declaration ';' IDENTIFIER '=' const_variable {    //产生式1
+const_declaration: const_declaration ';' IDENTIFIER _equal const_variable {    //产生式1
                         $$=new Token("const_declaration");
                         $$->children.push_back($1);
                         $$->children.push_back($2);
                         $$->children.push_back($3);
                         $$->children.push_back($4);
                         $$->children.push_back($5);
-                } | IDENTIFIER '=' const_variable {    //产生式2
+                } | IDENTIFIER _equal const_variable {    //产生式2
                         $$=new Token("const_declaration");
                         $$->children.push_back($1);
                         $$->children.push_back($2);
                         $$->children.push_back($3);
-                } | error ';' IDENTIFIER '=' const_variable {     //error: const_declaration识别失败（产生式1）
+                } | error ';' IDENTIFIER _equal const_variable {     //error: const_declaration识别失败（产生式1）
                         $$=new Token("const_declaration");
                          yyerror("fatal error in const_declaration, identifier missing or illegal.",@1.first_line,@1.first_column,@1.last_line,@1.last_column);
-                } | const_declaration error IDENTIFIER '=' const_variable {//error: 缺少分号（产生式1）
+                } | const_declaration error IDENTIFIER _equal const_variable {//error: 缺少分号（产生式1）
                         $$=new Token("const_declaration");
                          yyerror("missing ';' here.",@1.last_line,@1.last_column+1);
-                } | const_declaration ';' error '=' const_variable {      //error: 标识符识别失败（产生式1）
+                } | const_declaration ';' error _equal const_variable {      //error: 标识符识别失败（产生式1）
                         $$=new Token("const_declaration");
                          yyerror("identifier is illegal or missing .",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 } | const_declaration ';' IDENTIFIER error const_variable {   //error: 缺少等号'+'（产生式1）
                         $$=new Token("const_declaration");
-                         yyerror("missing '=' here.",@3.last_line,@3.last_column+1);
-                } | const_declaration ';' IDENTIFIER '=' error {       //error: 无法识别const_variable（产生式1）
+                         yyerror("missing _equal here.",@3.last_line,@3.last_column+1);
+                } | const_declaration ';' IDENTIFIER _equal error {       //error: 无法识别const_variable（产生式1）
                         $$=new Token("const_declaration");
                          yyerror("fatal error in const_variable",@5.first_line,@5.first_column,@5.last_line,@5.last_column);
-                } | error '=' const_variable {     //error: 标识符无法识别或缺失（产生式2）
+                } | error _equal const_variable {     //error: 标识符无法识别或缺失（产生式2）
                         $$=new Token("const_declaration");
                          yyerror("identifier is illegal or missing.",@2.last_line,@2.last_column-1);
                 } | IDENTIFIER error const_variable {  //error:缺少等号'='（产生式2）
                         $$=new Token("const_declaration");
-                         yyerror("missing '=' here.",@1.last_line,@1.last_column+1);
-                } | IDENTIFIER '=' error {     //error: const_variable识别失败（产生式2）
+                         yyerror("missing _equal here.",@1.last_line,@1.last_column+1);
+                } | IDENTIFIER _equal error {     //error: const_variable识别失败（产生式2）
                         $$=new Token("const_declaration");
                          yyerror("fatal error in const_variable",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 };
@@ -256,31 +257,31 @@ type_declarations: TYPE type_declaration';' {
                          yyerror("missing ';' here.",@2.last_line,@2.last_column+1);
                 };
 
-type_declaration:  type_declaration';' IDENTIFIER '=' type {     //产生式1
+type_declaration:  type_declaration';' IDENTIFIER _equal type {     //产生式1
                         $$=new Token("type_declaration");
                         $$->children.push_back($1);
                         $$->children.push_back($2);
                         $$->children.push_back($3);
                         $$->children.push_back($4);
                         $$->children.push_back($5);
-                } | IDENTIFIER '=' type {      //产生式2
+                } | IDENTIFIER _equal type {      //产生式2
                         $$=new Token("type_declaration");
                         $$->children.push_back($1);
                         $$->children.push_back($2);
                         $$->children.push_back($3);
-                } | type_declaration error IDENTIFIER '=' type {  //error: 缺少分号';'（产生式1）
+                } | type_declaration error IDENTIFIER _equal type {  //error: 缺少分号';'（产生式1）
                         $$=new Token("type_declaration");
                          yyerror("missing ';' here.",@1.last_line,@1.last_column+1);
                 } | type_declaration';' IDENTIFIER error type {   //error: 缺少等号'='（产生式1）
                         $$=new Token("type_declaration");
-                         yyerror("missing '=' here.",@3.last_line,@3.last_column+1);
-                } | error '=' type {    //error:标识符无法识别或缺失（产生式2）
+                         yyerror("missing _equal here.",@3.last_line,@3.last_column+1);
+                } | error _equal type {    //error:标识符无法识别或缺失（产生式2）
                         $$=new Token("type_declaration");
                          yyerror("identifier is illegal or missing.",@1.first_line,@1.first_column,@1.last_line,@1.last_column);
                 } | IDENTIFIER error type {    //error:缺少等号'='（产生式2）
                         $$=new Token("type_declaration");
-                         yyerror("missing '=' here.",@1.last_line,@1.last_column+1);
-                } | IDENTIFIER '=' error {     //error: type识别失败
+                         yyerror("missing _equal here.",@1.last_line,@1.last_column+1);
+                } | IDENTIFIER _equal error {     //error: type识别失败
                         $$=new Token("type_declaration");
                          yyerror("fatal error in type",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 };
@@ -879,6 +880,11 @@ unsign_const : IDENTIFIER {
                     $$ = new Token("unsign_const");
                     $$->children.push_back($1);
                 };
+
+ _equal : EQUAL{
+                    $$ = new Token("_equal");
+                    $$->children.push_back($1);
+                };       
 
 %%
 
