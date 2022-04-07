@@ -15,6 +15,7 @@ string itos(int num)
 }
 void dfs(Token *root);
 void outputErrorInformation(vector<string> &error);
+void predeal(char *filename);
 
 int main(int argc, char **argv)
 {
@@ -89,4 +90,51 @@ void dfs(Token *root)
     {
         dfs(root->children[i]);
     }
+}
+
+void predeal(char *filename)
+{
+    FILE *fp;
+    char *s, *sp;
+    int file_size, read_size;
+    if ((fp = fopen(filename, "rb+")) == NULL)
+    {
+        fprintf(stderr, "Can't open %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+    fseek(fp, 0L, SEEK_END); //文件指针移动到文件末尾
+    file_size = ftell(fp);
+    rewind(fp); //文件指针移动到文件开头
+    //为字符数组分配内存，然后读入数据
+    s = (char *)calloc(file_size, 1);
+    read_size = fread(s, 1, file_size, fp);
+    fclose(fp);
+    if (read_size != file_size)
+    {
+        fprintf(stdout, "Can't read all massage\n");
+        exit(EXIT_FAILURE);
+    }
+
+    //转换字母
+    sp = s;
+    int flag = 1;
+    while (*sp)
+    {
+        if ((*sp) == '\'')
+        {
+            flag = !flag;
+        }
+        if (flag == 1 && isupper(*sp))
+            *sp = tolower(*sp);
+        sp++;
+    }
+    //先清除源文件数据，然后向文件写入字符数组数据
+    if ((fp = fopen(filename, "wb+")) == NULL)
+    {
+        fprintf(stderr, "Can't open %sin", filename);
+        exit(EXIT_FAILURE);
+    }
+    fwrite(s, 1, read_size, fp);
+
+    fclose(fp);
 }
