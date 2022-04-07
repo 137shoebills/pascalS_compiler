@@ -794,6 +794,11 @@ expression : simple_expression RELOP simple_expression {
             } | simple_expression {
                 $$ = new Token("expression");
                 $$->children.push_back($1);
+            }|simple_expression EQUAL simple_expression {
+                $$ = new Token("expression");
+                $$->children.push_back($1);
+                $$->children.push_back($2);
+                $$->children.push_back($3);
             };
 
 simple_expression : term {
