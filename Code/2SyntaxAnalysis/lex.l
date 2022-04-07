@@ -38,7 +38,7 @@ expfloa ({floater})E[+|-]?{integer}
 blank_chars [ \f\r\t\v]+
 assginop (:=)
 relop (>=|>|<=|<|<>|=)
-addop (\+|or)
+addop (\+|-|or)
 mulop (\*|\/|div|mod|and)
 divop (\(|\)|\[|\]|:|,|;|\.)
 
@@ -501,8 +501,9 @@ divop (\(|\)|\[|\]|:|,|;|\.)
 }
 
 <SCMT>"\n" {
-    addLexicalErrorInformation(yytext, "Unexpected '\n' before a singleline comment ends");
     yyless(0);
+    addLexicalErrorInformation(yytext, "Unexpected '\\n' before a singleline comment ends");
+    BEGIN INITIAL;
 }
 
 <SCMT>. {/*do nothing*/}
@@ -523,15 +524,15 @@ divop (\(|\)|\[|\]|:|,|;|\.)
     return 0;
 }
 <CH>("'"|"\n") {
-    int len = charTemp.length();
+    int len = charTemp.size();
     if(yytext[0] == '\'' && len == 0){  //双引号之间无空格,错误处理为\0
         addLexicalErrorInformation(yytext,"Missing character!");
         yylval = new Token;
         yylval -> value = "\0";
         yylval -> type = "LETTER";
         yylval -> lineNo = yylineno;
-#ifdef LEXDEBUGs
-		cout << "char: " << yylval->value << endl;
+#ifdef LEXDEBUG
+		cout << "letter: " << yylval->value << endl;
 #endif
         BEGIN INITIAL;
         return LETTER;
@@ -541,8 +542,8 @@ divop (\(|\)|\[|\]|:|,|;|\.)
         yylval -> value = charTemp;
         yylval -> type = "LETTER";
         yylval -> lineNo = yylineno;
-#ifdef LEXDEBUGs
-		cout << "char: " << yylval->value << endl;
+#ifdef LEXDEBUG
+		cout << "letter: " << yylval->value << endl;
 #endif
         BEGIN INITIAL;
         return LETTER;
@@ -553,15 +554,15 @@ divop (\(|\)|\[|\]|:|,|;|\.)
         yylval -> value = charTemp[0];
         yylval -> type = "LETTER";
         yylval -> lineNo = yylineno;
-#ifdef LEXDEBUGs
-		cout << "char: " << yylval->value << endl;
+#ifdef LEXDEBUG
+		cout << "letter: " << yylval->value << endl;
 #endif
         BEGIN INITIAL;
         return LETTER;
     }
     else if(yytext[0] == '\n'){ //缺失单引号
+        yyless(0);
         addLexicalErrorInformation(yytext,"Right quote missing!");
-        // yyless(0);
         yylval = new Token;
         if(len == 0){
             yylval -> value = "\0";
@@ -572,7 +573,7 @@ divop (\(|\)|\[|\]|:|,|;|\.)
         yylval -> type = "LETTER";
         yylval -> lineNo = yylineno;
 #ifdef LEXDEBUG
-		cout << "char: " << yylval->value << endl;
+		cout << "letter: " << yylval->value << endl;
 #endif
         BEGIN INITIAL;
         return LETTER; 
@@ -584,7 +585,7 @@ divop (\(|\)|\[|\]|:|,|;|\.)
 
 %%
 void addLexicalErrorInformation(char* word, string info){
-    string errorInformation = "[" + info + "] " + itos(yylineno) + ":" + string(word) + "\n";
+    string errorInformation = "[" + info + "] " + itos(yylineno) + ":" + string(word);
     //cout << errorInformation << endl;
     lexicalErrorInformation.push_back(errorInformation);
 }
