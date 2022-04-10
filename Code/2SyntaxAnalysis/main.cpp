@@ -58,7 +58,7 @@ void outputErrorInformation(vector<string> &error)
     cout << "begin error printing\n";
     for (int i = 0; i < error.size(); i++)
     {
-        cout << error[i] << "\n";
+        cout << error[i] <<"\n";
     }
 }
 
@@ -82,7 +82,7 @@ void dfs(Token *root)
         }
         else
         {
-            cout << " \"" << root->children[i]->type < "\"";
+            cout << " \"" << root->children[i]->type << "\"";
         }
     }
     cout << "\n";
