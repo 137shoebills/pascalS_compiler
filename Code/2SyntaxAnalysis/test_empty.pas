@@ -1,4 +1,4 @@
-program test(input,output;
+program test(input,output);
 begin
 
 end.
