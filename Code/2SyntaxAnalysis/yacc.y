@@ -83,7 +83,6 @@ programstruct: program_head program_body '.' {
                         if(yylex())      yyerror("redundant content at the end",@3.last_line,@3.last_column+1);
                         YYACCEPT;
                 } | program_head error '.' {//error: program_body识别出错
-
                         ParseTreeHead=$$=new Token("programstruct");
                         yyerror("fatal error in program body",@2.first_line,@2.first_column);
                 } | program_head program_body error{//error: 末尾缺少'.'
@@ -101,19 +100,19 @@ program_head: PROGRAM IDENTIFIER '(' idlist ')' ';' {
                         $$->children.push_back($6);
                 } | PROGRAM error '(' idlist ')' ';' {//error:POGRAM后缺少主程序名
                         $$=new Token("program_head");
-                         yyerror("missing PROGRAM name here",@1.last_line,@1.last_column+1);
+                        yyerror("missing PROGRAM name here",@1.last_line,@1.last_column+1);
                 } | PROGRAM IDENTIFIER error idlist ')' ';' {//error: 缺少左括号'('
                         $$=new Token("program_head");
-                         yyerror("missing '(' here",@4.first_line,@4.first_column-1);
+                        yyerror("missing '(' here",@4.first_line,@4.first_column-1);
                 } | PROGRAM IDENTIFIER '(' error')' ';' {//error: idlist识别失败
                         $$=new Token("program_head");
-                         yyerror("program identifier missing or illegal",@4.first_line,@4.first_column,@4.last_line,@4.last_column);
+                        yyerror("program identifier missing or illegal",@4.first_line,@4.first_column,@4.last_line,@4.last_column);
                 } | PROGRAM IDENTIFIER '(' idlist error ';' {//error:缺少右括号')'
                         $$=new Token("program_head");
-                         yyerror("missing '(' here",@4.last_line,@4.last_column+1);
+                        yyerror("missing '(' here",@4.last_line,@4.last_column+1);
                 } | PROGRAM IDENTIFIER '(' idlist ')' error {//error: 缺少分号';'
                         $$=new Token("program_head");
-                         yyerror("missing ';' here",@5.last_line,@5.last_column+1);
+                        yyerror("missing ';' here",@5.last_line,@5.last_column+1);
                 };
 
 program_body: const_declarations type_declarations var_declarations subprogram_declarations compound_statement {
@@ -125,17 +124,17 @@ program_body: const_declarations type_declarations var_declarations subprogram_d
                         $$->children.push_back($5);
                 } | const_declarations type_declarations var_declarations subprogram_declarations error { //error: compound_statement识别失败
                         $$=new Token("program_body");
-                         yyerror("fatal error in compound_statement, maybe missing keyword \"begin\"",@5.first_line,@5.first_column-1);
+                        yyerror("fatal error in compound_statement, maybe missing keyword \"begin\"",@5.first_line,@5.first_column-1);
                 };
 
 idlist: idlist ',' IDENTIFIER {
                         $$=new Token("idlist");
-			            $$->children.push_back($1);
+			$$->children.push_back($1);
                         $$->children.push_back($2);
                         $$->children.push_back($3);
                 } | IDENTIFIER {
                         $$=new Token("idlist");
-			            $$->children.push_back($1);
+			$$->children.push_back($1);
                 };
 
 const_declarations : CONST const_declaration ';' {
@@ -145,10 +144,10 @@ const_declarations : CONST const_declaration ';' {
                         $$->children.push_back($3);                
                 } | CONST error ';' {//error: const_declarations识别失败
                         $$=new Token("const_declarations");
-                         yyerror("fatal error in const_declaration, identifier may be illegal",@2.first_line,@2.first_column,@2.last_line,@2.last_column);
+                        yyerror("fatal error in const_declaration, identifier may be illegal",@2.first_line,@2.first_column,@2.last_line,@2.last_column);
                 } | CONST const_declaration error {//error: 缺少分号';'
                         $$=new Token("const_declarations");
-                         yyerror("missing ';' here",@2.last_line,@2.last_column+1);
+                        yyerror("missing ';' here",@2.last_line,@2.last_column+1);
                 } | {
                         $$=new Token("const_declarations");
                 };
@@ -167,22 +166,22 @@ const_declaration: const_declaration ';' IDENTIFIER _equal const_variable {    /
                         $$->children.push_back($3);
                 } | const_declaration error IDENTIFIER _equal const_variable {//error: 缺少分号（产生式1）
                         $$=new Token("const_declaration");
-                         yyerror("missing ';' here",@1.last_line,@1.last_column+1);
+                        yyerror("missing ';' here",@1.last_line,@1.last_column+1);
                 } | const_declaration ';' error _equal const_variable {      //error: 标识符识别失败（产生式1）
                         $$=new Token("const_declaration");
-                         yyerror("identifier is illegal or missing ",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
+                        yyerror("identifier is illegal or missing ",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 } | const_declaration ';' IDENTIFIER error const_variable {   //error: 缺少等号'+'（产生式1）
                         $$=new Token("const_declaration");
-                         yyerror("missing _equal here",@3.last_line,@3.last_column+1);
+                        yyerror("missing _equal here",@3.last_line,@3.last_column+1);
                 } | const_declaration ';' IDENTIFIER _equal error {       //error: 无法识别const_variable（产生式1）
                         $$=new Token("const_declaration");
-                         yyerror("fatal error in const_variable",@5.first_line,@5.first_column,@5.last_line,@5.last_column);
+                        yyerror("fatal error in const_variable",@5.first_line,@5.first_column,@5.last_line,@5.last_column);
                 } | IDENTIFIER error const_variable {  //error:缺少等号'='（产生式2）
                         $$=new Token("const_declaration");
-                         yyerror("missing _equal here",@1.last_line,@1.last_column+1);
+                        yyerror("missing _equal here",@1.last_line,@1.last_column+1);
                 } | IDENTIFIER _equal error {     //error: const_variable识别失败（产生式2）
                         $$=new Token("const_declaration");
-                         yyerror("fatal error in const_variable",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
+                        yyerror("fatal error in const_variable",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 };
 
 
@@ -238,10 +237,10 @@ type_declarations: TYPE type_declaration';' {
                         $$=new Token("type_declarations");
                 } | TYPE error ';' {      //error: type_declaration识别失败
                         $$=new Token("type_declarations");
-                         yyerror("fatal error in type_declaration, check whether identifiers is legal",@2.first_line,@2.first_column,@2.last_line,@2.last_column);
+                        yyerror("fatal error in type_declaration, check whether identifiers is legal",@2.first_line,@2.first_column,@2.last_line,@2.last_column);
                 } | TYPE type_declaration error {      //error: 缺少分号';'
                         $$=new Token("type_declarations");
-                         yyerror("missing ';' here",@2.last_line,@2.last_column+1);
+                        yyerror("missing ';' here",@2.last_line,@2.last_column+1);
                 };
 
 type_declaration:  type_declaration';' IDENTIFIER _equal type {     //产生式1
@@ -258,16 +257,16 @@ type_declaration:  type_declaration';' IDENTIFIER _equal type {     //产生式1
                         $$->children.push_back($3);
                 } | type_declaration error IDENTIFIER _equal type {  //error: 缺少分号';'（产生式1）
                         $$=new Token("type_declaration");
-                         yyerror("missing ';' here",@1.last_line,@1.last_column+1);
+                        yyerror("missing ';' here",@1.last_line,@1.last_column+1);
                 } | type_declaration';' IDENTIFIER error type {   //error: 缺少等号'='（产生式1）
                         $$=new Token("type_declaration");
-                         yyerror("missing _equal here",@3.last_line,@3.last_column+1);
+                        yyerror("missing _equal here",@3.last_line,@3.last_column+1);
                 } | IDENTIFIER error type {    //error:缺少等号'='（产生式2）
                         $$=new Token("type_declaration");
-                         yyerror("missing _equal here",@1.last_line,@1.last_column+1);
+                        yyerror("missing _equal here",@1.last_line,@1.last_column+1);
                 } | IDENTIFIER _equal error {     //error: type识别失败
                         $$=new Token("type_declaration");
-                         yyerror("fatal error in type",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
+                        yyerror("fatal error in type",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 };
 
 type:  standard_type {   //产生式1
@@ -288,22 +287,22 @@ type:  standard_type {   //产生式1
                         $$->children.push_back($6);
                 } | RECORD record_body error {     //error: 缺少关键字"END" （产生式2）
                         $$=new Token("type");
-                         yyerror("missing keyword \"END\"",@2.last_line,@2.last_column+1);
+                        yyerror("missing keyword \"END\"",@2.last_line,@2.last_column+1);
                 } | ARRAY error periods ']' OF type {   //error:缺少左括号'[' （产生式3）
                         $$=new Token("type");
-                         yyerror("missing '[' here",@2.first_line,@2.first_column-1);
+                        yyerror("missing '[' here",@2.first_line,@2.first_column-1);
                 } | ARRAY '[' error ']' OF type {      //error:periods识别失败 （产生式3）
                         $$=new Token("type");
-                         yyerror("fatal error in periods",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
+                        yyerror("fatal error in periods",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 } | ARRAY '[' periods error OF type {      //error:缺少右括号'[' （产生式3）
                         $$=new Token("type");
-                         yyerror("missing ']' here",@3.last_line,@3.last_column+1);
+                        yyerror("missing ']' here",@3.last_line,@3.last_column+1);
                 } | ARRAY '[' periods ']' error type {    //error: 缺少关键字“OF” （产生式3）
                         $$=new Token("type");
-                         yyerror("missing keyword \"OF\"",@4.last_line,@4.last_column+1);
+                        yyerror("missing keyword \"OF\"",@4.last_line,@4.last_column+1);
                 } | ARRAY '[' periods ']' OF error {       //error: type识别失败 （产生式3）
                         $$=new Token("type");
-                         yyerror("fatal error in type",@6.first_line,@6.first_column,@6.last_line,@6.last_column);
+                        yyerror("fatal error in type",@6.first_line,@6.first_column,@6.last_line,@6.last_column);
                 };
 
 
@@ -338,10 +337,10 @@ periods: periods ',' period {
                         $$->children.push_back($1);
                 } | periods error period {     //error: 缺少','
                         $$=new Token("periods");
-                         yyerror("missing ',' here",@1.last_line,@1.last_column+1);
+                        yyerror("missing ',' here",@1.last_line,@1.last_column+1);
                 } | periods','error {          //error: period识别失败
                         $$=new Token("periods");
-                         yyerror("fatal error in period",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
+                        yyerror("fatal error in period",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
                 };
 
 period: const_variable '.' '.' const_variable {
