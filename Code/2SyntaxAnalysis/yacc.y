@@ -219,11 +219,12 @@ const_variable: '+' IDENTIFIER {
                 } | UFNUM {
                         $$=new Token("const_variable");
                         $$->children.push_back($1);
-                } | '\'' LETTER '\'' {
+                } | LETTER {
                         $$=new Token("const_variable");
                         $$->children.push_back($1);
-                        $$->children.push_back($2);
-                        $$->children.push_back($3);
+                } | BOOL_CONSTANT {
+                        $$=new Token("const_variable");
+                        $$->children.push_back($1);
                 };
 
 
@@ -389,7 +390,7 @@ var_declaration : var_declaration ';' idlist ':' type {  //产生式1
                         $$->children.push_back($3);
                 } | var_declaration error idlist ':' type {    //error: 缺少分号';' （产生式1）
                         $$=new Token("var_declaration");
-                         yyerror("missing ':' here. ",@1.last_line,@1.last_column+1);
+                        yyerror("missing ';' here. ",@1.last_line,@1.last_column+1);                        
                 } | var_declaration ';' error ':' type {      //error: 无法识别idlist （产生式1）
                         $$=new Token("var_declaration");
                          yyerror("fatal error in idlist, identifier may be ilegal or missing",@3.first_line,@3.first_column,@3.last_line,@3.last_column);
@@ -538,7 +539,10 @@ compound_statement : _BEGIN statement_list END {
                     $$->children.push_back($1);
                     $$->children.push_back($2);
                     $$->children.push_back($3);
-                };
+                } | _BEGIN statement_list error{ //ERROR 缺少END关键字 checked
+                    $$ = new Token("compound_statement");
+                     yyerror("missing keyword \"end\"", @2.last_line, @2.last_column+1);
+		};
 
 statement_list : statement_list ';' statement {
                     $$ = new Token("statement_list");
@@ -624,8 +628,8 @@ statement : IDENTIFIER id_varparts ASSIGNOP expression {
                      yyerror("missing keyword \"to\" or \"downto\"", @2.last_line, @2.last_column+1);
                 } | FOR IDENTIFIER ASSIGNOP expression updown expression error statement{ //缺少关键字do
                     $$ = new Token("statement");
-				     yyerror("missing keywrod \"do\"", @6.last_line, @4.last_column+1);
-			    } | {
+		    yyerror("missing keywrod \"do\"", @6.last_line, @4.last_column+1);
+		} | {
                     $$ = new Token("statement");
                 };
 
@@ -645,7 +649,7 @@ id_varpart : '[' expression_list ']' {
                     $$->children.push_back($3);
                 } | '[' expression_list error {   //缺少右大括号
                     $$ = new Token("id_varpart");
-                     yyerror("missing a right bracket ']' here", @2.last_line, @2.last_column+1);
+                    yyerror("missing a right bracket ']' here", @2.last_line, @2.last_column+1);
                 } | '.' IDENTIFIER {
                     $$ = new Token("id_varpart");
                     $$->children.push_back($1);
@@ -793,13 +797,13 @@ factor : UFNUM {
             } | UINUM {
                 $$ = new Token("factor");
                 $$->children.push_back($1);
-            } |'\'' LETTER '\''{
+            } | LETTER {
                 $$ = new Token("factor");
                 $$->children.push_back($1);
             } | BOOL_CONSTANT{
                 $$ = new Token("factor");
                 $$->children.push_back($1);
-            } | IDENTIFIER id_varparts {
+            }| IDENTIFIER id_varparts {
                 $$ = new Token("factor");
                 $$->children.push_back($1);
                 $$->children.push_back($2);
