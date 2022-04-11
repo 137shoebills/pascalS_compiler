@@ -38,7 +38,9 @@ expfloa ({floater})E[+|-]?{integer}
 blank_chars [ \f\r\t\v]+
 assginop (:=)
 relop (>=|>|<=|<|<>)
-addop (\+|-|or)
+addop (or)
+add +
+minus -
 mulop (\*|\/|div|mod|and)
 divop (\(|\)|\[|\]|:|,|;|\.)
 
@@ -443,6 +445,33 @@ divop (\(|\)|\[|\]|:|,|;|\.)
     return ADDOP;
  }
 
+"+" {
+    yylval=new Token;
+    yylval->value=yytext;
+    yylval->type="ADD";
+    yylval->lineNo = yylineno;
+    yylloc.first_line=yylloc.last_line=yylineno;
+    yylloc.first_column=yycolumn;
+    yylloc.last_column=yycolumn+yyleng-1;
+ #ifdef LEXDEBUG
+    cout << "add:" << yylval->value << endl;
+ #endif
+    return ADD;
+}
+
+"-" {
+    yylval=new Token;
+    yylval->value=yytext;
+    yylval->type="MINUS";
+    yylval->lineNo = yylineno;
+    yylloc.first_line=yylloc.last_line=yylineno;
+    yylloc.first_column=yycolumn;
+    yylloc.last_column=yycolumn+yyleng-1;
+ #ifdef LEXDEBUG
+    cout << "minus:" << yylval->value << endl;
+ #endif
+    return MINUS;
+}
 
  {mulop} {
     yylval=new Token;
