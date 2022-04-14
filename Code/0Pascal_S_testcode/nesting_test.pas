@@ -12,11 +12,11 @@ procedure test();
 		
 	    {inner1}
 	    begin
-			writeln('inner1');
-			a:=1;
-			b:=2;
-			a:=func(a,b);
-			ret:=a+b;
+		    writeln('inner1');
+		    a:=1;
+		    b:=2;
+		    a:=func(a,b);
+		    ret:=a+b;
 	    end;    { end of procedure inner1 }  
 	
     	    (*不支持跨过程调用
@@ -29,14 +29,14 @@ procedure test();
 	    procedure noPara;
 	    begin
 		    writeln('noPara');
-		end;    { end of procedure noPara }  
+	    end;    { end of procedure noPara }  
 
     {inner}
     begin
-		writeln('inner');
-		inner1(a,b,ret);
-		(*writeln(func(a,b));*) {不支持隔层调用：func属于inner1，inner不能调用}
-		noPara;
+	    writeln('inner');
+	    inner1(a,b,ret);
+	    (*writeln(func(a,b));*) {不支持隔层调用：func属于inner1，inner不能调用}
+	    noPara;
     end;    { end of procedure inner }  
 	
 {test}
@@ -46,10 +46,10 @@ end;    { end of procedure test }
 
 {main}
 begin
-	a:=10;
-	b:=20;
-   test();
-   writeln('ret=',ret);
+    a:=10;
+    b:=20;
+    test();
+    writeln('ret=',ret);
 end.
 
 (*output:
