@@ -19,7 +19,7 @@ procedure test();
 			ret:=a+b;
 	    end;    { end of procedure inner1 }  
 	
-    	(*不支持跨过程调用
+    	    (*不支持跨过程调用
 	    procedure inner2(x,y:integer;var ret:integer);
 	    begin
 		    writeln(func(a,b));
