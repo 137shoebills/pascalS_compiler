@@ -13,7 +13,7 @@ using namespace std;
 */
 
 _Expression::_Expression(){
-    variantReference.resize(0);
+    variantReference=NULL;
     functionCall=NULL;
     operand1=operand2=NULL;
     totalIntValueValid=false;
@@ -21,8 +21,7 @@ _Expression::_Expression(){
 }
 
 _Expression::~_Expression(){
-    for(int i = 0;i < variantReference.size();i++)
-        DEL(variantReference[i]);
+    DEL(variantReference);
     DEL(functionCall)
     DEL(operand1)
     DEL(operand2)
@@ -39,16 +38,23 @@ _FunctionCall::~_FunctionCall(){
 }
 
 _VariantReference::_VariantReference(){
-    expressionList.clear();
+    IdvpartList.clear();
 	locFlag = 1;//默认是右值
 }
 
 _VariantReference::~_VariantReference(){
-    for(int i=0;i<expressionList.size();i++){
-        DEL(expressionList[i])
-    }
+    
+    for(int j = 0; j < IdvpartList.size();j++)
+        for(int k = 0 ; k < IdvpartList[j]->expressionList.size();j++)
+            DEL(IdvpartList[j]->expressionList[k])
+    
 }
-
+_Idvpart::_Idvpart(){
+    flag = 0;//默认是数组类型
+}
+_Idvpart::~_Idvpart(){
+    
+}
 _Compound::_Compound(){
 	isReturnStatement = false;
     statementList.clear();
@@ -63,12 +69,13 @@ _Compound::~_Compound(){
 _RepeatStatement::_RepeatStatement(){
 	isReturnStatement = false;
     condition=NULL;
-    _do=NULL;
+    _do.resize(0);
 }
 
 _RepeatStatement::~_RepeatStatement(){
     DEL(condition)
-    DEL(_do)
+    for(int i = 0;i < _do.size();i++)
+        DEL(_do[i])
 }
 
 _WhileStatement::_WhileStatement(){
@@ -110,13 +117,13 @@ _IfStatement::~_IfStatement(){
 
 _AssignStatement::_AssignStatement(){
 	isReturnStatement = false;
-    variantReference.resize(0);
+    variantReference=NULL;
     expression=NULL;
 }
 
 _AssignStatement::~_AssignStatement(){
-    for(int i = 0;i < variantReference.size();i++)
-        DEL(variantReference[i]);
+    
+        DEL(variantReference);
     DEL(expression)
 }
 

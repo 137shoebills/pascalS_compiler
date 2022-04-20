@@ -29,13 +29,13 @@ void getFormalParaList(Token *now,vector<_FormalParameter*>& _formalParaList);
 void getFormalParameters(Token *now,vector<_FormalParameter*>& _formalParaList);
 void getParameter(Token *now,vector<_FormalParameter*>& _formalParaList);
 void getValueParameter(Token *now,vector<_FormalParameter*>& _formalParaList,int flag);
-void getSubprogramBody(Token *now,vector<_Constant*>& _constList,vector<_TypeDef*> typedefList,vector<_Variant*>& _variantList,vector<_FunctionDefinition*> subprogramDefinitionList,_Compound* &_compound);
+void getSubprogramBody(Token *now,vector<_Constant*>& _constList,vector<_TypeDef*> typedefList,vector<_Variant*>& _variantList,vector<_FunctionDefinition*> & subprogramDefinitionList,_Compound* &_compound);
 _Compound* getCompoundStatement(Token *now);
 void getStatementList(Token *now,vector<_Statement*>& _statementList);
 _Statement* getStatement(Token *now);
 _Statement* getElseStatement(Token *now);
-void getidVpartList(Token *now,vector<_VariantReference*>& _variantReference);
-void getVpart(Token *now,vector<_VariantReference*>& _variantReference);
+void getidVpartList(Token *now,vector<_Idvpart*> &idvpartlist);
+void getVpart(Token *now,vector<_Idvpart*> &idvpartlist);
 _Statement* getProcedureCall(Token *now);
 void getExpressionList(Token *now,vector<_Expression*>& _expressionList);
 _Expression* getExpression(Token *now);
@@ -50,77 +50,84 @@ void printType(_Type *type);
 void dfsvariantList(vector<_Variant*> variantList);
 void dfssubprogramDefinitionList(vector<_FunctionDefinition*> subprogramDefinitionList);
 void dfscompound(_Compound *compound);
-void printvariantReference(vector<_VariantReference*> variantReference);
+void printidvpart(vector<_Idvpart*> idvpartlist);
 void printExp(_Expression* expression);
 void printfuncall(_FunctionCall* functionCall);
 void printstatement(_Statement *statement);
 void printstatement(_Statement *statement){
-    cout<<"~~type: "<<statement->type<<endl;
-    if(statement->type == "compound"){
-        _Compound *_compound = new _Compound;
-        _compound = (_Compound*)statement;
-        if(_compound->statementList.size()){
-        cout<<"compound statement:"<<endl;
-        for(int i =0 ;i < _compound->statementList.size();i++){
-            printstatement(_compound->statementList[i]);
-        }}
-    }
-    else if(statement->type == "assign"){
-        _AssignStatement *_assignStatement = new _AssignStatement;
-        _assignStatement =(_AssignStatement * )statement;
-        printvariantReference(_assignStatement->variantReference);
-    }
-    else if(statement->type == "procedure"){
-        _ProcedureCall *_procedureCall = new _ProcedureCall;
-        _procedureCall = (_ProcedureCall*)statement;
-        cout<<"procedureIdL: "<<_procedureCall->procedureId.first<<" "<<_procedureCall->procedureId.second<<endl;
-        if(_procedureCall->actualParaList.size()){
-            cout<<"actualParalist"<<endl;
-            for(int i = 0;i < _procedureCall->actualParaList.size();i++)
-                printExp(_procedureCall->actualParaList[i]);
+    if(statement != NULL){
+        cout<<"~~type: "<<statement->type<<endl;
+        cout<<"statementType: "<<statement->statementType<<endl;
+        cout<<"lineNo: "<<statement->lineNo<<endl;
+        cout<<"isReturn: "<<statement->isReturnStatement<<endl;
+        if(statement->type == "compound"){
+            _Compound *_compound = new _Compound;
+            _compound = (_Compound*)statement;
+            if(_compound->statementList.size()){
+            cout<<"compound statement:"<<endl;
+            for(int i =0 ;i < _compound->statementList.size();i++){
+                printstatement(_compound->statementList[i]);
+            }}
+        }
+        else if(statement->type == "assign"){
+            _AssignStatement *_assignStatement = new _AssignStatement;
+            _assignStatement =(_AssignStatement * )statement;
+            cout<<"~~variantId:"<<_assignStatement->variantReference->variantId.first<<" "<<_assignStatement->variantReference->variantId.second<<endl;
+            if(_assignStatement->variantReference->IdvpartList.size())
+            printidvpart(_assignStatement->variantReference->IdvpartList);
+            printExp(_assignStatement->expression);
+        }
+        else if(statement->type == "procedure"){
+            _ProcedureCall *_procedureCall = new _ProcedureCall;
+            _procedureCall = (_ProcedureCall*)statement;
+            cout<<"procedureIdL: "<<_procedureCall->procedureId.first<<" "<<_procedureCall->procedureId.second<<endl;
+            if(_procedureCall->actualParaList.size()){
+                cout<<"actualParalist"<<endl;
+                for(int i = 0;i < _procedureCall->actualParaList.size();i++)
+                    printExp(_procedureCall->actualParaList[i]);
+            }
+        }
+        else if(statement->type == "if"){
+            _IfStatement* _ifStatement = new _IfStatement;
+            _ifStatement = (_IfStatement*)statement;
+            cout<<"condition: "<<endl;
+            printExp(_ifStatement->condition) ;
+            cout<<"then: "<<endl;
+            printstatement(_ifStatement->then);
+            cout<<"else: "<<endl;
+            printstatement(_ifStatement->els) ;
+        }
+        else if(statement->type == "for"){
+            _ForStatement *_forStatement = new _ForStatement;
+            _forStatement = (_ForStatement *)statement;
+            cout<<"relopId: ";
+            cout<<_forStatement->id.first<<" "<<_forStatement->id.second<<endl;
+            cout<<"START: "<<endl;
+            printExp(_forStatement->start);
+            cout<<"END: "<<endl;
+            printExp(_forStatement->end);
+            cout<<"Do: "<<endl;
+            printstatement(_forStatement->_do);
+        }
+        else if (statement->type == "while"){
+            _WhileStatement *_whileStatement = new _WhileStatement;
+            _whileStatement = (_WhileStatement *)statement;
+            cout<<"condition: "<<endl;
+            printExp(_whileStatement->condition);
+            cout<<"Do: "<<endl;
+            printstatement(_whileStatement->_do);
+        }
+        else if(statement->type == "repeat"){
+            _RepeatStatement *_repeatStatement = new _RepeatStatement;
+            _repeatStatement = (_RepeatStatement*)statement;
+            cout<<"condition: "<<endl;
+            printExp(_repeatStatement->condition);
+            if(_repeatStatement->_do.size()){
+                cout<<"Do: "<<endl;
+                for(int i = 0;i < _repeatStatement->_do.size();i++)
+                printstatement(_repeatStatement->_do[i]);}
         }
     }
-    else if(statement->type == "if"){
-        _IfStatement* _ifStatement = new _IfStatement;
-        _ifStatement = (_IfStatement*)statement;
-        cout<<"condition: "<<endl;
-        printExp(_ifStatement->condition) ;
-        cout<<"then: "<<endl;
-        printstatement(_ifStatement->then);
-        cout<<"else: "<<endl;
-        printstatement(_ifStatement->els) ;
-    }
-    else if(statement->type == "for"){
-        _ForStatement *_forStatement = new _ForStatement;
-        _forStatement = (_ForStatement *)statement;
-        cout<<"relopId: ";
-        cout<<_forStatement->id.first<<" "<<_forStatement->id.second<<endl;
-        cout<<"START: "<<endl;
-        printExp(_forStatement->start);
-        cout<<"END: "<<endl;
-        printExp(_forStatement->end);
-        cout<<"Do: "<<endl;
-        printstatement(_forStatement->_do);
-    }
-    else if (statement->type == "while"){
-        _WhileStatement *_whileStatement = new _WhileStatement;
-        _whileStatement = (_WhileStatement *)statement;
-        cout<<"condition: "<<endl;
-        printExp(_whileStatement->condition);
-        cout<<"Do: "<<endl;
-        printstatement(_whileStatement->_do);
-    }
-    else if(statement->type == "repeat"){
-        _RepeatStatement *_repeatStatement = new _RepeatStatement;
-        _repeatStatement = (_RepeatStatement*)statement;
-        cout<<"condition: "<<endl;
-        printExp(_repeatStatement->condition);
-        cout<<"Do: "<<endl;
-        printstatement(_repeatStatement->_do);
-    }
-    cout<<"statementType: "<<statement->statementType<<endl;
-    cout<<"lineNo: "<<statement->lineNo<<endl;
-    cout<<"isReturn: "<<statement->isReturnStatement<<endl;
 }
 void printfuncall(_FunctionCall* functionCall){
     cout<<"~~functionId: "<<functionCall->functionId.first<<" "<<functionCall->functionId.second<<endl;
@@ -134,6 +141,8 @@ void printfuncall(_FunctionCall* functionCall){
 void printExp(_Expression* expression){
     
     cout<<"~~type: "<<expression->type<<endl;
+    cout<<"isMInux: "<<expression->isMinusShow<<endl;
+    cout<<"lineNo: "<<expression->lineNo<<endl;
     if(expression->type == "compound"){
         cout<<"operation: "<<expression->operation<<endl;
         cout<<"operationtype: "<<expression->operationType<<endl;
@@ -151,9 +160,11 @@ void printExp(_Expression* expression){
         cout<<"intnum: "<<expression->realNum<<endl;
     }
     else if (expression->type == "var"){
-        if(expression->variantReference.size()){
+        if(expression->variantReference != NULL){
             cout<<"variantReference: "<<endl;
-            printvariantReference(expression->variantReference);
+            cout<<"~~variantId:"<<expression->variantReference->variantId.first<<" "<<expression->variantReference->variantId.second<<endl;
+            if(expression->variantReference->IdvpartList.size())
+            printidvpart(expression->variantReference->IdvpartList);
         }
         
     }
@@ -163,20 +174,35 @@ void printExp(_Expression* expression){
     else if(expression->type == "letter"){
         cout<<"charval: "<<expression->charVal<<endl;
     }
-    cout<<"isMInux: "<<expression->isMinusShow<<endl;
-    cout<<"lineNo: "<<expression->lineNo<<endl;
+    
 }
-void printvariantReference(vector<_VariantReference*> variantReference){
-    for(int i = 0;i < variantReference.size();i++){
-        cout<<"~~variantId: "<<variantReference[i]->variantId.first<<" "<<variantReference[i]->variantId.second<<endl;
-        cout<<"falg: "<<variantReference[i]->flag<<endl;
-        if(variantReference[i]->expressionList.size()){
-            cout<<"expressionList: "<<endl;
-            for(int j = 0;j < variantReference[i]->expressionList.size();j++)
-            printExp(variantReference[i]->expressionList[i]);
-            
-        }
-        cout<<"str: "<<variantReference[i]->str<<endl;
+//void printvariantReference(vector<_VariantReference*> variantReference){
+//    for(int i = 0;i < variantReference.size();i++){
+//        cout<<"~~variantId: "<<variantReference[i]->variantId.first<<" "<<variantReference[i]->variantId.second<<endl;
+//        cout<<"falg: "<<variantReference[i]->flag<<endl;
+//        if(variantReference[i]->IdvpartList.size()){
+//            cout<<"IdvpartList: "<<endl;
+//            for(int j = 0;j < variantReference[i]->IdvpartList.size();j++){
+//                if(variantReference[i]->IdvpartList[j]->flag == 0 && variantReference[i]->IdvpartList[j]->expressionList.size())
+//                    for(int k = 0;k < variantReference[i]->IdvpartList[j]->expressionList.size();k++)
+//                        printExp(variantReference[i]->IdvpartList[j]->expressionList[k]);
+//                else if(variantReference[i]->IdvpartList[j]->flag == 1){
+//                    cout<<variantReference[i]->IdvpartList[j]->IdvpartId.first<<" "<<variantReference[i]->IdvpartList[j]->IdvpartId.second<<endl;
+//                }
+//            }
+//
+//
+//        }
+//        cout<<"str: "<<variantReference[i]->str<<endl;
+//    }
+//}
+void printidvpart(vector<_Idvpart*> idvpartlist){
+    for(int i = 0;i < idvpartlist.size();i++){
+        if(idvpartlist[i]->flag == 0 && idvpartlist[i]->expressionList.size())
+            for(int j = 0;j <idvpartlist[i]->expressionList.size();j++)
+                printExp(idvpartlist[i]->expressionList[j]);
+        else if(idvpartlist[i]->flag == 1)
+            cout<<"~~IdvpartId: "<<idvpartlist[i]->IdvpartId.first<<" "<<idvpartlist[i]->IdvpartId.second<<endl;
     }
 }
 void dfscompound(_Compound *compound){
@@ -518,7 +544,7 @@ void getArrayRange(Token *now,vector< pair<int,int> >& _arrayRangeList){
         cout << "getArrayRange error" << endl;
         return;
     }
-    _arrayRangeList.push_back(make_pair(str2int(now->children[0]->value),str2int(now->children[3]->value)));
+    _arrayRangeList.push_back(make_pair(str2int(now->children[0]->children[0]->value),str2int(now->children[3]->children[0]->value)));
 }
 
 
@@ -601,7 +627,7 @@ void getValueParameter(Token *now,vector<_FormalParameter*>& _formalParaList,int
         _formalParaList.push_back(new _FormalParameter(_idList[i],_type,flag));
 }
 
-void getSubprogramBody(Token *now,vector<_Constant*>& _constList,vector<_TypeDef*> _typedefList,vector<_Variant*>& _variantList,vector<_FunctionDefinition*> _subprogramDefinitionList,_Compound* &_compound){
+void getSubprogramBody(Token *now,vector<_Constant*>& _constList,vector<_TypeDef*> _typedefList,vector<_Variant*>& _variantList,vector<_FunctionDefinition*> &_subprogramDefinitionList,_Compound* &_compound){
     if(now->type!="program_body"){
         cout << "getSubprogramBody error" <<endl;
         return;
@@ -624,6 +650,7 @@ _Compound* getCompoundStatement(Token *now){
     getStatementList(now->children[1],_compound->statementList);
     return _compound;
 }
+ 
 
 void getStatementList(Token *now,vector<_Statement*>& _statementList){
     if(now->type!="statement_list"){
@@ -649,8 +676,10 @@ _Statement* getStatement(Token *now){
     if(now->children[0]->type=="IDENTIFIER"){
         _AssignStatement *_assignStatement = new _AssignStatement;
 		_assignStatement->lineNo = now->children[2]->lineNo;
-        _assignStatement->type="assign";
-        getidVpartList(now->children[1],_assignStatement->variantReference);
+        _assignStatement->type="assign";//！！！！！！！！！
+        _assignStatement->variantReference = new _VariantReference;
+        _assignStatement->variantReference->variantId = make_pair(now->children[0]->value, now->children[0]->lineNo);
+        getidVpartList(now->children[1],_assignStatement->variantReference->IdvpartList);
         _assignStatement->expression=getExpression(now->children[3]);
         return _assignStatement;
     }
@@ -690,7 +719,7 @@ _Statement* getStatement(Token *now){
 		_repeatStatement->lineNo = now->children[0]->lineNo;
         _repeatStatement->type="repeat";
         _repeatStatement->condition=getExpression(now->children[3]);
-        _repeatStatement->_do=getStatement(now->children[1]);
+        getStatementList(now->children[1],_repeatStatement->_do);
         return _repeatStatement;
     }
     else{
@@ -699,34 +728,35 @@ _Statement* getStatement(Token *now){
     }
 }
 
-void getidVpartList(Token *now,vector<_VariantReference*>& _variantReferenceList){
+//获取结构体.属性或数组维度上下限
+void getidVpartList(Token *now,vector<_Idvpart*> &idvpartlist){
     if(now->type!="variable"){
         cout << "getVariantList error" << endl;
 		return;
     }
     if(now->children.size()!=0){
-        getVpart(now->children[1],_variantReferenceList);
-        getidVpartList(now->children[0],_variantReferenceList);
+        getVpart(now->children[1],idvpartlist);
+        getidVpartList(now->children[0],idvpartlist);
     }
     else{
-        reverse(_variantReferenceList.begin(),_variantReferenceList.end());
+        reverse(idvpartlist.begin(),idvpartlist.end());
     }
 }
-void getVpart(Token *now,vector<_VariantReference*>& _variantReferenceList){
+void getVpart(Token *now,vector<_Idvpart*> &idvpartlist){
     if(now->type!="id_varpart"){
         cout << "getVpart error" << endl;
         return;
     }
-    _VariantReference* _variantreference = new _VariantReference;
+    _Idvpart* idvpart = new _Idvpart;
     if(now->children.size() == 3){
-        _variantreference->flag = 0;
-        getExpressionList(now->children[1],_variantreference->expressionList);
+        idvpart->flag = 0;
+        getExpressionList(now->children[1],idvpart->expressionList);
     }
     else if(now->children.size() == 2){
-        _variantreference->flag = 1;
-        _variantreference->str = now->children[1]->value;
+        idvpart->flag = 1;
+        idvpart->IdvpartId = make_pair(now->children[1]->value, now->children[1]->lineNo);
     }
-    _variantReferenceList.push_back(_variantreference);
+    idvpartlist.push_back(idvpart);
 }
 
 _Statement* getProcedureCall(Token *now) {
@@ -840,10 +870,11 @@ _Expression* getFactor(Token *now){
         _expression->lineNo=now->children[0]->lineNo;
     }
     else if(now->children[0]->type=="IDENTIFIER" && now->children.size()==2){
+        //！！！！！！！！！
         _expression->type="var";
-        _VariantReference *_variantReference = new _VariantReference;
-        _variantReference->variantId = make_pair(now->children[0]->value, now->children[0]->lineNo);
-        getidVpartList(now->children[1],_expression->variantReference);
+        _expression->variantReference = new _VariantReference;
+        _expression->variantReference->variantId = make_pair(now->children[0]->value, now->children[0]->lineNo);
+        getidVpartList(now->children[1],_expression->variantReference->IdvpartList);
         _expression->lineNo = now->children[0]->lineNo;
     }
     else if(now->children[0]->type=="IDENTIFIER" && now->children.size()==4){

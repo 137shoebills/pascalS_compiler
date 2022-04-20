@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     outputErrorInformation(lexicalErrorInformation);
     cout << "print parseerror\n";
     outputErrorInformation(syntaxErrorInformation);
-
+	 _Program* ASTRoot=getProgram(ParseTreeHead);
     return 0;
 }
 

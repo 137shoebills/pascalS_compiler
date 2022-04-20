@@ -21,6 +21,9 @@ class _IfStatement;
 class _ForStatement;
 class _WhileStatement;
 class _ProcedureCall;
+class _Idvpart;
+
+
 
 
 class _Program//程序
@@ -148,7 +151,7 @@ class _Compound:public _Statement
 class _AssignStatement:public _Statement
 {
     public:
-        vector<_VariantReference*> variantReference;//左值变量
+        _VariantReference* variantReference;//左值变量
         _Expression* expression;//右值表达式
 		//行号由赋值符号的位置决定
     public:
@@ -173,7 +176,7 @@ class _Expression
         //"function"表示函数调用,"compound"表示复合表达式,
         //compound有普通的二目运算符，还有"minus"、"not"、"bracket"等单目运算符
         
-        vector<_VariantReference*> variantReference;//变量或常量或数组
+        _VariantReference* variantReference;//变量或常量或数组
 
         int intNum;//整数
         
@@ -206,8 +209,9 @@ class _VariantReference
 {
     public:
         pair<string,int> variantId;//变量或常量标识符和行号
-        int flag;//0表示[],1表示.
-        vector<_Expression*> expressionList;//各维引用表达式列表
+        //pair<string,int> constId;
+        vector<_Idvpart*> IdvpartList;
+        int flag;
         string str;
     public:
         _VariantReference();
@@ -217,7 +221,15 @@ class _VariantReference
 		string kind;//"array","var","constant","function call","function return reference"
         string variantType;//"integer"、"real"、"char"、"boolean"、"error"，其中"error"表示数组某一维下标表达式的类型不为"integer"或标识符不存在
 };
-
+class _Idvpart{
+public:
+    vector<_Expression*> expressionList;//flag = 1;
+    pair<string, int> IdvpartId;//flag = 0
+    int flag;
+public:
+    _Idvpart();
+    ~_Idvpart();
+};
 class _IfStatement:public _Statement
 {
     public:
@@ -247,7 +259,7 @@ class _RepeatStatement:public _Statement
 {
     public:
         _Expression *condition;//条件表达式
-        _Statement *_do;//循环体语句
+        vector<_Statement*> _do;//循环体语句
 		//行号由repeat的位置决定
     public:
         _RepeatStatement();
