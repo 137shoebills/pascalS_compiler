@@ -211,8 +211,8 @@ class _VariantReference
         pair<string,int> variantId;//变量或常量标识符和行号
         //pair<string,int> constId;
         vector<_Idvpart*> IdvpartList;
-        int flag;
-        string str;
+//        int flag;
+//        string str;
     public:
         _VariantReference();
         ~_VariantReference();
@@ -223,8 +223,8 @@ class _VariantReference
 };
 class _Idvpart{
 public:
-    vector<_Expression*> expressionList;//flag = 1;
-    pair<string, int> IdvpartId;//flag = 0
+    vector<_Expression*> expressionList;//flag = 0;
+    pair<string, int> IdvpartId;//flag = 1
     int flag;
 public:
     _Idvpart();
