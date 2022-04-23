@@ -86,9 +86,26 @@ void _SymbolTable::addRecords(string id,int lineNumber,vector<_SymbolRecord*> re
 	this->idToLoc[id].push(int(recordList.size() - 1));
 }
 
+void _SymbolTable::addProgram(string id, int lineNumber,int amount, string returnType) {
+	_SymbolRecord* tmpRecord = new _SymbolRecord;
+	tmpRecord->setProgram(id, lineNumber,amount,returnType);
+	this->recordList.push_back(tmpRecord);
+	this->idToLoc[id].push(int(recordList.size() - 1));
+    indexTable.push_back(int(recordList.size() - 1));
+}
+
+// void _SymbolTable::addSubProgram(string id, int lineNumber,int amount, string returnType){
+// 	_SymbolRecord* tmpRecord = new _SymbolRecord;
+// 	tmpRecord->setSubProgram(id, lineNumber,amount,returnType);
+// 	this->recordList.push_back(tmpRecord);
+// 	this->idToLoc[id].push(int(recordList.size() - 1));
+//     indexTable.push_back(int(recordList.size() - 1));
+// }
+
 _SymbolTable::_SymbolTable() {
 	recordList.clear();
 	idToLoc.clear();
+    indexTable.clear();
 }
 
 //有关符号记录的函数
@@ -150,11 +167,18 @@ void _SymbolRecord::setFunction(string id, int lineNumber, string type, int amou
 //这是一条特殊的记录，表示当前符号表对应的程序名、行号、"procedure"还是"function"、参数个数
 //如果是"function"，则returnType为其返回值类型
 //如果是"procedure"，则returnType为""
-// void _SymbolRecord::setProgramName(string id, int lineNumber, string subprogramType, int amount, string returnType) {
-// 	flag = "(sub)program name";
+void _SymbolRecord::setProgram(string id, int lineNumber, int amount, string returnType) {
+	flag = "program";
+	this->id = id;
+	this->lineNumber = lineNumber;
+	this->amount = amount;
+	this->type = returnType;
+}
+
+// void _SymbolRecord::setSubProgram(string id, int lineNumber, int amount, string returnType) {
+// 	flag = "sub program";
 // 	this->id = id;
 // 	this->lineNumber = lineNumber;
-// 	//this->subprogramType = subprogramType;
 // 	this->amount = amount;
 // 	this->type = returnType;
 // }
