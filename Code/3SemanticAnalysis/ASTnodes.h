@@ -61,6 +61,7 @@ class _Constant//常量定义
         char charValue;
 		int intValue;
         float realValue;
+		bool boolvalue;
 		string strOfVal;//所有常量取值的字符串表示
 		bool isMinusShow;//是否为负数
     public:
