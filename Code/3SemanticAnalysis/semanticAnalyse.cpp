@@ -46,8 +46,8 @@ string itos(int num); //将int转化为string
 
 //我把他原有的注释函数注释了，如果需要的话大家拿出来重写一些即可
 
-// //添加重定义错误信息
-// void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType,int curLineNumber);//获得重复定义的语义错误信息
+//添加重定义错误信息
+void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType,int curLineNumber);//获得重复定义的语义错误信息
 // //添加未定义错误信息
 // void addUndefinedErrorInformation(string id, int curLineNumber);
 // //添加标识符类型错误信息
@@ -231,34 +231,45 @@ void SemanticAnalyseVariant(_Variant *variant)
 //对子程序定义进行语义分析
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition)
 {
-	if (functionDefinition == NULL)
+	if(functionDefinition==NULL)
 	{
 		cout << "[SemanticAnalyseSubprogramDefinition] pointer of _FunctionDefinition is null" << endl;
 		return;
 	}
 
-	//...//
-	/*
+    _SymbolRecord *record=findSymbolRecord(mainSymbolTable, functionDefinition->functionID.first);
+	if(record!=NULL)//重定义检查
+	{
+		addDuplicateDefinitionErrorInformation(record->id, record->lineNumber, record->flag, record->type, functionDefinition->functionID.second);
+		return;
+	}
 
+	string subprogramType;
+	if (functionDefinition->type.first == "")
+		subprogramType = "procedure";
+	else
+		subprogramType = "function";
+
+	//根据type是否为NULL，分为addProcedure()和addFunction()，添加到主程序表中
+	if (functionDefinition->type.first=="")//如果是过程
+		mainSymbolTable->addProcedure(functionDefinition->functionID.first, functionDefinition->functionID.second, int(functionDefinition->formalParaList.size()));
+	else//如果是函数
+		mainSymbolTable->addFunction(functionDefinition->functionID.first, functionDefinition->functionID.second, functionDefinition->type.first, int(functionDefinition->formalParaList.size()));
+	
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
 	for(int i=0;i<functionDefinition->formalParaList.size();i++)
 		SemanticAnalyseFormalParameter(functionDefinition->formalParaList[i]);
 	//对常量定义进行语义分析
 	for (int i = 0; i<functionDefinition->constList.size(); i++)
 		SemanticAnalyseConst(functionDefinition->constList[i]);
-	//对自定义类型进行语义分析
-	for(int i=0;i<functionDefinition->typedefList.size();i++)
+    //对自定义类型进行语义分析
+	for (int i = 0; i<functionDefinition->typedefList.size(); i++)
 		SemanticAnalyseTypedef(functionDefinition->typedefList[i]);
-	//对变量定义进行语义分析
+    //对变量定义进行语义分析
 	for (int i = 0; i<functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
-	//对compound进行语义分析
+    //对compound进行语义分析
 	SemanticAnalyseStatement(reinterpret_cast<_Statement*>(functionDefinition->compound));
-	//对函数进行返回值语句的存在性检查
-	if (functionDefinition->type.first != "") //checked
-		returnExistedCheckFunctionDefinition(functionDefinition);
-
-	*/
 }
 
 //对形式参数进行语义分析，形式参数一定是基本类型
@@ -408,4 +419,14 @@ void relocation()
 		mainSymbolTable->recordList.pop_back();
 	}
 	mainSymbolTable->indexTable.pop_back();
+}
+
+void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber){
+	string errorInformation = "[Duplicate defined error!] <Line " + itos(curLineNumber) + "> ";
+	if (preLineNumber != -1)
+		errorInformation += "\"" + preId + "\"" + " has already been defined as a " + preFlag + " at line " + itos(preLineNumber) + ".";
+	else
+		errorInformation += "\"" + preId + "\"" + " has already been defined as a lib program.";
+	semanticErrorInformation.push_back(errorInformation);
+	//CHECK_ERROR_BOUND
 }
