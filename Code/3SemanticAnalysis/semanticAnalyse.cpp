@@ -47,7 +47,7 @@ string itos(int num); //将int转化为string
 //我把他原有的注释函数注释了，如果需要的话大家拿出来重写一些即可
 
 //添加重定义错误信息
-void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType,int curLineNumber);//获得重复定义的语义错误信息
+void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber); //获得重复定义的语义错误信息
 // //添加未定义错误信息
 // void addUndefinedErrorInformation(string id, int curLineNumber);
 // //添加标识符类型错误信息
@@ -209,6 +209,12 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 		cout << "[SemanticAnalyseTypedef] pointer of _TypeDef is null" << endl;
 		return;
 	}
+	std::pair<string, int> TID = typedefi->typedefId;
+	if (mainSymbolTable->idToLoc.count(TID.first))
+	{
+		semanticErrorInformation.push_back((string) "line:" + char('0' + TID.second) + "Error: Duplicate identifier" + TID.first);
+		return;
+	}
 }
 
 //对变量定义进行语义分析
@@ -225,20 +231,20 @@ void SemanticAnalyseVariant(_Variant *variant)
 		semanticErrorInformation.push_back((string) "line:" + char('0' + VID.second) + "Error: Duplicate identifier" + VID.first);
 		return;
 	}
-	mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
+	mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first, variant->type->flag);
 }
 
 //对子程序定义进行语义分析
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition)
 {
-	if(functionDefinition==NULL)
+	if (functionDefinition == NULL)
 	{
 		cout << "[SemanticAnalyseSubprogramDefinition] pointer of _FunctionDefinition is null" << endl;
 		return;
 	}
 
-    _SymbolRecord *record=findSymbolRecord(mainSymbolTable, functionDefinition->functionID.first);
-	if(record!=NULL)//重定义检查
+	_SymbolRecord *record = findSymbolRecord(mainSymbolTable, functionDefinition->functionID.first);
+	if (record != NULL) //重定义检查
 	{
 		addDuplicateDefinitionErrorInformation(record->id, record->lineNumber, record->flag, record->type, functionDefinition->functionID.second);
 		return;
@@ -251,25 +257,25 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 		subprogramType = "function";
 
 	//根据type是否为NULL，分为addProcedure()和addFunction()，添加到主程序表中
-	if (functionDefinition->type.first=="")//如果是过程
+	if (functionDefinition->type.first == "") //如果是过程
 		mainSymbolTable->addProcedure(functionDefinition->functionID.first, functionDefinition->functionID.second, int(functionDefinition->formalParaList.size()));
-	else//如果是函数
+	else //如果是函数
 		mainSymbolTable->addFunction(functionDefinition->functionID.first, functionDefinition->functionID.second, functionDefinition->type.first, int(functionDefinition->formalParaList.size()));
-	
+
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
-	for(int i=0;i<functionDefinition->formalParaList.size();i++)
+	for (int i = 0; i < functionDefinition->formalParaList.size(); i++)
 		SemanticAnalyseFormalParameter(functionDefinition->formalParaList[i]);
 	//对常量定义进行语义分析
-	for (int i = 0; i<functionDefinition->constList.size(); i++)
+	for (int i = 0; i < functionDefinition->constList.size(); i++)
 		SemanticAnalyseConst(functionDefinition->constList[i]);
-    //对自定义类型进行语义分析
-	for (int i = 0; i<functionDefinition->typedefList.size(); i++)
+	//对自定义类型进行语义分析
+	for (int i = 0; i < functionDefinition->typedefList.size(); i++)
 		SemanticAnalyseTypedef(functionDefinition->typedefList[i]);
-    //对变量定义进行语义分析
-	for (int i = 0; i<functionDefinition->variantList.size(); i++)
+	//对变量定义进行语义分析
+	for (int i = 0; i < functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
-    //对compound进行语义分析
-	SemanticAnalyseStatement(reinterpret_cast<_Statement*>(functionDefinition->compound));
+	//对compound进行语义分析
+	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound));
 }
 
 //对形式参数进行语义分析，形式参数一定是基本类型
@@ -288,7 +294,7 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 	}
 	if (formalParameter->flag == 0) //传值调用
 		mainSymbolTable->addPara(PID.first, PID.second, formalParameter->type);
-	if (formalParameter->flag == 1) //引用调用
+	else if (formalParameter->flag == 1) //引用调用
 		mainSymbolTable->addVarPara(PID.first, PID.second, formalParameter->type);
 	else
 	{ //无法识别的调用类型
@@ -368,10 +374,10 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	}
 
 	int ParaSize = functionCall->actualParaList.size();
-	string decType = mainSymbolTable->recordList[decID]->type;
 	for (int i = 0; i < ParaSize; ++i) //判断每个参数的类型
 	{
 		SemanticAnalyseExpression(functionCall->actualParaList[i]);
+		string decType = mainSymbolTable->recordList[decID + i + 1]->type;
 		string expType = functionCall->actualParaList[i]->expressionType;
 		if (expType != decType && !(expType == "integer" && decType == "real"))
 		{
@@ -421,12 +427,13 @@ void relocation()
 	mainSymbolTable->indexTable.pop_back();
 }
 
-void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber){
+void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber)
+{
 	string errorInformation = "[Duplicate defined error!] <Line " + itos(curLineNumber) + "> ";
 	if (preLineNumber != -1)
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a " + preFlag + " at line " + itos(preLineNumber) + ".";
 	else
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a lib program.";
 	semanticErrorInformation.push_back(errorInformation);
-	//CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
