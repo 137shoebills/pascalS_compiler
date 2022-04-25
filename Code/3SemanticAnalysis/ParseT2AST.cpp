@@ -451,6 +451,14 @@ void setConst(Token *now,_Constant* &_constant){//pascal在定义常量时，并
 		_constant->strOfVal = now->children[loc]->value;
 		_constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
+    else if(now->children[loc]->type=="BOOL_CONSTANT"){
+        _constant->type="bool";
+		if(now->children[loc]->value == "true")
+        	_constant->boolvalue=true;
+		else
+        	_constant->boolvalue=false;
+		_constant->strOfVal = now->children[loc]->value;
+    }
     else if(now->children[loc]->type=="CHAR"){
         _constant->type="char";
         _constant->charValue=now->children[loc]->value[0];
