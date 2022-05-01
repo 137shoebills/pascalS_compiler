@@ -33,7 +33,7 @@ public:
 
 	void setPara(string id, int lineNumber, string type);
 	void setVarPara(string id, int lineNumber, string type);
-	void setVar(string id, int lineNumber, string type, bool arrflag);
+	void setVar(string id, int lineNumber, string type);
 	void setConst(string id, int lineNumber, string type, bool isMinusShow, string value);
 	void setArray(string id, int lineNumber, string type, int amount, vector<pair<int, int> > arrayRangeList);
 	void setProcedure(string id, int lineNumber, int amount);
@@ -65,7 +65,7 @@ public:
 
 	void addPara(string id, int lineNumber, string type);													   //增加参数
 	void addVarPara(string id, int lineNumber, string type);												   //增加变量参数
-	void addVar(string id, int lineNumber, string type, bool arrflag);										   //增加变量类型
+	void addVar(string id, int lineNumber, string type);													   //增加变量类型
 	void addConst(string id, int lineNumber, string type, bool isMinusShow, string value);					   //增加常量类型
 	void addArray(string id, int lineNumber, string type, int amount, vector<pair<int, int> > arrayRangeList); //增加数组类型
 	void addProcedure(string id, int lineNumber, int amount);												   //增加过程类型

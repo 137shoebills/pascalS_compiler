@@ -195,7 +195,7 @@ void SemanticAnalyseConst(_Constant *constant)
 				z += int(constant->strOfVal[i] - '0');
 			}
 			constant->type = "real";
-			constant->realValue = res;
+			constant->realValue = z;
 		}
 	}
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
@@ -231,7 +231,10 @@ void SemanticAnalyseVariant(_Variant *variant)
 		semanticErrorInformation.push_back((string) "line:" + char('0' + VID.second) + "Error: Duplicate identifier" + VID.first);
 		return;
 	}
-	mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first, variant->type->flag);
+	if (variant->type->flag)
+		mainSymbolTable->addArray(VID.first, VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+	else
+		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
 }
 
 //对子程序定义进行语义分析
@@ -293,9 +296,13 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 		return;
 	}
 	if (formalParameter->flag == 0) //传值调用
+	{
 		mainSymbolTable->addPara(PID.first, PID.second, formalParameter->type);
+	}
 	else if (formalParameter->flag == 1) //引用调用
+	{
 		mainSymbolTable->addVarPara(PID.first, PID.second, formalParameter->type);
+	}
 	else
 	{ //无法识别的调用类型
 		semanticErrorInformation.push_back((string) "line:" + char('0' + PID.second) + "Error: Unrecognized call type.");

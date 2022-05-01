@@ -25,10 +25,10 @@ void _SymbolTable::addVarPara(string id, int lineNumber, string type)
 	this->idToLoc[id].push(int(recordList.size() - 1));
 }
 
-void _SymbolTable::addVar(string id, int lineNumber, string type, bool arrflag)
+void _SymbolTable::addVar(string id, int lineNumber, string type)
 {
 	_SymbolRecord *tmpRecord = new _SymbolRecord;
-	tmpRecord->setVar(id, lineNumber, type, arrflag);
+	tmpRecord->setVar(id, lineNumber, type);
 	this->recordList.push_back(tmpRecord);
 	this->idToLoc[id].push(int(recordList.size() - 1));
 }
@@ -137,12 +137,9 @@ void _SymbolRecord::setVarPara(string id, int lineNumber, string type)
 	this->type = type;
 }
 
-void _SymbolRecord::setVar(string id, int lineNumber, string type, bool arrflag)
+void _SymbolRecord::setVar(string id, int lineNumber, string type)
 {
-	if (arrflag)
-		flag = "array";
-	else
-		flag = "normal variant";
+	flag = "normal variant";
 	this->id = id;
 	this->lineNumber = lineNumber;
 	this->type = type;
