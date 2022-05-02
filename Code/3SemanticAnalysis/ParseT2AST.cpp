@@ -20,6 +20,7 @@ void getVariant(Token *now,vector<_Variant*>& _variantList);
 void getTypeDefList(Token *now,vector<_TypeDef*>& _typedefList);
 void getTypeDef(Token *now,vector<_TypeDef*>& _typedefList);
 _Type* getType(Token *now);
+void getrecordBody(Token *now,vector<_Variant*> &recordList);
 void getArrayRangeList(Token *now,vector< pair<int,int> >& _arrayRangeList);
 void getArrayRange(Token *now,vector< pair<int,int> >& _arrayRangeList);
 void getSubprogramDefinitionList(Token *now,vector<_FunctionDefinition*>& _subprogramDefinitionList);
@@ -259,6 +260,8 @@ void printType(_Type *type){
         for(int i = 0;i < type->arrayRangeList.size();i++)
             cout<<type->arrayRangeList[i].first<<" "<<type->arrayRangeList[i].second<<endl;
     }
+    if(type->type.first == "record")
+        dfsvariantList(type->recordList);
 }
 void dfstypedefList(vector<_TypeDef*> typedefList){
     for(int i = 0;i < typedefList.size();i++){
@@ -521,6 +524,7 @@ _Type* getType(Token *now){
     }
     _Type* _type = new _Type;
     int loc=int(now->children.size()-1);
+	if(loc != 2)
     _type->type=make_pair(now->children[loc]->children[0]->value,now->children[loc]->children[0]->lineNo);
     if(loc==5){
         _type->flag=1;
@@ -528,9 +532,20 @@ _Type* getType(Token *now){
     }
     else
         _type->flag=0;
+    if(loc == 2){
+        _type->type = make_pair("record", now->children[0]->lineNo);
+        getrecordBody(now->children[1],_type->recordList);
+        
+    }
     return _type;
 }
-
+void getrecordBody(Token *now,vector<_Variant*> &recordList){
+    if(now->type!="record_body"){
+        cout << "getType error" << endl;
+        return ;
+    }
+    getVariant(now->children[0],recordList);
+}
 void getArrayRangeList(Token *now,vector< pair<int,int> >& _arrayRangeList){
     if(now->type!="periods"){
         cout << "getArrayRangeList error" << endl;

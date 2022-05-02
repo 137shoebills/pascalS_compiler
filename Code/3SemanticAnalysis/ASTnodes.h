@@ -95,6 +95,7 @@ class _Type//类型
         pair<string,int> type;//基本类型及行号 "integer"、"char"、"real"、"boolean" 
         int flag;//0表示非数组，1表示数组
         vector< pair<int,int> > arrayRangeList;//flag=1时，表示数组各维上下界
+		vector<_Variant*> recordList;
     public:
         _Type();
         _Type(pair<string,int> _type,int _flag,vector< pair<int,int> > _arrayRangeList);
