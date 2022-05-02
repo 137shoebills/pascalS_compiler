@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <stack>
+#include "ASTnodes.h"
 using namespace std;
 
 class _SymbolTable;
@@ -30,6 +31,7 @@ public:
 	//如果是数组，则表示数组维数，如果是函数/过程，则表示参数个数
 	vector<pair<int, int> > arrayRangeList; //数组各维上下界
 	vector<_SymbolRecord *> records;		//记录records中各个记录
+	vector<_FormalParameter*> paras;
 
 	void setPara(string id, int lineNumber, string type);
 	void setVarPara(string id, int lineNumber, string type);
@@ -37,7 +39,7 @@ public:
 	void setConst(string id, int lineNumber, string type, bool isMinusShow, string value);
 	void setArray(string id, int lineNumber, string type, int amount, vector<pair<int, int> > arrayRangeList);
 	void setProcedure(string id, int lineNumber, int amount);
-	void setFunction(string id, int lineNumber, string type, int amount);
+	void setFunction(string id, int lineNumber, string type, int amount, vector<_FormalParameter*> paras);
 	void setProgram(string id, int lineNumber, int amount, string returnType);
 	// void setSubProgram(string id, int lineNumber,int amount, string returnType);
 	void setVoidPara(string id, int lineNumber);
@@ -69,7 +71,7 @@ public:
 	void addConst(string id, int lineNumber, string type, bool isMinusShow, string value);					   //增加常量类型
 	void addArray(string id, int lineNumber, string type, int amount, vector<pair<int, int> > arrayRangeList); //增加数组类型
 	void addProcedure(string id, int lineNumber, int amount);												   //增加过程类型
-	void addFunction(string id, int lineNumber, string type, int amount);									   //增加函数类型
+	void addFunction(string id, int lineNumber, string type, int amount,vector<_FormalParameter*> paras);									   //增加函数类型
 	void addVoidPara(string id, int lineNumber);															   //表示主程序的参数
 	void addRecords(string id, int lineNumber, vector<_SymbolRecord *> records);							   //增加record类型
 	void addProgram(string id, int lineNumber, int amount, string returnType);
@@ -81,5 +83,18 @@ public:
 	_SymbolTable();
 	~_SymbolTable() {}
 };
+
+class _FormalParameter//形式参数
+{
+    public:
+        pair<string,int> paraId;//形式参数标识符和行号
+        string type;//形式参数类型，形式参数一定是基本类型，所以改为string
+        int flag;//flag=0表示传值调用，flag=1表示引用调用
+    public:
+        _FormalParameter();
+        _FormalParameter(pair<string,int> _paraId,string _type,int _flag);
+        ~_FormalParameter(){}
+};
+
 
 #endif //! SYMBOLTABLE_H

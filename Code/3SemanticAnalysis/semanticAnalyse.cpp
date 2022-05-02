@@ -102,8 +102,8 @@ void SemanticAnalyseProgram(_Program *program)
 	set<string> lib;
 	lib.insert("read");
 	lib.insert("write");
-	lib.insert("writeln");
-	lib.insert("exit");
+	//lib.insert("writeln");
+	//lib.insert("exit");
 	if (lib.count(program->programId.first)) //检查有没有用到库函数中的名字
 		addGeneralErrorInformation("[Duplicate defined error!] <Line " + itos(program->programId.second) + "> Name of program \"" + program->programId.first + "\" has been defined as a lib program.");
 
@@ -128,9 +128,9 @@ void SemanticAnalyseProgram(_Program *program)
 	//添加write过程，该过程变参
 	mainSymbolTable->addProcedure("write", -1, -1);
 	//添加writeln过程，该过程变参
-	mainSymbolTable->addProcedure("writeln", -1, -1);
+	//mainSymbolTable->addProcedure("writeln", -1, -1);
 	//添加exit过程，该过程的参数个数需要分情况讨论，程序里会有特判，这里指定为0没有特殊含义
-	mainSymbolTable->addProcedure("exit", -1, 0);
+	//mainSymbolTable->addProcedure("exit", -1, 0);
 	SemanticAnalyseSubprogram(program->subProgram);
 }
 
@@ -263,7 +263,7 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	if (functionDefinition->type.first == "") //如果是过程
 		mainSymbolTable->addProcedure(functionDefinition->functionID.first, functionDefinition->functionID.second, int(functionDefinition->formalParaList.size()));
 	else //如果是函数
-		mainSymbolTable->addFunction(functionDefinition->functionID.first, functionDefinition->functionID.second, functionDefinition->type.first, int(functionDefinition->formalParaList.size()));
+		mainSymbolTable->addFunction(functionDefinition->functionID.first, functionDefinition->functionID.second, functionDefinition->type.first, int(functionDefinition->formalParaList.size()),functionDefinition->formalParaList);
 
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
 	for (int i = 0; i < functionDefinition->formalParaList.size(); i++)
@@ -418,7 +418,7 @@ void relocation()
 {
 	int top = mainSymbolTable->indexTable.back(); //此时最近的block索引位置
 	int sizeTable = mainSymbolTable->recordList.size();
-	for (int i = sizeTable - 1; i >= top; i--)
+	for (int i = sizeTable - 1; i > top; i--)
 	{
 		string id = mainSymbolTable->recordList[i]->id;
 		if (mainSymbolTable->idToLoc[id].size() > 0 && mainSymbolTable->idToLoc[id].top() >= top)

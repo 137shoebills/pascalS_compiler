@@ -59,10 +59,10 @@ void _SymbolTable::addProcedure(string id, int lineNumber, int amount)
 	indexTable.push_back(int(recordList.size() - 1));
 }
 
-void _SymbolTable::addFunction(string id, int lineNumber, string type, int amount)
+void _SymbolTable::addFunction(string id, int lineNumber, string type, int amount,vector<_FormalParameter*> paras)
 {
 	_SymbolRecord *tmpRecord = new _SymbolRecord;
-	tmpRecord->setFunction(id, lineNumber, type, amount);
+	tmpRecord->setFunction(id, lineNumber, type, amount, paras);
 	this->recordList.push_back(tmpRecord);
 	this->idToLoc[id].push(int(recordList.size() - 1));
 	//函数入栈，索引表记录
@@ -173,13 +173,14 @@ void _SymbolRecord::setProcedure(string id, int lineNumber, int amount)
 	this->amount = amount;
 }
 
-void _SymbolRecord::setFunction(string id, int lineNumber, string type, int amount)
+void _SymbolRecord::setFunction(string id, int lineNumber, string type, int amount, vector<_FormalParameter*> paras)
 {
 	flag = "function";
 	this->id = id;
 	this->lineNumber = lineNumber;
 	this->type = type;
 	this->amount = amount;
+	this->paras = paras;
 }
 
 //这是一条特殊的记录，表示当前符号表对应的程序名、行号、"procedure"还是"function"、参数个数
