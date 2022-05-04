@@ -35,6 +35,7 @@ void SemanticAnalyseVariant(_Variant *variant);									   //对变量定义进�
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition); //对子程序定义进行语义分析
 void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter);			   //对形式参数进行语义分析
 void SemanticAnalyseStatement(_Statement *statement);							   //对语句进行语义分析
+void SemanticAnalyseRecord(vector<_Variant*> recordList,pair<string, int> VID);    //对record类型进行语义分析
 
 string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
@@ -217,6 +218,37 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 	}
 }
 
+//对record类型进行语义分析
+void SemanticAnalyseRecord(vector<_Variant*> recordList, pair<string, int> VID){
+	vector<_SymbolRecord*> records;
+	map<string, int> ids;
+	for(int i=0;i<recordList.size();i++)
+	{
+		_SymbolRecord *tmpRecord = new _SymbolRecord;
+		if (recordList[i] == NULL)
+		{
+			cout << "[SemanticAnalyseRecord] pointer of _Variant is null" << endl;
+			return;
+		}
+		pair<string, int> aVID = recordList[i]->variantId;
+		if (ids.count(aVID.first))
+		{
+			semanticErrorInformation.push_back((string) "line:" + char('0' + aVID.second) + "Error: Duplicate identifier record" + aVID.first);
+			return;
+		}
+		if(recordList[i]->type->type.first == "record"){
+			SemanticAnalyseRecord(recordList[i]->type->recordList,aVID);
+		}
+		else if (recordList[i]->type->flag)
+			tmpRecord->setArray(aVID.first, aVID.second, recordList[i]->type->type.first, recordList[i]->type->arrayRangeList.size(), recordList[i]->type->arrayRangeList);
+		else
+			tmpRecord->setVar(aVID.first, aVID.second, recordList[i]->type->type.first);
+
+		records.push_back(tmpRecord);
+	}
+	mainSymbolTable->addRecords(VID.first,VID.second,records);
+}
+
 //对变量定义进行语义分析
 void SemanticAnalyseVariant(_Variant *variant)
 {
@@ -231,7 +263,10 @@ void SemanticAnalyseVariant(_Variant *variant)
 		semanticErrorInformation.push_back((string) "line:" + char('0' + VID.second) + "Error: Duplicate identifier" + VID.first);
 		return;
 	}
-	if (variant->type->flag)
+	if(variant->type->type.first == "record"){
+		SemanticAnalyseRecord(variant->type->recordList,VID);
+	}
+	else if (variant->type->flag)
 		mainSymbolTable->addArray(VID.first, VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
 	else
 		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
