@@ -9,10 +9,12 @@
 #include "symbolTable.h"
 #include "ASTnodes.h"
 #include "main.h"
+#include "CodeGen.h"
 
 using namespace std;
 
-extern _SymbolTable *mainSymbolTable;																								//主符号表
+extern _SymbolTable *mainSymbolTable;	
+extern CodeGenContext context;																							//主符号表
 extern _SymbolRecord *findSymbolRecord(_SymbolTable *currentSymbolTable, string id);												//从符号表中找出id对应的记录
 extern void inputFunctionCall(_FunctionCall *functionCallNode, string &functionCall, int mode = 0);									//获取函数调用
 extern int inputExpression(_Expression *expressionNode, string &expression, int mode = 0, bool isReferedActualPara = false);		//获取表达式
@@ -24,8 +26,7 @@ vector<string> semanticErrorInformation;   //存储错误信息的列表
 vector<string> semanticWarningInformation; //存储警告信息的列表
 
 void SemanticAnalyse(_Program *ASTRoot);
-
-void createSymbolTableAndInit(); //创建主符号表并初始化
+void createSymbolTableAndInit(); //创建主符号表并初始化	
 
 void SemanticAnalyseSubprogram(_SubProgram *subprogram);						   //对分程序进行语义分析
 void SemanticAnalyseProgram(_Program *program);									   //对程序进行语义分析
@@ -48,7 +49,7 @@ string itos(int num); //将int转化为string
 //我把他原有的注释函数注释了，如果需要的话大家拿出来重写一些即可
 
 //添加重定义错误信息
-void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber); //获得重复定义的语义错误信息
+void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType,int curLineNumber);//获得重复定义的语义错误信息
 // //添加未定义错误信息
 // void addUndefinedErrorInformation(string id, int curLineNumber);
 // //添加标识符类型错误信息
@@ -81,6 +82,7 @@ void addGeneralErrorInformation(string errorInformation);
 void SemanticAnalyse(_Program *ASTRoot)
 {
 	createSymbolTableAndInit();
+	context.InitCodeGen();	 //初始化中间代码生成相关参数
 	SemanticAnalyseProgram(ASTRoot);
 }
 
@@ -103,8 +105,6 @@ void SemanticAnalyseProgram(_Program *program)
 	set<string> lib;
 	lib.insert("read");
 	lib.insert("write");
-	//lib.insert("writeln");
-	//lib.insert("exit");
 	if (lib.count(program->programId.first)) //检查有没有用到库函数中的名字
 		addGeneralErrorInformation("[Duplicate defined error!] <Line " + itos(program->programId.second) + "> Name of program \"" + program->programId.first + "\" has been defined as a lib program.");
 
@@ -120,19 +120,21 @@ void SemanticAnalyseProgram(_Program *program)
 		mainSymbolTable->addVoidPara(program->paraList[i].first, program->paraList[i].second);
 	}
 
-	//主符号表需提前加入read、write、exit等库函数
-	//对于库函数来说，setProcedure的参数,lineNumber,amount是没有用的
 	// lineNumber=-1表示是库函数
 	// amount=-1表示变参
 	//添加read过程，该过程变参
 	mainSymbolTable->addProcedure("read", -1, -1);
 	//添加write过程，该过程变参
 	mainSymbolTable->addProcedure("write", -1, -1);
-	//添加writeln过程，该过程变参
-	//mainSymbolTable->addProcedure("writeln", -1, -1);
-	//添加exit过程，该过程的参数个数需要分情况讨论，程序里会有特判，这里指定为0没有特殊含义
-	//mainSymbolTable->addProcedure("exit", -1, 0);
+
 	SemanticAnalyseSubprogram(program->subProgram);
+
+	cout<<"code generation success"<<endl;
+
+	//[refer]这个pass是用来干嘛的？
+	/* llvm::PassManager pm;
+	pm.add(llvm::createPrintModulePass(llvm::outs()));
+	pm.run(*(this->module.get())); */
 }
 
 //对子program进行语义分析
@@ -200,6 +202,11 @@ void SemanticAnalyseConst(_Constant *constant)
 		}
 	}
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
+	
+	//codeGen
+	int loc = mainSymbolTable->recordList.size()-1;
+	llvm::Value* value = constant->codeGen();
+	mainSymbolTable->recordList[loc]->llValue = value;
 }
 
 //对自定义类型进行语义分析
@@ -247,6 +254,9 @@ void SemanticAnalyseRecord(vector<_Variant*> recordList, pair<string, int> VID){
 		records.push_back(tmpRecord);
 	}
 	mainSymbolTable->addRecords(VID.first,VID.second,records);
+
+	//codeGen
+	
 }
 
 //对变量定义进行语义分析
@@ -258,11 +268,13 @@ void SemanticAnalyseVariant(_Variant *variant)
 		return;
 	}
 	std::pair<string, int> VID = variant->variantId;
+	
 	if (mainSymbolTable->idToLoc.count(VID.first))
 	{
 		semanticErrorInformation.push_back((string) "line:" + char('0' + VID.second) + "Error: Duplicate identifier" + VID.first);
 		return;
 	}
+
 	if(variant->type->type.first == "record"){
 		SemanticAnalyseRecord(variant->type->recordList,VID);
 	}
@@ -270,19 +282,24 @@ void SemanticAnalyseVariant(_Variant *variant)
 		mainSymbolTable->addArray(VID.first, VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
 	else
 		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
+
+	//codeGen
+	int loc = mainSymbolTable->recordList.size()-1;
+	llvm::Value* value = variant->codeGen();
+	mainSymbolTable->recordList[loc]->llValue = value;
 }
 
 //对子程序定义进行语义分析
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition)
 {
-	if (functionDefinition == NULL)
+	if(functionDefinition==NULL)
 	{
 		cout << "[SemanticAnalyseSubprogramDefinition] pointer of _FunctionDefinition is null" << endl;
 		return;
 	}
 
-	_SymbolRecord *record = findSymbolRecord(mainSymbolTable, functionDefinition->functionID.first);
-	if (record != NULL) //重定义检查
+    _SymbolRecord *record=findSymbolRecord(mainSymbolTable, functionDefinition->functionID.first);
+	if(record!=NULL)//重定义检查
 	{
 		addDuplicateDefinitionErrorInformation(record->id, record->lineNumber, record->flag, record->type, functionDefinition->functionID.second);
 		return;
@@ -295,25 +312,32 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 		subprogramType = "function";
 
 	//根据type是否为NULL，分为addProcedure()和addFunction()，添加到主程序表中
-	if (functionDefinition->type.first == "") //如果是过程
+	if (subprogramType == "procedure")//如果是过程
 		mainSymbolTable->addProcedure(functionDefinition->functionID.first, functionDefinition->functionID.second, int(functionDefinition->formalParaList.size()));
-	else //如果是函数
+	else//如果是函数
 		mainSymbolTable->addFunction(functionDefinition->functionID.first, functionDefinition->functionID.second, functionDefinition->type.first, int(functionDefinition->formalParaList.size()),functionDefinition->formalParaList);
+	
+	int loc = mainSymbolTable->recordList.size()-1;
 
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
-	for (int i = 0; i < functionDefinition->formalParaList.size(); i++)
+	for(int i=0;i<functionDefinition->formalParaList.size();i++)
 		SemanticAnalyseFormalParameter(functionDefinition->formalParaList[i]);
 	//对常量定义进行语义分析
-	for (int i = 0; i < functionDefinition->constList.size(); i++)
+	for (int i = 0; i<functionDefinition->constList.size(); i++)
 		SemanticAnalyseConst(functionDefinition->constList[i]);
-	//对自定义类型进行语义分析
-	for (int i = 0; i < functionDefinition->typedefList.size(); i++)
+    //对自定义类型进行语义分析
+	for (int i = 0; i<functionDefinition->typedefList.size(); i++)
 		SemanticAnalyseTypedef(functionDefinition->typedefList[i]);
-	//对变量定义进行语义分析
-	for (int i = 0; i < functionDefinition->variantList.size(); i++)
+    //对变量定义进行语义分析
+	for (int i = 0; i<functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
-	//对compound进行语义分析
-	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound));
+    //对compound进行语义分析(在这一步获取函数返回值的llValue)
+	SemanticAnalyseStatement(reinterpret_cast<_Statement*>(functionDefinition->compound));
+
+	_SymbolRecord* funcRec = mainSymbolTable->recordList[loc];
+	llvm::Value* value = functionDefinition->codeGen(funcRec);
+	//❓需要区分：函数返回值的LLVM Value 和 函数本身的LLVM Value，上面的codeGen得到的是后者
+	//如果不会用到函数本身的LLVM Value，则函数的codeGen可以不设返回值
 }
 
 //对形式参数进行语义分析，形式参数一定是基本类型
@@ -342,7 +366,10 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 	{ //无法识别的调用类型
 		semanticErrorInformation.push_back((string) "line:" + char('0' + PID.second) + "Error: Unrecognized call type.");
 	}
-	return;
+
+	int loc = mainSymbolTable->recordList.size()-1;
+	llvm::Value* value = formalParameter->codeGen();
+	mainSymbolTable->recordList[loc]->llValue = value;
 }
 
 //对语句进行语义分析
@@ -384,9 +411,11 @@ void SemanticAnalyseStatement(_Statement *statement)
 	}
 	else if (statement->type == "assign")
 	{ //左值特判
+
 	}
 	else if (statement->type == "procedure")
 	{ // read的参数只能是变量或数组元素; 这段比较难写
+	
 	}
 }
 
@@ -426,7 +455,10 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 			semanticErrorInformation.push_back((string) "line:" + char('0' + FCID.second) + "Error: Incompatible type for arg no. " + char('1' + i) + ": Got \"" + expType + "\", expected \"" + decType + "\"");
 		}
 	}
-	return;
+	
+	//❓codeGen
+	llvm::Value* value = functionCall->codeGen();
+
 }
 
 //对表达式进行语义分析
@@ -469,13 +501,12 @@ void relocation()
 	mainSymbolTable->indexTable.pop_back();
 }
 
-void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber)
-{
+void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber){
 	string errorInformation = "[Duplicate defined error!] <Line " + itos(curLineNumber) + "> ";
 	if (preLineNumber != -1)
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a " + preFlag + " at line " + itos(preLineNumber) + ".";
 	else
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a lib program.";
 	semanticErrorInformation.push_back(errorInformation);
-	// CHECK_ERROR_BOUND
+	//CHECK_ERROR_BOUND
 }

@@ -1,43 +1,56 @@
 #ifndef ASTNODES_H
 #define ASTNODES_H
 
+#include <llvm/IR/Value.h>
+#include<iostream>
 #include <vector>
 #include <string>
+#include<memory>
+
 using namespace std;
-class _Program;
-class _SubProgram;
-class _Constant;
-class _Variant;
-class _Type;
-class _FunctionDefinition;
-class _Compound;
-class _FormalParameter;
-class _VariantReference;
-class _Expression;
-class _FunctionCall;
-class _TypeDef;
-class _AssignStatement;
-class _IfStatement;
-class _ForStatement;
-class _WhileStatement;
-class _ProcedureCall;
-class _Idvpart;
+class _Program;     //对应program_head
+class _SubProgram;  //对应program_body
+class _Constant;                //NDouble, NInteger
+class _Variant;                 //NIdentifier
+class _Type;        //某种基本类型，或基本类型的数组类型
+class _TypeDef;      //对应type_declaration，是type的一行，使用vector表示一个type下面的所有内容
+class _FunctionDefinition;      //NFunctionDeclaration
+class _FormalParameter;//一个形参，在函数定义中使用vector表示形参列表
+class _Compound;    //类似NBlock,是每一对begin与end之间的部分（N个statement）
+class _VariantReference;//❓
+class _Statement;    //类似NStatement
+class _Expression;   //单条expression，类似NExpressionStatement?
+class _FunctionCall;            //NMethodCall
+class _AssignStatement;         //NAssignment
+class _IfStatement;             //NIfStatement
+class _ForStatement;            //NForStatement
+class _WhileStatement;          //NForStatement
+class _RepeatStatement;         //NForStatement
+class _ProcedureCall;           //NMethedCall
+class _Idvpart;      //❓
 
+/*未对应的TiniCompiler AST节点类型：
+(Node),NExpression,NStatement
+NExpressionStatement
+NBinaryOperator(属于_Expression？)
+NBlock(语句块，if,for里的语句块也属于NBlock; programBlock是NBlock指针，指向program_head?)
+NStructDeclaration & NStructMember & NStructAssignment (和_Type/_Typedef有关？)
+NReturnStatement：函数的返回值，需要通过符号表构造
+NArrayIndex & NArrayAssignment & NArrayInitialization：数组相关
+*/
 
-
-
-class _Program//程序
+class _Program//程序(相当于program_head)
 {
     public:
         pair<string,int> programId;//PASCAL程序名称标识符及行号
         vector< pair<string,int> > paraList;//PASCAL程序参数列表及行号
-        _SubProgram* subProgram;//分程序
+        _SubProgram* subProgram;
 	public:
 		_Program();
 		~_Program();
 };
 
-class _SubProgram//分程序
+class _SubProgram//分程序(相当于program_body)
 {
     public:
         vector<_Constant*> constList;//常数定义列表
@@ -61,13 +74,15 @@ class _Constant//常量定义
         char charValue;
 		int intValue;
         float realValue;
-		bool boolvalue;
+        bool boolvalue;
 		string strOfVal;//所有常量取值的字符串表示
 		bool isMinusShow;//是否为负数
     public:
         _Constant(){}
         ~_Constant(){}
+        codeGen();
 };
+
 class _TypeDef//变量定义
 {
     public:
@@ -77,7 +92,9 @@ class _TypeDef//变量定义
         _TypeDef();
 		_TypeDef(pair<string,int> _typeDefId,_Type *_type);
         ~_TypeDef();
+        codeGen();
 };
+
 class _Variant//变量定义
 {
     public:
@@ -87,6 +104,7 @@ class _Variant//变量定义
         _Variant();
 		_Variant(pair<string,int> _variantId,_Type *_type);
         ~_Variant();
+        codeGen();
 };
 
 class _Type//类型
@@ -95,11 +113,12 @@ class _Type//类型
         pair<string,int> type;//基本类型及行号 "integer"、"char"、"real"、"boolean" 
         int flag;//0表示非数组，1表示数组
         vector< pair<int,int> > arrayRangeList;//flag=1时，表示数组各维上下界
-		vector<_Variant*> recordList;
+        vector<_Variant*> recordList;
     public:
         _Type();
         _Type(pair<string,int> _type,int _flag,vector< pair<int,int> > _arrayRangeList);
         ~_Type(){}
+        codeGen();
 };
 
 class _FunctionDefinition
@@ -117,17 +136,20 @@ class _FunctionDefinition
     public:
         _FunctionDefinition();
         ~_FunctionDefinition();
+        codeGen(_SymbolRecord*);
 };
+
 class _FormalParameter//形式参数
 {
     public:
         pair<string,int> paraId;//形式参数标识符和行号
-        string type;//形式参数类型，形式参数一定是基本类型，所以改为string
+        string type;//形式参数类型
         int flag;//flag=0表示传值调用，flag=1表示引用调用
     public:
         _FormalParameter();
         _FormalParameter(pair<string,int> _paraId,string _type,int _flag);
         ~_FormalParameter(){}
+        codeGen();
 };
 
 class _Statement
@@ -140,7 +162,9 @@ class _Statement
     public:
         _Statement(){}
         ~_Statement(){}
+        codeGen();
 };
+
 class _Compound:public _Statement
 {
     public:
@@ -150,6 +174,7 @@ class _Compound:public _Statement
         _Compound();
         ~_Compound();
 };
+
 class _AssignStatement:public _Statement
 {
     public:
@@ -159,6 +184,7 @@ class _AssignStatement:public _Statement
     public:
         _AssignStatement();
         ~_AssignStatement();
+        codeGen();
 };
 
 class _ProcedureCall:public _Statement
@@ -170,7 +196,21 @@ class _ProcedureCall:public _Statement
     public:
         _ProcedureCall();
         ~_ProcedureCall();
+        codeGen();
 };
+
+class _FunctionCall
+{
+    public:
+        pair<string,int> functionId;//函数标识符
+        vector<_Expression*> actualParaList;//实际参数列表，由表达式组成
+        string returnType;//"integer"、"real"、"char"、"boolean"、"error"，其中error表示函数标识符不存在
+    public:
+        _FunctionCall();
+        ~_FunctionCall();
+        codeGen();
+};
+
 class _Expression
 {
     public:
@@ -200,6 +240,7 @@ class _Expression
     public:
         _Expression();
 		~_Expression();
+        codeGen();
     //语义分析相关
     public:
         int totalIntValue;
@@ -211,27 +252,32 @@ class _VariantReference
 {
     public:
         pair<string,int> variantId;//变量或常量标识符和行号
-        //pair<string,int> constId;
-        vector<_Idvpart*> IdvpartList;
+        //如果这个变量是结构体或数组：
+        vector<_Idvpart*> IdvpartList;  //结构体.属性或数组元素
 //        int flag;
 //        string str;
     public:
         _VariantReference();
         ~_VariantReference();
+        codeGen();
+
     public:
 		int locFlag;//-1表示左值，1表示右值，0表示什么都不是 左值特判
 		string kind;//"array","var","constant","function call","function return reference"
         string variantType;//"integer"、"real"、"char"、"boolean"、"error"，其中"error"表示数组某一维下标表达式的类型不为"integer"或标识符不存在
 };
+
 class _Idvpart{
 public:
     vector<_Expression*> expressionList;//flag = 0;
     pair<string, int> IdvpartId;//flag = 1
-    int flag;
+    int flag;   //flag=0表示数组
 public:
     _Idvpart();
     ~_Idvpart();
+    codeGen();
 };
+
 class _IfStatement:public _Statement
 {
     public:
@@ -242,6 +288,7 @@ class _IfStatement:public _Statement
     public:
         _IfStatement();
         ~_IfStatement();
+        codeGen();
 };
 
 class _ForStatement:public _Statement
@@ -255,6 +302,7 @@ class _ForStatement:public _Statement
     public:
         _ForStatement();
         ~_ForStatement();
+        codeGen();
 };
 
 class _RepeatStatement:public _Statement
@@ -266,6 +314,7 @@ class _RepeatStatement:public _Statement
     public:
         _RepeatStatement();
         ~_RepeatStatement();
+        codeGen();
 };
 
 class _WhileStatement:public _Statement
@@ -277,18 +326,6 @@ class _WhileStatement:public _Statement
     public:
         _WhileStatement();
         ~_WhileStatement();
-};
-
-
-class _FunctionCall
-{
-    public:
-        pair<string,int> functionId;//函数标识符
-        vector<_Expression*> actualParaList;//实际参数列表，由表达式组成
-    public:
-        _FunctionCall();
-        ~_FunctionCall();
-    public:
-        string returnType;//"integer"、"real"、"char"、"boolean"、"error"，其中error表示函数标识符不存在
+        codeGen();
 };
 #endif
