@@ -39,7 +39,7 @@ _FunctionCall::~_FunctionCall(){
 
 _VariantReference::_VariantReference(){
     IdvpartList.clear();
-	locFlag = 1;//默认是右值
+	locFlag = 0;//默认是右值
 }
 
 _VariantReference::~_VariantReference(){
