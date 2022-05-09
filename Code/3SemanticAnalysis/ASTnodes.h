@@ -1,5 +1,5 @@
-#ifndef ASTNODES_H
-#define ASTNODES_H
+#ifndef __ASTNODES_H__
+#define __ASTNODES_H__
 
 #include <llvm/IR/Value.h>
 #include<iostream>
@@ -80,7 +80,7 @@ class _Constant//常量定义
     public:
         _Constant(){}
         ~_Constant(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _TypeDef//变量定义
@@ -92,7 +92,7 @@ class _TypeDef//变量定义
         _TypeDef();
 		_TypeDef(pair<string,int> _typeDefId,_Type *_type);
         ~_TypeDef();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Variant//变量定义
@@ -104,7 +104,7 @@ class _Variant//变量定义
         _Variant();
 		_Variant(pair<string,int> _variantId,_Type *_type);
         ~_Variant();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Type//类型
@@ -118,7 +118,7 @@ class _Type//类型
         _Type();
         _Type(pair<string,int> _type,int _flag,vector< pair<int,int> > _arrayRangeList);
         ~_Type(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _FunctionDefinition
@@ -136,7 +136,7 @@ class _FunctionDefinition
     public:
         _FunctionDefinition();
         ~_FunctionDefinition();
-        codeGen(_SymbolRecord*);
+        llvm::Value* codeGen(_SymbolRecord*);
 };
 
 class _FormalParameter//形式参数
@@ -149,7 +149,7 @@ class _FormalParameter//形式参数
         _FormalParameter();
         _FormalParameter(pair<string,int> _paraId,string _type,int _flag);
         ~_FormalParameter(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Statement
@@ -162,7 +162,7 @@ class _Statement
     public:
         _Statement(){}
         ~_Statement(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Compound:public _Statement
@@ -184,7 +184,7 @@ class _AssignStatement:public _Statement
     public:
         _AssignStatement();
         ~_AssignStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _ProcedureCall:public _Statement
@@ -196,7 +196,7 @@ class _ProcedureCall:public _Statement
     public:
         _ProcedureCall();
         ~_ProcedureCall();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _FunctionCall
@@ -208,7 +208,7 @@ class _FunctionCall
     public:
         _FunctionCall();
         ~_FunctionCall();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Expression
@@ -240,7 +240,7 @@ class _Expression
     public:
         _Expression();
 		~_Expression();
-        codeGen();
+        llvm::Value* codeGen();
     //语义分析相关
     public:
         int totalIntValue;
@@ -259,7 +259,7 @@ class _VariantReference
     public:
         _VariantReference();
         ~_VariantReference();
-        codeGen();
+        llvm::Value* codeGen();
 
     public:
 		int locFlag;//-1表示左值，1表示右值，0表示什么都不是 左值特判
@@ -275,7 +275,7 @@ public:
 public:
     _Idvpart();
     ~_Idvpart();
-    codeGen();
+    llvm::Value* codeGen();
 };
 
 class _IfStatement:public _Statement
@@ -288,7 +288,7 @@ class _IfStatement:public _Statement
     public:
         _IfStatement();
         ~_IfStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _ForStatement:public _Statement
@@ -302,7 +302,7 @@ class _ForStatement:public _Statement
     public:
         _ForStatement();
         ~_ForStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _RepeatStatement:public _Statement
@@ -314,7 +314,7 @@ class _RepeatStatement:public _Statement
     public:
         _RepeatStatement();
         ~_RepeatStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _WhileStatement:public _Statement
@@ -326,6 +326,6 @@ class _WhileStatement:public _Statement
     public:
         _WhileStatement();
         ~_WhileStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 #endif
