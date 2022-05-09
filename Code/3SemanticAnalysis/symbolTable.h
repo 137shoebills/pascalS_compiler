@@ -17,7 +17,7 @@ class _SymbolRecord
 {
 public:
 	string flag; //"value parameter"表示传值参数,"var parameter"表示传引用参数,"normal variant"表示普通变量,"constant"表示常量,
-	//"array"表示数组,"procedure"表示过程,"function"表示函数
+	//"array"表示数组,"procedure"表示过程,"function"表示函数,"record"表示结构体
 	//"program"表示该条记录是主程序
 	//"parameter of program"表示主程序的参数
 	string id;		//表示标识符名称或者程序函数过程名

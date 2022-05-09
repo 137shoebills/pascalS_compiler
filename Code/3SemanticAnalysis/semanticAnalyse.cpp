@@ -252,9 +252,11 @@ void SemanticAnalyseRecord(vector<_Variant*> recordList, pair<string, int> VID){
 			tmpRecord->setVar(aVID.first, aVID.second, recordList[i]->type->type.first);
 
 		records.push_back(tmpRecord);
+		ids[aVID.first]=aVID.second;
 	}
-	mainSymbolTable->addRecords(VID.first,VID.second,records);
-
+	
+	mainSymbolTable->addRecords(VID.first+"_",VID.second,records); //id名后加_下划线表示record类型名
+	mainSymbolTable->addVar(VID.first,VID.second,VID.first+"_");
 	//codeGen
 	
 }
