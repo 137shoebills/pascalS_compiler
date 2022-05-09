@@ -54,26 +54,26 @@ void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, str
 void addUndefinedErrorInformation(string id, int curLineNumber);
 // 添加标识符类型错误信息
 void addUsageTypeErrorInformation(string curId, int curLineNumber, string curType, string usage, string correctType);
-// //添加个数不匹配错误信息
+//添加个数不匹配错误信息
 void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, int correctNumber, string usage);
 // 添加标识符种类错误信息
 void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag, int preLineNumber, string preFlag);
-// //添加表达式类型错误信息
+//添加表达式类型错误信息
 void addExpressionTypeErrorInformation(_Expression *exp, string curType, string correctType, string description);
 // 添加赋值语句左值和右值类型不匹配错误信息
 void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReference, _Expression *rightExpression);
-// //添加数组下标越界错误信息
-// void addArrayRangeOutOfBoundErrorInformation(_Expression *expression, string arrayId, int X, pair<int,int> range);
+//添加数组下标越界错误信息
+void addArrayRangeOutOfBoundErrorInformation(_Expression *expression, string arrayId, int X, pair<int,int> range);
 // //添加数组下界比上界大的错误信息
 // void addArrayRangeUpSideDownErrorInformation(string curId, int curLineNumber, int X, int lowBound, int highBound);
-// //添加运算符两边的操作数类型不一致的错误信息
-// void addOperandExpressionsTypeMismatchErrorInformation(_Expression *exp1, _Expression *exp2);
-// //添加某个操作数类型错误的信息
-// void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression *exp, string correctType);
+//添加运算符两边的操作数类型不一致的错误信息
+void addOperandExpressionsTypeMismatchErrorInformation(_Expression *exp1, _Expression *exp2);
+//添加某个操作数类型错误的信息
+void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression *exp, string correctType);
 // 添加read的实参错误信息
 void addactualParameterOfReadErrorInformation(int curLineNumber, string procedureId, int X, _Expression *exp);
-// //添加除0错误信息
-// void addDivideZeroErrorInformation(string operation, _Expression *exp);
+//添加除0错误信息
+void addDivideZeroErrorInformation(string operation, _Expression *exp);
 // 添加read读取boolean类型变量错误的信息
 void addReadBooleanErrorInformation(_Expression *exp, int X);
 //将错误信息直接添加到错误信息的列表中
@@ -685,21 +685,296 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 }
 
 //对表达式进行语义分析
-string SemanticAnalyseExpression(_Expression *expression)
-{
-	if (expression == NULL)
-	{
+string SemanticAnalyseExpression(_Expression* expression) {
+	if (expression == NULL) {
 		cout << "[SemanticAnalyseExpression] pointer of _Expression is null" << endl;
 		return "";
 	}
+
+	//表达式类型为变量 <ok>
+	if (expression->type == "var") { 
+		string variantReferenceType = SemanticAnalyseVariantReference(expression->variantReference);
+		//int类型的常量则记录值
+		if (variantReferenceType == "integer" && expression->variantReference->kind == "constant") {
+			_SymbolRecord* record = findSymbolRecord(currentSymbolTable, expression->variantReference->variantId.first);
+			if (record == NULL) {
+				cout << "[SemanticAnalyseExpression] pointer of record is null" << endl;
+				return "";
+			}
+			if (record->flag != "constant") {
+				cout << " : [SemanticAnalyseExpression] the record should be a constant" << endl;
+				return "";
+			}
+			expression->totalIntValue = str2int(record->value);
+			if (record->isMinusShow)
+				expression->totalIntValue = -expression->totalIntValue;
+			expression->totalIntValueValid = true;
+		}
+		return expression->expressionType = variantReferenceType;
+	}
+
+	//表达式类型为integer <ok>
+	else if (expression->type == "integer") {
+		expression->totalIntValue = expression->intNum;
+		expression->totalIntValueValid = true;
+		return expression->expressionType = "integer";
+	}
+
+	//表达式类型为real <ok>
+	else if (expression->type == "real")
+		return expression->expressionType = "real";
+
+	//表达式类型为char <ok>	
+	else if (expression->type == "char")
+		return expression->expressionType = "char";
+
+	//表达式为字符常量Letter <ok>
+	else if (expression->Type=="LETTER")
+		return 	expression->expressionType = "letter"
+
+	//表达式类型为函数调用 <ok>	
+	else if (expression->type == "function") //获得函数调用的返回值类型
+		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall);
+
+	//含有运算符的表达式	
+	else if (expression->type == "compound") {
+
+		//表达式中含有关系运算符relop ||注意：此处的relop包含了词法分析的（relop（>=|>|<=|<|<>）和=），同词法定义不一致
+		if (expression->operationType == "relop") {
+			string epType1 = SemanticAnalyseExpression(expression->operand1);
+			string epType2 = SemanticAnalyseExpression(expression->operand2);
+			//类型兼容
+			if ((epType1 == epType2 && epType1 != "error") || (epType1 == "integer" && epType2 == "real") || (epType1 == "real" && epType2 == "integer"))
+				return expression->expressionType = "boolean";
+			//类型错误或类型不兼容	
+			else {
+				if (epType1 != epType2 && epType1 != "error" && epType2 != "error")
+					addOperandExpressionsTypeMismatchErrorInformation(expression->operand1, expression->operand2);
+				return expression->expressionType = "error";
+			}
+		}
+
+		//单目运算符not
+		else if (expression->operation == "not") {
+			string type = SemanticAnalyseExpression(expression->operand1);
+			//类型兼容
+			if (type == "boolean")
+				return expression->expressionType = "boolean";
+			//类型错误或类型不兼容	
+			else {
+				if (type != "error" && type != "boolean")
+					addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand1, "boolean");
+				return expression->expressionType = "error";
+			}
+		}
+        
+		//负号minus
+		else if (expression->operation == "minus") {
+			string epType = SemanticAnalyseExpression(expression->operand1);
+			if (epType == "integer" && expression->operand1->totalIntValueValid) {
+				expression->totalIntValue = -expression->operand1->totalIntValue;
+				expression->totalIntValueValid = true;
+			}
+			if (epType == "integer" || epType == "real")
+				return expression->expressionType = epType;
+			else {
+				if (epType != "error" && epType != "integer" && epType != "real")
+					addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand1, "integer or real");
+				return expression->expressionType = "error";
+			}
+		}
+
+		//括号表达式( expression )
+		else if (expression->operation == "bracket") {
+			expression->expressionType = SemanticAnalyseExpression(expression->operand1);
+			//如果为整型则记录结果
+			if (expression->expressionType == "integer" && expression->operand1->totalIntValueValid) {
+				expression->totalIntValue = expression->operand1->totalIntValue;
+				expression->totalIntValueValid = true;
+			}
+			return expression->expressionType;
+		}
+
+		//算术运算符+ - * /
+		else if (expression->operation == "+" || expression->operation == "-" || expression->operation == "*" || expression->operation == "/") {
+			string epType1 = SemanticAnalyseExpression(expression->operand1);
+			string epType2 = SemanticAnalyseExpression(expression->operand2);
+			//除数为0
+			if (expression->operation == "/" && epType2 == "integer" && expression->operand2->totalIntValueValid && expression->operand2->totalIntValue == 0)
+				addDivideZeroErrorInformation(expression->operation, expression->operand2);
+			//整数运算记录结果	
+			if (epType1 == "integer" && epType2 == "integer" && expression->operand1->totalIntValueValid && expression->operand2->totalIntValueValid) {
+				expression->totalIntValueValid = true;
+				if (expression->operation == "+")
+					expression->totalIntValue = expression->operand1->totalIntValue + expression->operand2->totalIntValue;
+				else if (expression->operation == "-")
+					expression->totalIntValue = expression->operand1->totalIntValue - expression->operand2->totalIntValue;
+				else if (expression->operation == "*")
+					expression->totalIntValue = expression->operand1->totalIntValue * expression->operand2->totalIntValue;
+				else
+					expression->totalIntValue = expression->operand1->totalIntValue / expression->operand2->totalIntValue;
+			}
+			//类型处理
+			if ((epType1 == "integer" || epType1 == "real") && (epType2 == "integer" || epType2 == "real")) {
+				if (epType1 == "integer" && epType2 == "integer")
+					return expression->expressionType = "integer";
+				return expression->expressionType = "real";
+			}
+			if (epType1 != "error" && epType1 != "integer" && epType1 != "real")
+				addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand1, "integer or real");
+			if (epType2 != "error" && epType2 != "integer" && epType2 != "real")
+				addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand2, "integer or real");
+			return expression->expressionType = "error";
+		}
+
+		//算术运算符 div mod
+		else if (expression->operation == "div" || expression->operation == "mod") {
+			string epType1 = SemanticAnalyseExpression(expression->operand1);
+			string epType2 = SemanticAnalyseExpression(expression->operand2);
+			//除数为0
+			if (epType2 == "integer" && expression->operand2->totalIntValueValid && expression->operand2->totalIntValue == 0)
+				addDivideZeroErrorInformation(expression->operation, expression->operand2);
+			//整数运算记录结果	
+			if (epType1 == "integer" && epType2 == "integer") {
+				if (expression->operand1->totalIntValueValid && expression->operand2->totalIntValueValid) {
+					if (expression->operation == "div")
+						expression->totalIntValue = expression->operand1->totalIntValue / expression->operand2->totalIntValue;
+					else
+						expression->totalIntValue = expression->operand1->totalIntValue % expression->operand2->totalIntValue;
+					expression->totalIntValueValid = true;
+				}
+				return expression->expressionType = "integer";
+			}
+			if (epType1 != "error" && epType1 != "integer")
+				addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand1, "integer");
+			if (epType2 != "error" && epType2 != "integer")
+				addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand2, "integer");
+			return expression->expressionType = "error";
+		}
+
+		//逻辑运算符 and or
+		else if (expression->operation == "and" || expression->operation == "or") {
+			string epType1 = SemanticAnalyseExpression(expression->operand1);
+			string epType2 = SemanticAnalyseExpression(expression->operand2);
+			if (epType1 == "boolean" && epType2 == "boolean")
+				return expression->expressionType = "boolean";
+			if (epType1 != "error" && epType1 != "boolean")
+				addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand1, "boolean");
+			if (epType2 != "error" && epType2 != "boolean")
+				addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand2, "boolean");
+			return expression->expressionType = "error";
+		}
+
+		//出现未知运算符
+		else {
+			cout << "[_Expression::SemanticAnalyseExpression] ERROR: operation not found" << endl;
+			return "error";
+		}
+	}
+
+	else {
+		cout << "[_Expression::SemanticAnalyseExpression] ERROR: expression type not found" << endl;
+		return "error";
+	}
 }
 
-string SemanticAnalyseVariantReference(_VariantReference *variantReference)
-{
-	if (variantReference == NULL)
-	{
+//对变量引用进行语义分析
+//可能是传值参数、引用参数、普通变量、数组元素、结构体.属性、函数名
+//函数名不能作为左值
+string SemanticAnalyseVariantReference(_VariantReference* variantReference){
+	if(variantReference==NULL){
 		cout << "[SemanticAnalyseVariantReference] pointer of _VariantReference is null" << endl;
 		return "";
+	}
+
+	_SymbolRecord* record = findSymbolRecord(mainSymbolTable, variantReference->variantId.first);
+	
+	//未定义 
+	if (record == NULL) {
+		addUndefinedErrorInformation(variantReference->variantId.first, variantReference->variantId.second);
+		return variantReference->variantType = "error";
+	}
+
+    //非数组元素、非结构体.属性（传值参数、引用参数、普通变量、常量、函数名）<ok>
+	if (variantReferenc->IdvpartList.size() == 0) {
+
+		//函数名：不能作为左值，必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
+		if (record->flag == "function") {
+			variantReference->kind = "function";
+            //如果是左值 
+			if (variantReference->locFlag == -1) {
+				addGeneralErrorInformation("[Invalid reference!] <Line " + itos(variantReference->variantId.second) + "> function name \"" + record->id + "\" can't be referenced as l-value.");
+				return variantReference->variantType = "error";
+			}
+			//如果是右值
+			if (variantReference->locFlag == 1&&record->amount != 0) { 
+				addNumberErrorInformation(variantReference->variantId.first, variantReference->variantId.second, 0, record->amount, "function");
+				return variantReference->variantType = record->type;
+			}
+			return variantReference->variantType = record->type;
+		}
+
+		//其余只能是传值参数、传引用参数、普通变量、常量
+		if (!(record->flag == "value parameter" || record->flag == "var parameter" || record->flag == "normal variant" || record->flag == "constant")) {
+			addGeneralErrorInformation("[Invalid reference!] <Line " + itos(variantReference->variantId.second) + "> \"" + variantReference->variantId.first + "\" is a " + record->flag + ", it can't be referenced.");
+			return variantReference->variantType = "error";
+		}
+        //记录类型
+		variantReference->kind = "var";
+		if (record->flag == "constant")
+			variantReference->kind = "constant";
+		return variantReference->variantType = record->type;
+	}
+
+	//数组元素
+	else if (record->flag=="array") {
+		variantReference->kind = "array";
+
+		//引用时的下标维数和符号表所存不一致
+		if (variantReference->IdvpartList.size() != record->amount) {
+			addNumberErrorInformation(variantReference->variantId.first, variantReference->variantId.second, int(variantReference->IdvpartList.size()), record->amount, "array");
+			variantReference->variantType = "error";
+			return variantReference->variantType = "error";
+		}
+
+		variantReference->variantType = record->type;
+
+		for (int i = 0; i < variantReference->IdvpartList.size(); i++) {
+			
+			for(int j=0;j<variantReference->IdvpartList[i]->expression_list.size();j++){
+				string type = SemanticAnalyseExpression(variantReference->IdvpartList[i]->expressionList[j]);
+				//检查每一维下标表达式的类型是否是整型 	
+				if (type != "integer") {
+					addExpressionTypeErrorInformation(variantReference->expressionList[i], type, "integer", itos(i + 1) + "th index of array \"" + variantReference->variantId.first + "\"");
+					variantReference->variantType = "error";
+					return variantReference->variantType = "error";
+				}
+				//检查越界
+				if(variantReference->IdvpartList[i]->expressionList->totalIntValueValid){
+					if(!record->checkArrayXthIndexRange(i, variantReference->IdvpartList[i]->expressionList[j])){
+						addArrayRangeOutOfBoundErrorInformation(variantReference->expressionList[i], variantReference->variantId.first, i, record->arrayRangeList[i]);
+						return variantReference->variantType = "error";
+					}
+				}
+			}			
+		}
+		return record->type;
+	}
+
+	//结构体.属性
+	else if(record->flag=="normal variant"){
+		//检查属性是否与结构体匹配
+		for(int i=0;i<record->records.size();i++){
+			if(record->records[i]->id==variantReference->IdvpartList[0]->IdvpartId.first)
+				return variantReference->variantType = record->records[i]->type;
+		}
+		addGeneralErrorInformation("record reference is illegal");
+		return variantReference->variantType = "error";
+	}
+
+	else {
+		cout << "[SemanticAnalyseVariantReference] flag of variantReference is not 0 or 1" << endl;
+		return variantReference->variantType = "error";
 	}
 }
 
@@ -837,4 +1112,50 @@ void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, i
 	}
 	semanticErrorInformation.push_back(errorInformation);
 	CHECK_ERROR_BOUND
+}
+
+//添加数组下标越界错误信息
+void addArrayRangeOutOfBoundErrorInformation(_Expression* expression, string arrayId, int X, pair<int, int> range) {
+	string errorInformation;
+	errorInformation += "[Array range out of bound!] ";
+	errorInformation += "<Line " + itos(expression->lineNumber) + "> ";
+	string exp;
+	inputExpression(expression, exp, 1);
+	errorInformation += "The value of expression \"" + exp + "\"" + " is " + itos(expression->totalIntValue);
+	errorInformation += ", but the range of array \"" + arrayId + "\" " + itos(X) + "th index is " + itos(range.first) + " to " + itos(range.second) + ".";
+	semanticErrorInformation.push_back(errorInformation);
+}
+
+//添加运算符两边的操作数类型不一致的错误信息
+void addOperandExpressionsTypeMismatchErrorInformation(_Expression* exp1, _Expression* exp2) {
+	string errorInformation;
+	errorInformation += "[Operands expression type mismatch!] ";
+	errorInformation += "<Left at line " + itos(exp1->lineNumber) + ", right at line " + itos(exp2->lineNumber) + "> ";
+	string expStr1, expStr2;
+	inputExpression(exp1, expStr1, 1);
+	inputExpression(exp2, expStr2, 1);
+	errorInformation += "Left \"" + expStr1 + "\" type is " + exp1->expressionType + " while right " + "\"" + expStr2 + "\" type is " + exp2->expressionType + ".";
+	semanticErrorInformation.push_back(errorInformation);
+}
+
+//添加除0错误信息
+void addDivideZeroErrorInformation(string operation, _Expression* exp) {
+	string errorInformation;
+	errorInformation += "[Divide zero error!] ";
+	errorInformation += "<Line " + itos(exp->lineNumber) + "> ";
+	string expression;
+	inputExpression(exp, expression, 1);
+	errorInformation += "The value of expression \"" + expression + "\" is 0, which is the second operand of operation \"" + operation + "\".";
+	semanticErrorInformation.push_back(errorInformation);
+}
+
+//添加某个操作数类型错误的信息
+void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression* exp, string correctType) {
+	string errorInformation;
+	errorInformation += "[Operand expression type error!] ";
+	errorInformation += "<Line " + itos(exp->lineNumber) + "> ";
+	string expStr;
+	inputExpression(exp, expStr, 1);
+	errorInformation += "Expression \"" + expStr + "\" type should be " + correctType + " but not " + exp->expressionType + ".";
+	semanticErrorInformation.push_back(errorInformation);
 }
