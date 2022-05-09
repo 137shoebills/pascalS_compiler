@@ -50,18 +50,18 @@ string itos(int num); //将int转化为string
 
 //添加重定义错误信息
 void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType,int curLineNumber);//获得重复定义的语义错误信息
-// //添加未定义错误信息
-// void addUndefinedErrorInformation(string id, int curLineNumber);
-// //添加标识符类型错误信息
-// void addUsageTypeErrorInformation(string curId, int curLineNumber, string curType, string usage, string correctType);
+// 添加未定义错误信息
+void addUndefinedErrorInformation(string id, int curLineNumber);
+// 添加标识符类型错误信息
+void addUsageTypeErrorInformation(string curId, int curLineNumber, string curType, string usage, string correctType);
 // //添加个数不匹配错误信息
-// void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, int correctNumber, string usage);
-// //添加标识符种类错误信息
-// void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag, int preLineNumber, string preFlag);
+void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, int correctNumber, string usage);
+// 添加标识符种类错误信息
+void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag, int preLineNumber, string preFlag);
 // //添加表达式类型错误信息
-// void addExpressionTypeErrorInformation(_Expression *exp, string curType, string correctType, string description);
-// //添加赋值语句左值和右值类型不匹配错误信息
-// void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReference, _Expression *rightExpression);
+void addExpressionTypeErrorInformation(_Expression *exp, string curType, string correctType, string description);
+// 添加赋值语句左值和右值类型不匹配错误信息
+void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReference, _Expression *rightExpression);
 // //添加数组下标越界错误信息
 // void addArrayRangeOutOfBoundErrorInformation(_Expression *expression, string arrayId, int X, pair<int,int> range);
 // //添加数组下界比上界大的错误信息
@@ -70,12 +70,12 @@ void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, str
 // void addOperandExpressionsTypeMismatchErrorInformation(_Expression *exp1, _Expression *exp2);
 // //添加某个操作数类型错误的信息
 // void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression *exp, string correctType);
-// //添加read的实参错误信息
-// void addactualParameterOfReadErrorInformation(int curLineNumber, string procedureId, int X, _Expression *exp);
+// 添加read的实参错误信息
+void addactualParameterOfReadErrorInformation(int curLineNumber, string procedureId, int X, _Expression *exp);
 // //添加除0错误信息
 // void addDivideZeroErrorInformation(string operation, _Expression *exp);
-// //添加read读取boolean类型变量错误的信息
-// void addReadBooleanErrorInformation(_Expression *exp, int X);
+// 添加read读取boolean类型变量错误的信息
+void addReadBooleanErrorInformation(_Expression *exp, int X);
 //将错误信息直接添加到错误信息的列表中
 void addGeneralErrorInformation(string errorInformation);
 
@@ -388,34 +388,255 @@ void SemanticAnalyseStatement(_Statement *statement)
 	}
 	else if (statement->type == "repeat")
 	{
-
-		// SemanticAnalyseStatement(repeatStatement->_do);//对循环体语句进行语义分析
+		_RepeatStatement *repeatStatement = reinterpret_cast<_RepeatStatement *>(statement);
+		string type = SemanticAnalyseExpression(repeatStatement->condition);
+		if (type != "boolean")
+		{ //repeat语句类型检查,condition表达式类型检查 checked
+			addExpressionTypeErrorInformation(repeatStatement->condition, type, "boolean", "condition of repeat-until statement");
+			repeatStatement->statementType = "error";
+		}
+		else
+			repeatStatement->statementType = "void";
+		SemanticAnalyseStatement(repeatStatement->_do); //对循环体语句进行语义分析
 	}
 	else if (statement->type == "while")
 	{
-
-		// SemanticAnalyseStatement(whileStatement->_do);//对循环体语句进行语义分析
+		_WhileStatement *whileStatement = reinterpret_cast<_WhileStatement *>(statement);
+		string type = SemanticAnalyseExpression(whileStatement->condition);
+		if (type != "boolean")
+		{ //while语句类型检查,condition表达式类型检查 checked
+			addExpressionTypeErrorInformation(whileStatement->condition, type, "boolean", "condition of while statement");
+			whileStatement->statementType = "error";
+		}
+		else
+			whileStatement->statementType = "void";
+		SemanticAnalyseStatement(whileStatement->_do); //对循环体语句进行语义分析
 	}
 	else if (statement->type == "for")
 	{
-
+		_ForStatement *forStatement = reinterpret_cast<_ForStatement *>(statement);
+		//检查循环变量是否已经定义，如已经定义，是否为integer型变量
+		_SymbolRecord *record = findSymbolRecord(currentSymbolTable, forStatement->id.first);
+		if (record == NULL)
+		{ //循环变量未定义，错误信息 checked
+			addUndefinedErrorInformation(forStatement->id.first, forStatement->id.second);
+			return;
+		}
+		//如果无法作为循环变量 checked
+		if (!(record->flag == "value parameter" || record->flag == "var parameter" || record->flag == "normal variant"))
+		{ //如果当前符号种类不可能作为循环变量
+			addPreFlagErrorInformation(forStatement->id.first, forStatement->id.second, "value parameter, var parameter or normal variant", record->lineNumber, record->flag);
+			return;
+		}
+		//如果类型不是整型 checked
+		if (record->type != "integer")
+		{
+			addUsageTypeErrorInformation(forStatement->id.first, forStatement->id.second, record->type, "cyclic variable of for statement", "integer");
+			return;
+		}
+		//for语句类型检查,start和end表达式类型检查
+		forStatement->statementType = "void";
+		string type = SemanticAnalyseExpression(forStatement->start);
+		if (type != "integer")
+		{ //checked
+			addExpressionTypeErrorInformation(forStatement->start, type, "integer", "start value of for statement");
+			forStatement->statementType = "error";
+		}
+		type = SemanticAnalyseExpression(forStatement->end);
+		if (type != "integer")
+		{ //checked
+			addExpressionTypeErrorInformation(forStatement->end, type, "integer", "end value of for statement");
+			forStatement->statementType = "error";
+		}
 		//对循环体语句进行语义分析
-		// SemanticAnalyseStatement(forStatement->_do);
+		SemanticAnalyseStatement(forStatement->_do);
 	}
 	else if (statement->type == "if")
 	{
-
-		// SemanticAnalyseStatement(ifStatement->then);//对then语句进行语义分析
-		// if(ifStatement->els!=NULL)//对else语句进行语句分析
-		//     SemanticAnalyseStatement(ifStatement->els);
+		_IfStatement *ifStatement = reinterpret_cast<_IfStatement *>(statement);
+		string type = SemanticAnalyseExpression(ifStatement->condition);
+		if (type != "boolean")
+		{ //if语句类型检查,condition表达式类型检查 checked
+			addExpressionTypeErrorInformation(ifStatement->condition, type, "boolean", "condition of if statement");
+			ifStatement->statementType = "error";
+		}
+		else
+			ifStatement->statementType = "void";
+		SemanticAnalyseStatement(ifStatement->then); //对then语句进行语义分析
+		if (ifStatement->els != NULL)				 //对else语句进行语句分析
+			SemanticAnalyseStatement(ifStatement->els);
 	}
 	else if (statement->type == "assign")
 	{ //左值特判
-
+		_AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(statement);
+		//对左值变量引用进行语义分析,获得leftType
+		assignStatement->statementType = "void";
+		assignStatement->variantReference->locFlag = -1; //标记为左值
+		string leftType = SemanticAnalyseVariantReference(assignStatement->variantReference);
+		if (assignStatement->variantReference->kind == "constant")
+		{
+			//左值不能为常量 checked
+			addGeneralErrorInformation("[Constant as l-value error!] <Line" + itos(assignStatement->variantReference->variantId.second) + "> Costant \"" + assignStatement->variantReference->variantId.first + "\" can't be referenced as l-value.");
+			return;
+		}
+		//对右值表达式进行类型检查,获得rightType
+		string rightType = SemanticAnalyseExpression(assignStatement->expression);
+		if (assignStatement->variantReference->kind == "function return reference")
+		{ //如果是返回值语句
+			//需检查返回值表达式是否和函数返回值类型一致
+			if (assignStatement->variantReference->variantType != rightType && !(assignStatement->variantReference->variantType == "real" and rightType == "integer"))
+			{
+				//checked
+				addGeneralErrorInformation("[Return type of funciton mismatch!] <Line " + itos(assignStatement->expression->lineNumber) + "> The type of return expression is " + rightType + " ,but not " + assignStatement->variantReference->variantType + " as function \"" + assignStatement->variantReference->variantId.first + "\" defined.");
+				assignStatement->statementType = "error";
+			}
+			assignStatement->isReturnStatement = true;
+			return;
+		}
+		//比较左值和右值类型,获得赋值语句的类型；类型不同时，只支持整型到实型的隐式转换
+		if (leftType != rightType && !(leftType == "real" && rightType == "integer"))
+		{
+			//checked
+			addAssignTypeMismatchErrorInformation(assignStatement->variantReference, assignStatement->expression);
+			assignStatement->statementType = "error";
+		}
+		else
+			assignStatement->statementType = "void";
 	}
 	else if (statement->type == "procedure")
-	{ // read的参数只能是变量或数组元素; 这段比较难写
-	
+	{ //read的参数只能是变量或数组元素; 这段比较难写
+		_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(statement);
+		//通过procedureId查表，获得参数个数、参数类型等信息
+		_SymbolRecord *record = findSymbolRecord(mainSymbolTable, procedureCall->procedureId.first);
+		// if (record == NULL)
+		// 	record = findSymbolRecord(currentSymbolTable, procedureCall->procedureId.first, 1);
+		procedureCall->statementType = "void";
+		if (record == NULL)
+		{ //未定义 checked
+			addUndefinedErrorInformation(procedureCall->procedureId.first, procedureCall->procedureId.second);
+			procedureCall->statementType = "error";
+			return;
+		}
+		if (record->flag != "procedure")
+		{ //如果不是过程 checked
+			addPreFlagErrorInformation(procedureCall->procedureId.first, procedureCall->procedureId.second, "procedure", record->lineNumber, record->flag);
+			procedureCall->statementType = "error";
+			return;
+		}
+		// if (record->id == "exit")
+		// {
+		// 	/*exit出现在过程中时，exit不能带参数，出现在函数中时，exit只能带一个参数，
+		// 	且该参数表达式的类型必须和函数的返回值类型一致*/
+		// 	//所以需判断当前程序是过程还是函数
+		// 	if (currentSymbolTable->recordList[0]->subprogramType == "procedure")
+		// 	{ //如果是过程
+		// 		//exit不能带参数表达式
+		// 		if (procedureCall->actualParaList.size() != 0)
+		// 		{ //如果实参个数不为0 checked
+		// 			addGeneralErrorInformation("[Return value redundancy!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of procedure must be 0, that is, exit must have no actual parameters.");
+		// 			procedureCall->statementType = "error";
+		// 		}
+		// 		return;
+		// 	}
+		// 	//如果是函数
+		// 	if (procedureCall->actualParaList.size() != 1)
+		// 	{												   //如果实参个数不为1
+		// 		if (procedureCall->actualParaList.size() == 0) //checked
+		// 			addGeneralErrorInformation("[Return value missing!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of function must be 1, that is, exit must have 1 actual parameters.");
+		// 		else //checked
+		// 			addGeneralErrorInformation("[Return value redundancy!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of function must be 1, that is, exit must have 1 actual parameters.");
+		// 		return;
+		// 	}
+		// 	//如果实参个数为1，检查实参表达式的类型，检查是否与函数返回值类型一致
+		// 	string returnType = SemanticAnalyseExpression(procedureCall->actualParaList[0]);
+		// 	if (currentSymbolTable->recordList[0]->type != returnType && !(currentSymbolTable->recordList[0]->type == "real" && returnType == "integer"))
+		// 	{
+		// 		//checked
+		// 		addGeneralErrorInformation("[Return type of funciton mismatch!] <Line " + itos(procedureCall->actualParaList[0]->lineNumber) + "> The type of return expression is " + returnType + " ,but not " + currentSymbolTable->recordList[0]->type + " as function \"" + currentSymbolTable->recordList[0]->id + "\" defined.");
+		// 		procedureCall->statementType = "error";
+		// 	}
+		// 	procedureCall->isReturnStatement = true;
+		// 	return;
+		// }
+		
+		if (record->id == "read" || record->id == "write")
+		{
+			if (procedureCall->actualParaList.size() == 0)
+			{ //read、write的参数个数不能为 0 checked
+				string tmp = record->id;
+				tmp[0] -= 'a' - 'A';
+				addGeneralErrorInformation("[" + tmp + " actual parameter missing!] <Line " + itos(procedureCall->procedureId.second) + "> procedure \"" + record->id + "\" must have at least one actual parameter.");
+				procedureCall->statementType = "error";
+			}
+		}
+		if (record->id == "read")
+		{ //参数只能是变量或数组元素，不能是常量、表达式等
+			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
+			{
+				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
+				//checked
+				if (!(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
+					addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNumber, record->id, i + 1, procedureCall->actualParaList[i]);
+				if (procedureCall->actualParaList[i]->expressionType == "boolean")
+					addReadBooleanErrorInformation(procedureCall->actualParaList[i], i + 1);
+				if (actualType == "error")
+					procedureCall->statementType = "error";
+			}
+			return;
+		}
+		// if (record->amount == -1)
+		// { //如果是变参过程（本编译器涉及的变参过程(除了read)对参数类型没有要求，但不能为error）
+		// 	for (int i = 0; i < procedureCall->actualParaList.size(); i++)
+		// 	{
+		// 		string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
+		// 		if (actualType == "error")
+		// 			procedureCall->statementType = "error";
+		// 	}
+		// 	return;
+		// }
+		if (procedureCall->actualParaList.size() != record->amount)
+		{ //checked
+			addNumberErrorInformation(procedureCall->procedureId.first, procedureCall->procedureId.second, int(procedureCall->actualParaList.size()), record->amount, "procedure");
+			procedureCall->statementType = "error";
+			return;
+		}
+		// 形参在符号表中的定位
+		for (int i = 0; i < procedureCall->actualParaList.size(); i++)
+		{ //检查actualParaList各表达式的类型，检查实参和形参的类型一致性
+			string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
+			string formalType = record->findXthFormalParaType(i + 1);
+			bool isRefered = record->isXthFormalParaRefered(i + 1);	//是否是引用调用
+			if (isRefered && !(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
+			{
+				//该表达式不能作为引用形参对应的实参 checked
+				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(procedureCall->actualParaList[i]->lineNumber) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
+				continue;
+			}
+			//if(isRefered && procedureCall->actualParaList[i]->type==)
+			if (!isRefered)
+			{ //传值参数支持integer到real的隐式类型转换
+				if (actualType != formalType && !(actualType == "integer" && formalType == "real"))
+				{ //如果类型不一致
+					//checked
+					addExpressionTypeErrorInformation(procedureCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of procedure call of \"" + procedureCall->procedureId.first + "\"");
+					procedureCall->statementType = "error";
+				}
+			}
+			else
+			{ //引用参数需保持类型强一致
+				if (actualType != formalType)
+				{ //如果类型不一致
+					//checked
+					addExpressionTypeErrorInformation(procedureCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of procedure call of \"" + procedureCall->procedureId.first + "\"");
+					procedureCall->statementType = "error";
+				}
+			}
+		}
+	}
+	else
+	{
+		cout << "[SemanticAnalyseStatement] statement type error" << endl;
+		return;
 	}
 }
 
@@ -509,4 +730,109 @@ void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, str
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a lib program.";
 	semanticErrorInformation.push_back(errorInformation);
 	//CHECK_ERROR_BOUND
+}
+
+void addExpressionTypeErrorInformation(_Expression *exp, string curType, string correctType, string description)
+{
+	string errorInformation = "[Expression type error!] <Line " + itos(exp->lineNumber) + "> ";
+	string expression;
+	//inputExpression(exp, expression, 1);  获取表达式的具体内容 是否要用到代码生成部分？
+	errorInformation += "Expression \"" + expression + "\" used for " + description + " should be " + correctType + " but not " + curType + ".";
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+
+void addUndefinedErrorInformation(string id, int curLineNumber) {
+	string errorInformation = "[Undefined identifier!] <Line " + itos(curLineNumber) + "> ";
+	errorInformation += id + " has not been defined.";
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag, int preLineNumber, string preFlag)
+{
+	string errorInformation = "[Symbol kinds mismatch!] " + "<Line " + itos(curLineNumber) + "> ";
+	errorInformation += "\"" + curId + "\"" + " defined at line " + itos(preLineNumber) + " is a " + preFlag + " but not a " + curFlag + ".";
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+void addUsageTypeErrorInformation(string curId, int curLineNumber, string curType, string usage, string correctType)
+{
+	string errorInformation  = "[Usage type error!] <Line " + itos(curLineNumber) + "> ";
+	errorInformation += "\"" + curId + "\"" + " used for " + usage + " should be " + correctType + " but not " + curType + ".";
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+void addGeneralErrorInformation(string errorInformation)
+{
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReference, _Expression *rightExpression)
+{
+	string errorInformation;
+	errorInformation += "[Assign statement type mismatch!] ";
+	errorInformation += "<Left at line " + itos(leftVariantReference->variantId.second) + ", right at line " + itos(rightExpression->lineNumber) + "> ";
+	string varRef, exp;
+	inputVariantRef(leftVariantReference, varRef, 1);
+	inputExpression(rightExpression, exp, 1);
+	errorInformation += "Left \"" + varRef + "\" type is " + leftVariantReference->variantType + " while right \"" + exp + "\" type is " + rightExpression->expressionType + ".";
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+void addactualParameterOfReadErrorInformation(int curLineNumber, string procedureId, int X, _Expression *exp)
+{
+	string errorInformation = "[Actual parameter of read procedure type error!] ";
+	errorInformation += "<Line " + itos(curLineNumber) + "> ";
+	string expression;
+	inputExpression(exp, expression, 1);
+	errorInformation += "\"" + procedureId + "\" " + itos(X) + "th expression parameter \"" + expression + "\" is not a variant or an array element.";
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+void addReadBooleanErrorInformation(_Expression *exp, int X)
+{
+	string errorInformation = "[Read boolean error!] " + "<Line " + itos(exp->lineNumber) + "> ";
+	string expression;
+	//inputExpression(exp, expression, 1);
+	errorInformation += "The " + itos(X) + "th actual parameter of read \"" + expression + "\" is boolean, it can't be read.";
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
+}
+
+//数组下标个数不匹配、函数或过程的实参和形参的个数不匹配
+void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, int correctNumber, string usage)
+{
+	string errorInformation;
+	if (usage == "array")
+	{
+		errorInformation += "[Array index number mismatch!] ";
+		errorInformation += "<Line " + itos(curLineNumber) + "> ";
+		errorInformation += "Array \"" + curId + "\"" + " should have " + itos(correctNumber) + " but not " + itos(curNumber) + " indices.";
+	}
+	else if (usage == "procedure")
+	{
+		errorInformation += "[Procedure parameter number mismatch!] ";
+		errorInformation += "<Line " + itos(curLineNumber) + "> ";
+		errorInformation += "Procedure \"" + curId + "\"" + " should have " + itos(correctNumber) + " but not " + itos(curNumber) + " parameters.";
+	}
+	else if (usage == "function")
+	{
+		errorInformation += "[Function parameter number mismatch!] ";
+		errorInformation += "<Line " + itos(curLineNumber) + "> ";
+		errorInformation += "Function \"" + curId + "\"" + " should have " + itos(correctNumber) + " but not " + itos(curNumber) + " parameters.";
+	}
+	else
+	{
+		cout << "[addNumberErrorInformation] usage error" << endl;
+		return;
+	}
+	semanticErrorInformation.push_back(errorInformation);
+	CHECK_ERROR_BOUND
 }
