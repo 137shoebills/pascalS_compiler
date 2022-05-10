@@ -49,10 +49,10 @@ void _SymbolTable::addArray(string id, int lineNumber, string type, int amount, 
 	this->idToLoc[id].push(int(recordList.size() - 1));
 }
 
-void _SymbolTable::addProcedure(string id, int lineNumber, int amount)
+void _SymbolTable::addProcedure(string id, int lineNumber, int amount, vector<_FormalParameter*> paras)
 {
 	_SymbolRecord *tmpRecord = new _SymbolRecord;
-	tmpRecord->setProcedure(id, lineNumber, amount);
+	tmpRecord->setProcedure(id, lineNumber, amount,paras);
 	this->recordList.push_back(tmpRecord);
 	this->idToLoc[id].push(int(recordList.size() - 1));
 	//过程入栈，索引表记录
@@ -165,12 +165,13 @@ void _SymbolRecord::setArray(string id, int lineNumber, string type, int amount,
 	this->arrayRangeList = arrayRangeList;
 }
 
-void _SymbolRecord::setProcedure(string id, int lineNumber, int amount)
+void _SymbolRecord::setProcedure(string id, int lineNumber, int amount, vector<_FormalParameter*> paras)
 {
 	flag = "procedure";
 	this->id = id;
 	this->lineNumber = lineNumber;
 	this->amount = amount;
+	this->paras = paras;
 }
 
 void _SymbolRecord::setFunction(string id, int lineNumber, string type, int amount, vector<_FormalParameter*> paras)

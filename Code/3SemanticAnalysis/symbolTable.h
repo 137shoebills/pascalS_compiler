@@ -38,7 +38,7 @@ public:
 	void setVar(string id, int lineNumber, string type);
 	void setConst(string id, int lineNumber, string type, bool isMinusShow, string value);
 	void setArray(string id, int lineNumber, string type, int amount, vector<pair<int, int> > arrayRangeList);
-	void setProcedure(string id, int lineNumber, int amount);
+	void setProcedure(string id, int lineNumber, int amount, vector<_FormalParameter*> paras);
 	void setFunction(string id, int lineNumber, string type, int amount, vector<_FormalParameter*> paras);
 	void setProgram(string id, int lineNumber, int amount, string returnType);
 	// void setSubProgram(string id, int lineNumber,int amount, string returnType);
@@ -70,8 +70,8 @@ public:
 	void addVar(string id, int lineNumber, string type);													   //增加变量类型
 	void addConst(string id, int lineNumber, string type, bool isMinusShow, string value);					   //增加常量类型
 	void addArray(string id, int lineNumber, string type, int amount, vector<pair<int, int> > arrayRangeList); //增加数组类型
-	void addProcedure(string id, int lineNumber, int amount);												   //增加过程类型
-	void addFunction(string id, int lineNumber, string type, int amount,vector<_FormalParameter*> paras);									   //增加函数类型
+	void addProcedure(string id, int lineNumber, int amount, vector<_FormalParameter*> paras);				   //增加过程类型
+	void addFunction(string id, int lineNumber, string type, int amount,vector<_FormalParameter*> paras);	   //增加函数类型
 	void addVoidPara(string id, int lineNumber);															   //表示主程序的参数
 	void addRecords(string id, int lineNumber, vector<_SymbolRecord *> records);							   //增加record类型
 	void addProgram(string id, int lineNumber, int amount, string returnType);
