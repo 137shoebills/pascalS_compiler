@@ -1,7 +1,7 @@
 #ifndef ASTNODES_H
 #define ASTNODES_H
 
-#include <llvm/IR/Value.h>
+// #include <llvm/IR/Value.h>
 #include<iostream>
 #include <vector>
 #include <string>
@@ -227,7 +227,6 @@ class _Expression
         string strOfNum;//整数和浮点数的string表示（考虑从PASCAL-S源程序将字符串转为浮点数，再将浮点数转为字符串会带来精度问题，所以需要存下初始字符串值）
 
         char charVal;//常量字符
-		string boolVal;
 
         _FunctionCall *functionCall;//函数调用
 
