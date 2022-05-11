@@ -1,43 +1,33 @@
 #ifndef ASTNODES_H
 #define ASTNODES_H
 
-// #include <llvm/IR/Value.h>
+#include <llvm/IR/Value.h>
 #include<iostream>
 #include <vector>
 #include <string>
 #include<memory>
 
 using namespace std;
-class _Program;     //对应program_head
-class _SubProgram;  //对应program_body
-class _Constant;                //NDouble, NInteger
-class _Variant;                 //NIdentifier
-class _Type;        //某种基本类型，或基本类型的数组类型
-class _TypeDef;      //对应type_declaration，是type的一行，使用vector表示一个type下面的所有内容
-class _FunctionDefinition;      //NFunctionDeclaration
-class _FormalParameter;//一个形参，在函数定义中使用vector表示形参列表
-class _Compound;    //类似NBlock,是每一对begin与end之间的部分（N个statement）
-class _VariantReference;//❓
-class _Statement;    //类似NStatement
-class _Expression;   //单条expression，类似NExpressionStatement?
-class _FunctionCall;            //NMethodCall
-class _AssignStatement;         //NAssignment
-class _IfStatement;             //NIfStatement
-class _ForStatement;            //NForStatement
-class _WhileStatement;          //NForStatement
-class _RepeatStatement;         //NForStatement
-class _ProcedureCall;           //NMethedCall
-class _Idvpart;      //❓
-
-/*未对应的TiniCompiler AST节点类型：
-(Node),NExpression,NStatement
-NExpressionStatement
-NBinaryOperator(属于_Expression？)
-NBlock(语句块，if,for里的语句块也属于NBlock; programBlock是NBlock指针，指向program_head?)
-NStructDeclaration & NStructMember & NStructAssignment (和_Type/_Typedef有关？)
-NReturnStatement：函数的返回值，需要通过符号表构造
-NArrayIndex & NArrayAssignment & NArrayInitialization：数组相关
-*/
+class _Program;
+class _SubProgram;
+class _Constant;                
+class _Variant;                 
+class _Type;        
+class _TypeDef;      
+class _FunctionDefinition;      
+class _FormalParameter;
+class _Compound;    
+class _VariantReference;
+class _Statement;    
+class _Expression;   
+class _FunctionCall;            
+class _AssignStatement;         
+class _IfStatement;             
+class _ForStatement;            
+class _WhileStatement;          
+class _RepeatStatement;         
+class _ProcedureCall;           
+class _Idvpart;      
 
 class _Program//程序(相当于program_head)
 {
@@ -80,7 +70,7 @@ class _Constant//常量定义
     public:
         _Constant(){}
         ~_Constant(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _TypeDef//变量定义
@@ -92,7 +82,7 @@ class _TypeDef//变量定义
         _TypeDef();
 		_TypeDef(pair<string,int> _typeDefId,_Type *_type);
         ~_TypeDef();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Variant//变量定义
@@ -104,7 +94,7 @@ class _Variant//变量定义
         _Variant();
 		_Variant(pair<string,int> _variantId,_Type *_type);
         ~_Variant();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Type//类型
@@ -118,7 +108,7 @@ class _Type//类型
         _Type();
         _Type(pair<string,int> _type,int _flag,vector< pair<int,int> > _arrayRangeList);
         ~_Type(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _FunctionDefinition
@@ -136,7 +126,7 @@ class _FunctionDefinition
     public:
         _FunctionDefinition();
         ~_FunctionDefinition();
-        codeGen(_SymbolRecord*);
+        llvm::Value* codeGen(_SymbolRecord*);
 };
 
 class _FormalParameter//形式参数
@@ -149,7 +139,7 @@ class _FormalParameter//形式参数
         _FormalParameter();
         _FormalParameter(pair<string,int> _paraId,string _type,int _flag);
         ~_FormalParameter(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Statement
@@ -162,7 +152,7 @@ class _Statement
     public:
         _Statement(){}
         ~_Statement(){}
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Compound:public _Statement
@@ -184,7 +174,7 @@ class _AssignStatement:public _Statement
     public:
         _AssignStatement();
         ~_AssignStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _ProcedureCall:public _Statement
@@ -196,7 +186,7 @@ class _ProcedureCall:public _Statement
     public:
         _ProcedureCall();
         ~_ProcedureCall();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _FunctionCall
@@ -208,7 +198,7 @@ class _FunctionCall
     public:
         _FunctionCall();
         ~_FunctionCall();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _Expression
@@ -240,7 +230,7 @@ class _Expression
     public:
         _Expression();
 		~_Expression();
-        codeGen();
+        llvm::Value* codeGen();
     //语义分析相关
     public:
         int totalIntValue;
@@ -259,7 +249,7 @@ class _VariantReference
     public:
         _VariantReference();
         ~_VariantReference();
-        codeGen();
+        llvm::Value* codeGen();
 
     public:
 		int locFlag;//-1表示左值，1表示右值，0表示什么都不是 左值特判
@@ -275,7 +265,7 @@ public:
 public:
     _Idvpart();
     ~_Idvpart();
-    codeGen();
+    llvm::Value* codeGen();
 };
 
 class _IfStatement:public _Statement
@@ -288,7 +278,7 @@ class _IfStatement:public _Statement
     public:
         _IfStatement();
         ~_IfStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _ForStatement:public _Statement
@@ -302,7 +292,7 @@ class _ForStatement:public _Statement
     public:
         _ForStatement();
         ~_ForStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _RepeatStatement:public _Statement
@@ -314,7 +304,7 @@ class _RepeatStatement:public _Statement
     public:
         _RepeatStatement();
         ~_RepeatStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 
 class _WhileStatement:public _Statement
@@ -326,6 +316,6 @@ class _WhileStatement:public _Statement
     public:
         _WhileStatement();
         ~_WhileStatement();
-        codeGen();
+        llvm::Value* codeGen();
 };
 #endif
