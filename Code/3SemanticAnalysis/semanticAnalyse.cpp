@@ -923,7 +923,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	}
 
 	//非数组元素、非结构体.属性（传值参数、引用参数、普通变量、常量、函数名）<ok>
-	if (variantReferenc->IdvpartList.size() == 0)
+	if (variantReference->IdvpartList.size() == 0)
 	{
 
 		//函数名：不能作为左值，必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
@@ -991,7 +991,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 				{
 					if (!record->checkArrayXthIndexRange(i, variantReference->IdvpartList[i]->expressionList[j]->totalIntValue))
 					{
-						addArrayRangeOutOfBoundErrorInformation(variantReference->->IdvpartList[i]->expressionList[j], variantReference->variantId.first, i, record->arrayRangeList[i]);
+						addArrayRangeOutOfBoundErrorInformation(variantReference->IdvpartList[i]->expressionList[j], variantReference->variantId.first, i, record->arrayRangeList[i]);
 						return variantReference->variantType = "error";
 					}
 				}
