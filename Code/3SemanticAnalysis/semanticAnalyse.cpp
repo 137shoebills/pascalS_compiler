@@ -976,22 +976,22 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 		for (int i = 0; i < variantReference->IdvpartList.size(); i++)
 		{
 
-			for (int j = 0; j < variantReference->IdvpartList[i]->expression_list.size(); j++)
+			for (int j = 0; j < variantReference->IdvpartList[i]->expressionList.size(); j++)
 			{
 				string type = SemanticAnalyseExpression(variantReference->IdvpartList[i]->expressionList[j]);
 				//检查每一维下标表达式的类型是否是整型
 				if (type != "integer")
 				{
-					addExpressionTypeErrorInformation(variantReference->expressionList[i], type, "integer", itos(i + 1) + "th index of array \"" + variantReference->variantId.first + "\"");
+					addExpressionTypeErrorInformation(variantReference->IdvpartList[i]->expressionList[j], type, "integer", itos(i + 1) + "th index of array \"" + variantReference->variantId.first + "\"");
 					variantReference->variantType = "error";
 					return variantReference->variantType = "error";
 				}
 				//检查越界
-				if (variantReference->IdvpartList[i]->expressionList->totalIntValueValid)
+				if (variantReference->IdvpartList[i]->expressionList[j]->totalIntValueValid)
 				{
-					if (!record->checkArrayXthIndexRange(i, variantReference->IdvpartList[i]->expressionList[j]))
+					if (!record->checkArrayXthIndexRange(i, variantReference->IdvpartList[i]->expressionList[j]->totalIntValue))
 					{
-						addArrayRangeOutOfBoundErrorInformation(variantReference->expressionList[i], variantReference->variantId.first, i, record->arrayRangeList[i]);
+						addArrayRangeOutOfBoundErrorInformation(variantReference->->IdvpartList[i]->expressionList[j], variantReference->variantId.first, i, record->arrayRangeList[i]);
 						return variantReference->variantType = "error";
 					}
 				}
