@@ -2,7 +2,6 @@
 #define __TYPESYSTEM_H__
 
 #include <llvm/IR/Type.h>
-#include <llvm/IR/Value.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
@@ -22,7 +21,6 @@ private:
     llvm::LLVMContext& llvmContext;
     map<string, vector<NameType>> recordMembers;    //record列表
     map<string, llvm::StructType*> recordTypes;     //record名字对应的LLVM类型
-    //map<string, vector<string>> castTable;          //合法转换关系
 
 public:
     llvm::Type* intTy = llvm::Type::getInt32Ty(llvmContext);
@@ -36,15 +34,12 @@ public:
     //获取string表示的类型对应的LLVM类型（四种基本类型，以及recordName代表的不同record类型）
     llvm::Type* getllType(string type);
 
-    //判断类型转换合法性
-    //bool isCastLegal(string fromType, string toType);
-
-    /* //新增record对应的LLVM类型（处理record声明时）
+     //新增record对应的LLVM类型（处理record声明时）
     void addRecordType(string name, llvm::StructType* type);
     //新增record成员（处理record声明时）
-    void addRecordMember(string recName, string memName, string memType);
+    void addRecordMember(string recName, int lineNo, string memName, string memType);
     //获取record中成员所在的位置（第几个）（处理record成员/record成员赋值时）
-    long getRecordMemberIndex(string recName, string memName); */
+    long getRecordMemberIndex(string recName, string memName);
 }
 
 #endif
