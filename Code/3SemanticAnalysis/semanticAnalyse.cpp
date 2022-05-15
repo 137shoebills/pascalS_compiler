@@ -926,13 +926,18 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	if (variantReference->IdvpartList.size() == 0)
 	{
 
-		//函数名：不能作为左值，必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
+		//函数名：只有当前函数可以作为左值，必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
 		if (record->flag == "function")
 		{
 			variantReference->kind = "function";
 			//如果是左值
 			if (variantReference->locFlag == -1)
 			{
+				string curFunction=recordList[indexTable.size()-1]->id;
+				if(curFunction==variantReference->variantId.second){
+					variantReference->kind = "function return reference";
+					return variantReference->variantType = record->type;
+				}
 				addGeneralErrorInformation("[Invalid reference!] <Line " + itos(variantReference->variantId.second) + "> function name \"" + record->id + "\" can't be referenced as l-value.");
 				return variantReference->variantType = "error";
 			}
