@@ -305,6 +305,8 @@ type:  standard_type {   //产生式1
                 } | ARRAY '[' periods ']' OF error {       //error: type识别失败 （产生式3）
                         $$=new Token("type");
                          yyerror("fatal error in type",@6.first_line,@6.first_column,@6.last_line,@6.last_column);
+                }|IDENTIFIER{
+                         $$=new Token("type");
                 };
 
 
