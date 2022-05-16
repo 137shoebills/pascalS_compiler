@@ -90,18 +90,18 @@ public:
 	~_SymbolTable() {}
 };
 
-class _FormalParameter//形式参数
-{
-    public:
-        pair<string,int> paraId;//形式参数标识符和行号
-        string type;//形式参数类型，形式参数一定是基本类型，所以改为string
-        int flag;//flag=0表示传值调用，flag=1表示引用调用
-    public:
-        _FormalParameter();
-        _FormalParameter(pair<string,int> _paraId,string _type,int _flag);
-        ~_FormalParameter(){}
-	//llvm::Value* codeGen();
-};
+// class _FormalParameter//形式参数
+// {
+//     public:
+//         pair<string,int> paraId;//形式参数标识符和行号
+//         string type;//形式参数类型，形式参数一定是基本类型，所以改为string
+//         int flag;//flag=0表示传值调用，flag=1表示引用调用
+//     public:
+//         _FormalParameter();
+//         _FormalParameter(pair<string,int> _paraId,string _type,int _flag);
+//         ~_FormalParameter(){}
+// 	//llvm::Value* codeGen();
+// };
 
 
 #endif //! SYMBOLTABLE_H
