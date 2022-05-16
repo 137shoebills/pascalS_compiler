@@ -9,11 +9,12 @@
 #include "symbolTable.h"
 #include "ASTnodes.h"
 #include "main.h"
-#include "CodeGen.h"
+// #include "CodeGen.h"
 
 using namespace std;
 
-extern _SymbolTable *mainSymbolTable;	
+extern _SymbolTable *mainSymbolTable;
+extern _SymbolTable *currentSymbolTable;
 // extern CodeGenContext context;																							//主符号表
 extern _SymbolRecord *findSymbolRecord(_SymbolTable *currentSymbolTable, string id);												//从符号表中找出id对应的记录
 // extern void inputFunctionCall(_FunctionCall *functionCallNode, string &functionCall, int mode = 0);									//获取函数调用
@@ -400,7 +401,8 @@ void SemanticAnalyseStatement(_Statement *statement)
 		}
 		else
 			repeatStatement->statementType = "void";
-		SemanticAnalyseStatement(repeatStatement->_do); //对循环体语句进行语义分析
+		for (int i = 0; i < repeatStatement->_do.size();++i)
+			SemanticAnalyseStatement(repeatStatement->_do[i]); //对循环体语句进行语义分析
 	}
 	else if (statement->type == "while")
 	{
@@ -490,7 +492,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			if (assignStatement->variantReference->variantType != rightType && !(assignStatement->variantReference->variantType == "real" and rightType == "integer"))
 			{
 				//checked
-				addGeneralErrorInformation("[Return type of funciton mismatch!] <Line " + itos(assignStatement->expression->lineNumber) + "> The type of return expression is " + rightType + " ,but not " + assignStatement->variantReference->variantType + " as function \"" + assignStatement->variantReference->variantId.first + "\" defined.");
+				addGeneralErrorInformation("[Return type of funciton mismatch!] <Line " + itos(assignStatement->expression->lineNo) + "> The type of return expression is " + rightType + " ,but not " + assignStatement->variantReference->variantType + " as function \"" + assignStatement->variantReference->variantId.first + "\" defined.");
 				assignStatement->statementType = "error";
 			}
 			assignStatement->isReturnStatement = true;
@@ -577,7 +579,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
 				//checked
 				if (!(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
-					addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNumber, record->id, i + 1, procedureCall->actualParaList[i]);
+					addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNo, record->id, i + 1, procedureCall->actualParaList[i]);
 				if (procedureCall->actualParaList[i]->expressionType == "boolean")
 					addReadBooleanErrorInformation(procedureCall->actualParaList[i], i + 1);
 				if (actualType == "error")
@@ -610,7 +612,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			if (isRefered && !(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
 			{
 				//该表达式不能作为引用形参对应的实参 checked
-				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(procedureCall->actualParaList[i]->lineNumber) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
+				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(procedureCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
 				continue;
 			}
 			if (!isRefered)
@@ -653,7 +655,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
 	{
 		semanticErrorInformation.push_back((string) "line:" + char('0' + FCID.second) + "Error: Identifier not found " + FCID.first);
-		return;
+		// return;
 	}
 
 	int decID = mainSymbolTable->idToLoc[FCID.first].top();
@@ -676,10 +678,9 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 			semanticErrorInformation.push_back((string) "line:" + char('0' + FCID.second) + "Error: Incompatible type for arg no. " + char('1' + i) + ": Got \"" + expType + "\", expected \"" + decType + "\"");
 		}
 	}
-	
+	return "";
 	//❓codeGen
 	// llvm::Value* value = functionCall->codeGen();
-
 }
 
 //对表达式进行语义分析
@@ -688,7 +689,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 	if (expression == NULL)
 	{
 		cout << "[SemanticAnalyseExpression] pointer of _Expression is null" << endl;
-		return "";
+		return "error";
 	}
 
 	//表达式类型为变量 <ok>
@@ -702,12 +703,12 @@ string SemanticAnalyseExpression(_Expression *expression)
 			if (record == NULL)
 			{
 				cout << "[SemanticAnalyseExpression] pointer of record is null" << endl;
-				return "";
+				return "error";
 			}
 			if (record->flag != "constant")
 			{
 				cout << " : [SemanticAnalyseExpression] the record should be a constant" << endl;
-				return "";
+				return "error";
 			}
 			expression->totalIntValue = str2int(record->value);
 			if (record->isMinusShow)
@@ -734,12 +735,12 @@ string SemanticAnalyseExpression(_Expression *expression)
 		return expression->expressionType = "char";
 
 	//表达式为字符常量Letter <ok>
-	else if (expression->Type == "LETTER")
-		return expression->expressionType = "letter"
+	else if (expression->type == "LETTER")
+		return expression->expressionType = "letter";
 
-											//表达式类型为函数调用 <ok>
-											else if (expression->type == "function") //获得函数调用的返回值类型
-											return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall);
+	//表达式类型为函数调用 <ok>
+	else if (expression->type == "function") //获得函数调用的返回值类型
+	return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall);
 
 	//含有运算符的表达式
 	else if (expression->type == "compound")
@@ -933,8 +934,9 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			//如果是左值
 			if (variantReference->locFlag == -1)
 			{
-				string curFunction=mainSymbolTable->recordList[mainSymbolTable->indexTable[mainSymbolTable->indexTable.size()-1]]->id;
-				if(curFunction==variantReference->variantId.first){
+				string curFunction = mainSymbolTable->recordList[mainSymbolTable->indexTable[mainSymbolTable->indexTable.size() - 1]]->id;
+				if (curFunction == variantReference->variantId.first)
+				{
 					variantReference->kind = "function return reference";
 					return variantReference->variantType = record->type;
 				}
@@ -1058,12 +1060,12 @@ void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, str
 
 void addExpressionTypeErrorInformation(_Expression *exp, string curType, string correctType, string description)
 {
-	string errorInformation = "[Expression type error!] <Line " + itos(exp->lineNumber) + "> ";
+	string errorInformation = "[Expression type error!] <Line " + itos(exp->lineNo) + "> ";
 	string expression;
 	//inputExpression(exp, expression, 1);  获取表达式的具体内容 是否要用到代码生成部分？
 	errorInformation += "Expression \"" + expression + "\" used for " + description + " should be " + correctType + " but not " + curType + ".";
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 
@@ -1071,15 +1073,15 @@ void addUndefinedErrorInformation(string id, int curLineNumber) {
 	string errorInformation = "[Undefined identifier!] <Line " + itos(curLineNumber) + "> ";
 	errorInformation += id + " has not been defined.";
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag, int preLineNumber, string preFlag)
 {
-	string errorInformation = "[Symbol kinds mismatch!] " + "<Line " + itos(curLineNumber) + "> ";
+	string errorInformation = "[Symbol kinds mismatch!] <Line " + itos(curLineNumber) + "> ";
 	errorInformation += "\"" + curId + "\"" + " defined at line " + itos(preLineNumber) + " is a " + preFlag + " but not a " + curFlag + ".";
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 void addUsageTypeErrorInformation(string curId, int curLineNumber, string curType, string usage, string correctType)
@@ -1087,26 +1089,26 @@ void addUsageTypeErrorInformation(string curId, int curLineNumber, string curTyp
 	string errorInformation  = "[Usage type error!] <Line " + itos(curLineNumber) + "> ";
 	errorInformation += "\"" + curId + "\"" + " used for " + usage + " should be " + correctType + " but not " + curType + ".";
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 void addGeneralErrorInformation(string errorInformation)
 {
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReference, _Expression *rightExpression)
 {
 	string errorInformation;
 	errorInformation += "[Assign statement type mismatch!] ";
-	errorInformation += "<Left at line " + itos(leftVariantReference->variantId.second) + ", right at line " + itos(rightExpression->lineNumber) + "> ";
+	errorInformation += "<Left at line " + itos(leftVariantReference->variantId.second) + ", right at line " + itos(rightExpression->lineNo) + "> ";
 	string varRef, exp;
-	inputVariantRef(leftVariantReference, varRef, 1);
-	inputExpression(rightExpression, exp, 1);
+	// inputVariantRef(leftVariantReference, varRef, 1);
+	// inputExpression(rightExpression, exp, 1);
 	errorInformation += "Left \"" + varRef + "\" type is " + leftVariantReference->variantType + " while right \"" + exp + "\" type is " + rightExpression->expressionType + ".";
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 void addactualParameterOfReadErrorInformation(int curLineNumber, string procedureId, int X, _Expression *exp)
@@ -1114,20 +1116,20 @@ void addactualParameterOfReadErrorInformation(int curLineNumber, string procedur
 	string errorInformation = "[Actual parameter of read procedure type error!] ";
 	errorInformation += "<Line " + itos(curLineNumber) + "> ";
 	string expression;
-	inputExpression(exp, expression, 1);
+	// inputExpression(exp, expression, 1);
 	errorInformation += "\"" + procedureId + "\" " + itos(X) + "th expression parameter \"" + expression + "\" is not a variant or an array element.";
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 void addReadBooleanErrorInformation(_Expression *exp, int X)
 {
-	string errorInformation = "[Read boolean error!] " + "<Line " + itos(exp->lineNumber) + "> ";
+	string errorInformation = "[Read boolean error!] <Line " + itos(exp->lineNo) + "> ";
 	string expression;
 	//inputExpression(exp, expression, 1);
 	errorInformation += "The " + itos(X) + "th actual parameter of read \"" + expression + "\" is boolean, it can't be read.";
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 //数组下标个数不匹配、函数或过程的实参和形参的个数不匹配
@@ -1158,7 +1160,7 @@ void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, i
 		return;
 	}
 	semanticErrorInformation.push_back(errorInformation);
-	CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 //添加数组下标越界错误信息
@@ -1166,9 +1168,9 @@ void addArrayRangeOutOfBoundErrorInformation(_Expression *expression, string arr
 {
 	string errorInformation;
 	errorInformation += "[Array range out of bound!] ";
-	errorInformation += "<Line " + itos(expression->lineNumber) + "> ";
+	errorInformation += "<Line " + itos(expression->lineNo) + "> ";
 	string exp;
-	inputExpression(expression, exp, 1);
+	// inputExpression(expression, exp, 1);
 	errorInformation += "The value of expression \"" + exp + "\"" + " is " + itos(expression->totalIntValue);
 	errorInformation += ", but the range of array \"" + arrayId + "\" " + itos(X) + "th index is " + itos(range.first) + " to " + itos(range.second) + ".";
 	semanticErrorInformation.push_back(errorInformation);
@@ -1179,10 +1181,10 @@ void addOperandExpressionsTypeMismatchErrorInformation(_Expression *exp1, _Expre
 {
 	string errorInformation;
 	errorInformation += "[Operands expression type mismatch!] ";
-	errorInformation += "<Left at line " + itos(exp1->lineNumber) + ", right at line " + itos(exp2->lineNumber) + "> ";
+	errorInformation += "<Left at line " + itos(exp1->lineNo) + ", right at line " + itos(exp2->lineNo) + "> ";
 	string expStr1, expStr2;
-	inputExpression(exp1, expStr1, 1);
-	inputExpression(exp2, expStr2, 1);
+	// inputExpression(exp1, expStr1, 1);
+	// inputExpression(exp2, expStr2, 1);
 	errorInformation += "Left \"" + expStr1 + "\" type is " + exp1->expressionType + " while right " + "\"" + expStr2 + "\" type is " + exp2->expressionType + ".";
 	semanticErrorInformation.push_back(errorInformation);
 }
@@ -1192,9 +1194,9 @@ void addDivideZeroErrorInformation(string operation, _Expression *exp)
 {
 	string errorInformation;
 	errorInformation += "[Divide zero error!] ";
-	errorInformation += "<Line " + itos(exp->lineNumber) + "> ";
+	errorInformation += "<Line " + itos(exp->lineNo) + "> ";
 	string expression;
-	inputExpression(exp, expression, 1);
+	// inputExpression(exp, expression, 1);
 	errorInformation += "The value of expression \"" + expression + "\" is 0, which is the second operand of operation \"" + operation + "\".";
 	semanticErrorInformation.push_back(errorInformation);
 }
@@ -1204,9 +1206,9 @@ void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression *exp, st
 {
 	string errorInformation;
 	errorInformation += "[Operand expression type error!] ";
-	errorInformation += "<Line " + itos(exp->lineNumber) + "> ";
+	errorInformation += "<Line " + itos(exp->lineNo) + "> ";
 	string expStr;
-	inputExpression(exp, expStr, 1);
+	// inputExpression(exp, expStr, 1);
 	errorInformation += "Expression \"" + expStr + "\" type should be " + correctType + " but not " + exp->expressionType + ".";
 	semanticErrorInformation.push_back(errorInformation);
 }
