@@ -933,8 +933,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			//如果是左值
 			if (variantReference->locFlag == -1)
 			{
-				string curFunction=recordList[indexTable.size()-1]->id;
-				if(curFunction==variantReference->variantId.second){
+				string curFunction=mainSymbolTable->recordList[mainSymbolTable->indexTable[mainSymbolTable->indexTable.size()-1]]->id;
+				if(curFunction==variantReference->variantId.first){
 					variantReference->kind = "function return reference";
 					return variantReference->variantType = record->type;
 				}
