@@ -1,11 +1,11 @@
 /*
 符号表头文件
 */
-#ifndef SYMBOLTABLE_H
-#define SYMBOLTABLE_H
 
 //#include <llvm/IR/Value.h>
 
+#ifndef SYMBOLTABLE_H
+#define SYMBOLTABLE_H
 #include <string>
 #include <vector>
 #include <map>
@@ -35,9 +35,9 @@ public:
 	vector<pair<int, int> > arrayRangeList; //数组各维上下界
 	vector<_SymbolRecord *> records;		//记录records中各个记录
 	vector<_FormalParameter*> paras;	//function的形参列表  为什么procedure没有记录此项？？？
-	
-	//llvm::Value* llValue;		//LLVM类型值
 
+	//llvm::Value* llValue;		//LLVM类型值
+	
 	void setPara(string id, int lineNumber, string type);	//设置传值参数
 	void setVarPara(string id, int lineNumber, string type);//设置传引用参数
 	void setVar(string id, int lineNumber, string type);	//设置普通变量
@@ -100,7 +100,6 @@ public:
 //         _FormalParameter();
 //         _FormalParameter(pair<string,int> _paraId,string _type,int _flag);
 //         ~_FormalParameter(){}
-// 	//llvm::Value* codeGen();
 // };
 
 
