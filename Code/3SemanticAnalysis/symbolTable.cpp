@@ -6,6 +6,7 @@
 using namespace std;
 
 _SymbolTable *mainSymbolTable; //主符号表
+_SymbolTable *currentSymbolTable;
 
 _SymbolRecord *findSymbolRecord(_SymbolTable *currentSymbolTable, string id);
 
