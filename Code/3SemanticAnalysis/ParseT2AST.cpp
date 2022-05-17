@@ -701,12 +701,9 @@ _Statement* getStatement(Token *now){
 		_assignStatement->lineNo = now->children[2]->lineNo;
         _assignStatement->type="assign";//！！！！！！！！！
         _assignStatement->variantReference = new _VariantReference;
-		_assignStatement->variantReference = -1;
         _assignStatement->variantReference->variantId = make_pair(now->children[0]->value, now->children[0]->lineNo);
         getidVpartList(now->children[1],_assignStatement->variantReference->IdvpartList);
         _assignStatement->expression=getExpression(now->children[3]);
-		if(_assignStatement->expression->type=="function")
-			assignStatement->expression->variantReference->locFlag=1;
         return _assignStatement;
     }
     else if(now->children[0]->type=="procedure_call")
@@ -727,13 +724,8 @@ _Statement* getStatement(Token *now){
 		_forStatement->lineNo = now->children[0]->lineNo;
         _forStatement->type="for";
         _forStatement->id=make_pair(now->children[1]->value,now->children[1]->lineNo);
-		
         _forStatement->start=getExpression(now->children[3]);
-		if(_forStatement->start->type=="function" || _forStatement->start->type=="var")
-			_forStatement->start->variantReference->locFlag=1;
         _forStatement->end=getExpression(now->children[5]);
-		if(_forStatement->end->type=="function" || _forStatement->end->type=="var")
-			_forStatement->end->variantReference->locFlag=1;
         _forStatement->_do=getStatement(now->children[7]);
         return _forStatement;
     }
@@ -854,8 +846,6 @@ _Expression* getSimpleExpression(Token *now){
     else if(now->children.size()==2){
          _expression=getTerm(now->children[1]);
           _expression->isMinusShow=0;
-		  _expression->operation="minus";
-		  _expression->operation_type="single";
          if(now->children[0]->type=="MINUS")
             _expression->isMinusShow=1;
     }
@@ -932,13 +922,8 @@ _Expression* getFactor(Token *now){
 		_expression->lineNo = _expression->operand1->lineNo;
     }
 	else if (now->children[0]->type == "LETTER") {
-		_expression->type = "char";
+		_expression->type = "letter";
 		_expression->charVal = now->children[0]->value[0];
-		_expression->lineNo = now->children[0]->lineNo;
-	}
-	else if (now->children[0]->type == "BOOL_CONSTANT"){
-		_expression->type = "boolean";
-		_expression->boolVal = now->children[0]->value[0];
 		_expression->lineNo = now->children[0]->lineNo;
 	}
     else{
