@@ -37,7 +37,7 @@ void SemanticAnalyseVariant(_Variant *variant);									   //对变量定义进�
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition); //对子程序定义进行语义分析
 void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter);			   //对形式参数进行语义分析
 void SemanticAnalyseStatement(_Statement *statement);							   //对语句进行语义分析
-void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID);  //对record类型进行语义分析
+void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type);  //对record类型进行语义分析
 
 string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
@@ -259,7 +259,7 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 		}
 		if (recordList[i]->type->type.first == "record")
 		{
-			SemanticAnalyseRecord(recordList[i]->type->recordList, aVID);
+			SemanticAnalyseRecord(recordList[i]->type->recordList, aVID, 0);
 		}
 		else if (recordList[i]->type->flag)
 			tmpRecord->setArray(aVID.first, aVID.second, recordList[i]->type->type.first, recordList[i]->type->arrayRangeList.size(), recordList[i]->type->arrayRangeList);
