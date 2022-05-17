@@ -223,10 +223,23 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 		semanticErrorInformation.push_back((string) "line:" + char('0' + TID.second) + "Error: Duplicate identifier" + TID.first);
 		return;
 	}
+	
+	if(typedefi->type->type.first=="record") //如果此时是record
+	{
+		SemanticAnalyseRecord(typedefi->type->recordList, TID, 1);
+	}
+	else if(typedefi->type->flag){ //如果此时是数组
+		mainSymbolTable->addArray(TID.first, TID.second, typedefi->type->type.first, typedefi->type->arrayRangeList.size(), typedefi->type->arrayRangeList);
+		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
+	}
+	else{
+		mainSymbolTable->addVar(TID.first, TID.second, typedefi->type->type.first);
+		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
+	}
 }
 
 //对record类型进行语义分析
-void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID)
+void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type)
 {
 	vector<_SymbolRecord *> records;
 	map<string, int> ids;
@@ -257,9 +270,17 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID)
 		ids[aVID.first] = aVID.second;
 	}
 
-	mainSymbolTable->addRecords(VID.first + "_", VID.second, records); // id名后加_下划线表示record类型名
-	mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");
-	// codeGen
+	if(is_type == 0) //表示此时不是type中定义新类型，而是声明语句
+	{
+		mainSymbolTable->addRecords(VID.first + "_", VID.second, records); //id名后加_下划线表示record类型名
+		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");		
+	}
+	else{
+		mainSymbolTable->addRecords(VID.first, VID.second, records);
+		mainSymbolTable->custom[VID.first].push(int(mainSymbolTable->recordList.size() - 1));
+	}
+
+	//codeGen
 }
 
 //对变量定义进行语义分析
@@ -271,24 +292,23 @@ void SemanticAnalyseVariant(_Variant *variant)
 		return;
 	}
 	std::pair<string, int> VID = variant->variantId;
-
+	
 	if (mainSymbolTable->idToLoc.count(VID.first))
 	{
 		semanticErrorInformation.push_back((string) "line:" + char('0' + VID.second) + "Error: Duplicate identifier" + VID.first);
 		return;
 	}
 
-	if (variant->type->type.first == "record")
-	{
-		SemanticAnalyseRecord(variant->type->recordList, VID);
+	if(variant->type->type.first == "record"){
+		SemanticAnalyseRecord(variant->type->recordList,VID,0);
 	}
 	else if (variant->type->flag)
 		mainSymbolTable->addArray(VID.first, VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
 	else
 		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
 
-	// codeGen
-	int loc = mainSymbolTable->recordList.size() - 1;
+	//codeGen
+	int loc = mainSymbolTable->recordList.size()-1;
 	// llvm::Value* value = variant->codeGen();
 	// mainSymbolTable->recordList[loc]->llValue = value;
 }
@@ -490,7 +510,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 		if (assignStatement->variantReference->kind == "function return reference")
 		{ //如果是返回值语句
 			//需检查返回值表达式是否和函数返回值类型一致
-			if (assignStatement->variantReference->variantType != rightType && !(assignStatement->variantReference->variantType == "real" and rightType == "integer"))
+			if (assignStatement->variantReference->variantType != rightType && !(assignStatement->variantReference->variantType == "real" && rightType == "integer"))
 			{
 				// checked
 				addGeneralErrorInformation("[Return type of funciton mismatch!] <Line " + itos(assignStatement->expression->lineNo) + "> The type of return expression is " + rightType + " ,but not " + assignStatement->variantReference->variantType + " as function \"" + assignStatement->variantReference->variantId.first + "\" defined.");
