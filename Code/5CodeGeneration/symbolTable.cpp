@@ -6,6 +6,7 @@
 using namespace std;
 
 _SymbolTable *mainSymbolTable; //主符号表
+_SymbolTable *currentSymbolTable;
 
 _SymbolRecord *findSymbolRecord(_SymbolTable *currentSymbolTable, string id);
 
@@ -49,7 +50,7 @@ void _SymbolTable::addArray(string id, int lineNumber, string type, int amount, 
 	this->idToLoc[id].push(int(recordList.size() - 1));
 }
 
-void _SymbolTable::addProcedure(string id, int lineNumber, int amount, vector<_FormalParameter*> paras)
+void _SymbolTable::addProcedure(string id, int lineNumber, int amount, vector<_FormalParameter *> paras)
 {
 	_SymbolRecord *tmpRecord = new _SymbolRecord;
 	tmpRecord->setProcedure(id, lineNumber, amount, paras);
@@ -166,7 +167,7 @@ void _SymbolRecord::setArray(string id, int lineNumber, string type, int amount,
 	this->arrayRangeList = arrayRangeList;
 }
 
-void _SymbolRecord::setProcedure(string id, int lineNumber, int amount, vector<_FormalParameter*> paras)
+void _SymbolRecord::setProcedure(string id, int lineNumber, int amount, vector<_FormalParameter *> paras)
 {
 	flag = "procedure";
 	this->id = id;
