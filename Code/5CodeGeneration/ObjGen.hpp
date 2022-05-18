@@ -1,4 +1,3 @@
-//目标代码生成
 #ifndef __OBJGEN_HPP__
 #define __OBJGEN_HPP__
 
