@@ -1,6 +1,5 @@
 #ifndef MAIN_H
 #define MAIN_H
-
 #define YYERROR_VERBOSE
 #define YYDEBUG 1
 #define LEXDEBUG 1
