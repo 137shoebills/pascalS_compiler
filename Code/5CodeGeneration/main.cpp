@@ -29,6 +29,8 @@ int main(int argc, char **argv)
         return 0;
     }
     char *filename = argv[1];
+    predeal(filename);
+    
     FILE *fp = fopen(filename, "r");
     if (!fp)
     {
@@ -37,33 +39,34 @@ int main(int argc, char **argv)
     else
     {
         yyin = fp;
-        cout << "begin parsing\n";
+        cout << "Begin Parsing:\n";
         yyparse();
-        cout << "end parsing\n";
+        cout << "End Parsing.\n";
         if (ParseTreeHead)
         {
-            cout << "print ParseTree\n";
+            cout << "\nParseTree:\n";
             dfs(ParseTreeHead);
         }
     }
 
     fclose(fp);
 
-    cout << "print lexicalerrror\n";
+    cout << "\nLexical Errrors:\n";
     outputErrorInformation(lexicalErrorInformation);
-    cout << "print parseerror\n";
+    cout << "\nParse Errors:\n";
     outputErrorInformation(syntaxErrorInformation);
     _Program *ASTRoot = getProgram(ParseTreeHead);
 
     SemanticAnalyse(ASTRoot);
+    cout << "\nSemantic Errors:\n";
     outputErrorInformation(semanticErrorInformation);
+    cout << "\nSemantic Warnings:\n";
     outputErrorInformation(semanticWarningInformation);
     return 0;
 }
 
 void outputErrorInformation(vector<string> &error)
 {
-    cout << "begin error printing\n";
     for (int i = 0; i < error.size(); i++)
     {
         cout << error[i] << "\n";
