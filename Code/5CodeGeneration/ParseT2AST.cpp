@@ -705,8 +705,10 @@ _Statement* getStatement(Token *now){
         _assignStatement->variantReference->variantId = make_pair(now->children[0]->value, now->children[0]->lineNo);
         getidVpartList(now->children[1],_assignStatement->variantReference->IdvpartList);
         _assignStatement->expression=getExpression(now->children[3]);
-        if(_assignStatement->expression->type=="function")
+        if(_assignStatement->expression->type=="function"){
+			_assignStatement->expression->variantReference = new _VariantReference;
 			_assignStatement->expression->variantReference->locFlag=1;
+        }
 
         return _assignStatement;
     }
