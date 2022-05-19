@@ -1,14 +1,15 @@
 #【语义分析回归测试】
 #step1: 进入目录3SemanticAnalysis，第一次运行前需要在终端执行 chmod u+x reTest
 #step2: 测试前先手动执行make命令
-#step3: 将所有能正确通过词法、语法、语义分析的test.pas样例放入testCode目录下
-#step4: 使用命令 source reTest 执行脚本，当存在测试样例不通过时，请在testCode目录外修改调试
+#step3: 将所有能正确通过词法、语法、语义分析的test.pas样例放入0Pascal_S_testcode目录下
+#step4: 使用命令 source reTest 执行脚本，当存在测试样例不通过时，请在0Pascal_S_testcode目录外修改调试
 #!!!!!!!!!代码上传git前记得做回归测试，通过再上传
+#!!!!!!!!!测试文件请使用.pas后缀
 
 cur_path="/workspaces/Code/3SemanticAnalysis"
 cd ${cur_path}
 #make
-ls "${cur_path}/testCode" | sort -n > test.tmp
+ls "/workspaces/Code/0Pascal_S_testcode" | sort -n | grep ".pas" > test.tmp
 count=`cat test.tmp | wc -l`
 
 i=1
