@@ -1,7 +1,6 @@
 #include "CodeGen.h"
 
 //static Value* CastToBoolean()...  //用于if-else语句
-//static llvm::Value* calcArrayIndex()...   //用于数组
 
 //初始化中间代码生成相关参数
 void CodeGenContext::InitCodeGen(){
@@ -42,9 +41,11 @@ llvm::Value* _Constant::codeGen() {
     return ret;
 }
 
+//变量声明codeGen
+//返回：局部变量地址（CreateAlloca的返回值）
 llvm::Value* _Variant::codeGen() {
-    string varType = this->type->type->first;
-    llvm::Type* type = context.typeSystem.getllType(varType);
+    string varType = this->type->type.first;
+    llvm::Type* lltype = context.typeSystem.getllType(varType);
     llvm::Value* addr = nullptr;
 
     //如果是数组
@@ -55,43 +56,53 @@ llvm::Value* _Variant::codeGen() {
         int range;
         for(int i=0; i<div; i++)
         {
-            range = this->type->arrayRangeList[i]->second;
+            range = this->type->arrayRangeList[i].second - this->type->arrayRangeList[i].first + 1;
             arraySize *= range;
         }
         _Constant size;
         size.type = "integer";
         size.intValue = arraySize;
         llvm::Value* arraySizeValue = size.codeGen();
-        auto arrayType = llvm::ArrayType::get(type, arraySize);
+        auto arrayType = llvm::ArrayType::get(lltype, arraySize);
+        context.typeSystem.addArrayType(this->variantId.first, arrayType);  //以数组变量名作为索引
+        //在栈上创建局部变量arraytmp
         addr = context.builder.CreateAlloca(arrayType, arraySizeValue, "arraytmp");
+
+        /*[refer]   NArrayInitialization::codeGen
+        for(int index = 0; index < div; index++){
+            // shared_ptr<NInteger> indexValue = make_shared<NInteger>(index);
+            // shared_ptr<NArrayIndex> arrayIndex = make_shared<NArrayIndex>(this->declaration->id, indexValue);
+            // NArrayAssignment assignment(arrayIndex, this->expressionList->at(index));
+            // assignment.codeGen(context);
+        }
+        */
     }
 
-    else if(this->type->type.first == "record")   //如果是record类型
+    else if(this->type->recordList.size()!=0)   //如果是record类型
     {
-        //新建record类型
-        string recName = this->variantId.first+"_";
+        int loc = mainSymbolTable->custom[this->variantId.first].top();
+        string recName = mainSymbolTable->recordList[loc]->type;
         int lineNo = this->variantId.second;
+        auto recordType = nullptr;
 
-        vector<llvm::Type*> memberTypes;
-        auto recordType = llvm::StructType::create(context.llvmContext, recName);
-        context.typeSystem.addRecordType(recName, recordType);
-
-        for(auto& member: *this->type->recordList){
-            context.typeSystem.addRecordMember(recName, lineNo, member->variantId.first, member->type->type);
-            memberTypes.push_back(context.typeSystem.getllType(member->type->type));
+        //获取record对应的LLVM Type
+        //已在type中定义过：直接查表
+        recordType = context.typeSystem.getllType(recName);
+        if(recordType == nullptr){
+           //在var中直接定义+声明：新建record类型
+            recordType = llvm::StructType::create(context.llvmContext, recName);
+            context.typeSystem.addRecordType(recName, recordType);
+            vector<llvm::Type *> memberTypes;
+            for (auto it = this->type->recordList.begin(); it != this->type->recordList.end(); it++)
+            {
+                context.typeSystem.addRecordMember(recName, lineNo, (*it)->variantId.first, (*it)->type->type);
+                memberTypes.push_back(context.typeSystem.getllType((*it)->type->type));
+            }
+            recordType->setBody(memberTypes);
         }
-        recordType->setBody(memberTypes);
 
-        //新建record变量
-        //教程上的写法：module->getTypeByName()
-        //auto addr = context.builder->CreateAlloca(context.module->getTypeByName(recName), nullptr);
-        auto addr = context.builder->CreateAlloca(recordType, nullptr);
-
-        //对record成员进行codeGen
-        vector<_SymbolRecord*> recMembers = this->type->recordList;
-        for(int i=0; i<recMembers.size(); i++){
-            codeGenRecMember(addr, recName, recMembers[i]);
-        }
+        //在栈上分配一个record变量
+        addr = context.builder->CreateAlloca(recordType, nullptr);
     }
 
     else    //普通变量
@@ -121,8 +132,8 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
     
     //获取函数返回值的LLVM类型
     llvm::Type* retType = nullptr;
-    if(this->type->first != ""){   //若为函数
-        type_str = this->type->first;
+    if(this->type.first != ""){   //若为函数
+        type_str = this->type.first;
     }
     else{   //若为过程，看作返回值类型为void的函数
         type_str = "void";
@@ -130,7 +141,7 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
     retType = context.typeSystem.getllType(type_str); 
 
     llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
-    llvm::Function* function = llvm::Function::Create(funcType, llvm::GlobalValue::ExternalLinkage, functionID->first, context.module.get());
+    llvm::Function* function = llvm::Function::Create(funcType, llvm::GlobalValue::ExternalLinkage, functionID.first, context.module.get());
     
     //函数基本块相关
     auto funcBlock = llvm::BasicBlock::Create(context.llvmContext, "", function);
@@ -139,14 +150,15 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
 
     //函数形参相关
     auto formalArg = formalParaList.begin();  //函数定义中的形参列表
-    for(auto &llFuncArg: function->args()){     //调用API生成的function的参数列表
-        llFuncArg.setName(formalArg->paraId->first);    //将形参的名字一一对应上
+    for(auto &it: function->args()){
+        it.setName(formalArg->paraId.first);    //将形参的名字一一对应上
         llvm::Value* argAlloc;  //待获取：当前形参对应的LLVM Value*
+        //argAlloc = formalArg->codeGen();
         //形参的llValue已经在语义分析中获得了，直接查符号表
-        int argLoc = mainSymbolTable->idToLoc[formalArg->paraId->first].top();
+        int argLoc = mainSymbolTable->idToLoc[formalArg->paraId.first].top();
         argAlloc = mainSymbolTable->recordList[argLoc]->llValue;
         
-        context.builder.CreateStore(&llFuncArg, argAlloc, false);
+        context.builder.CreateStore(&it, argAlloc, false);
         formalArg++;
     }
     //返回值：在对assign_stmt的分析中遇到形如"funcName:="的赋值语句，特判
@@ -162,15 +174,16 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
 
 //函数/过程的形参
 llvm::Value* _FormalParameter::codeGen() {
-    
+    //❓可以重用variant的吗？
 }
 
 llvm::Value* _VariantReference::codeGen(){
-    
+
 }
 
 llvm::Value* _Expression::codeGen(){
       llvm::Value* ret;
+      //常量：返回对应的LLVM常量
       if(this->type == "integer"){
           ret = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context.llvmContext), this->intValue, true);
       }
@@ -183,11 +196,14 @@ llvm::Value* _Expression::codeGen(){
       else if(this->type == "boolean"){
           ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), this->boolValue, true);
       }
+      //变量：返回地址
       else if(this->type=="var"){
-          //!!!!!!!!!
           int loc = mainSymbolTable->idToLoc[this->variantReference->variantId.first].top();
           ret = mainSymbolTable->recordList[loc]->llValue;
+        //   string type = mainSymbolTable->recordList[loc]->type;
+        //   ret = context.typeSystem.getllType(type);
       }
+      //❓函数调用：返回CreateCall的返回值
       else if(this->type=="function"){
           string funId = this->functionCall->functionId.first;
           int loc = mainSymbolTable->idToLoc[funId].top();
@@ -259,12 +275,12 @@ llvm::Value* _Expression::codeGen(){
 }
 
 llvm::Value* _FunctionCall::codeGen(){
-    int loc = mainSymbolTable->idToLoc[this->functionId->first].top();
+    int loc = mainSymbolTable->idToLoc[this->functionId.first].top();
     llvm::Function* callee = mainSymbolTable->recordList[loc]->llValue;
 
     if(!callee){
         //报错：函数未找到
-        semanticErrorInformation.push_back((string) "line:" + char('0' + functionId->second) + " Error: Function definition not found: " + functionId->first);
+        semanticErrorInformation.push_back((string) "line:" + char('0' + functionId.second) + " Error: Function definition not found: " + functionId.first);
     }
 
     vector<llvm::Value*> argsv;
@@ -277,7 +293,7 @@ llvm::Value* _FunctionCall::codeGen(){
         {
             //报错：参数解析失败
             pair<string,int> varId = it->variantReference->variantId;
-            semanticErrorInformation.push_back((string) "line:" + char('0' + varId->second) + " Error: Function arg codeGen failed: " + varId->first);
+            semanticErrorInformation.push_back((string) "line:" + char('0' + varId.second) + " Error: Function arg codeGen failed: " + varId.first);
             return nullptr;
         }
     }
@@ -287,7 +303,7 @@ llvm::Value* _FunctionCall::codeGen(){
 
 llvm::Value* _ProcedureCall::codeGen(){
     //重用functionCall的codeGen
-    _FunctionCall* procedure = new _FunctionCall;
+    _FunctionCall* procedure = new _FunctionCall();
     procedure->functionId = this->procedureId;
     procedure->actualParaList = this->actualParaList;
     procedure->returnType = "void";
@@ -296,43 +312,58 @@ llvm::Value* _ProcedureCall::codeGen(){
 }
 
 llvm::Value* _AssignStatement::codeGen(){
-    //获取赋值表达式的左值（LLVM Value*）
-    int loc = mainSymbolTable->idToLoc[variantReference->variantId->first].top();
-    llvm::Value* lValue = mainSymbolTable->recordList[loc]->llValue;
-    //获取右值
-    llvm::Value* rValue = this->expression->codeGen();
+    //获取左值（LLVM Value*）
+    //左值类型：普通变量，数组元素，record成员，函数名
+    int loc = mainSymbolTable->idToLoc[variantReference->variantId.first].top();
+    _SymbolRecord* leftVar = mainSymbolTable->recordList[loc];
+    llvm::Value* lValue = leftVar->llValue;
+    //若左值为数组元素/record成员，leftVar对应的只是数组/record变量，并不具体到成员本身
     
-    //若右值和左值的类型不相同，且存在合法转换，则将右值转换为左值的类型
-    string lType, rType;
-    lType = mainSymbolTable->recordList[loc]->type;
-    rType = this->expression->type;
-    //若从右值到左值的类型转换合法(integer->real)
-    if(lType == "real" && lType != rType){
-        //若右值是integer常量
-        if(rType == "integer"){
-            _Constant tmpReal;
-            tmpReal.type = "real";
-            tmpReal.realValue = this->expression->realNum;
-            rValue = tmpReal.codeGen();
-        }
-        //若右值是integer变量
-        else if(rType == "var"){
-            string varId = this->expression->_VariantReference->variantId->first;
-            int loc = mainSymbolTable->idToLoc[varId].top();
-            string varType = mainSymbolTable->recordList[loc]->type;
-            if(varType == "integer")
-                rValue = mainSymbolTable->recordList[loc]->llValue;
-        }
-        //若右值是函数返回值
-        else if(rType == "function" && this->expression->functionCall->returnType == "integer"){
-            string funcId = this->expression->functionCall->functionId->first;
-            int loc = mainSymbolTable->idToLoc[funcId].top();
-            rValue = mainSymbolTable->recordList[loc]->llValue;
-        }
+    //获取右值（LLVM Value*）
+    //右值类型：常量，普通变量，数组元素，record成员，函数调用（返回值）
+    llvm::Value* rValue = this->expression->codeGen();
+
+    //获取左值、右值的LLVM Type
+    llvm::Type *lType = nullptr, *rType = nullptr;
+    lType = context.typeSystem.getVarllType(variantReference);
+
+    switch(this->expression->type){
+        case "integer": case "real": case "char": case "boolean":   //右值为常量
+            rType = context.typeSystem.getllType(this->expression->type);
+            break;
+        case "var":     //右值为变量
+            rType = context.typeSystem.getVarllType(this->expression->variantReference);
+            break;
+        case "function":    //右值为函数调用
+            if(this->expression->functionCall->returnType != "error")
+                rType = context.typeSystem.getllType(this->expression->functionCall->returnType);
+            break;
+        case "compound":    //右值为复杂表达式
+            //TODO
+            //rType = rValue->getType();
+            break;
     }
     
-    context.builder.CreateStore(rValue, lValue);
-    return lValue;
+    //若右值到左值存在合法转换，则将右值转换为左值的类型
+    if(lType == context.typeSystem.realTy && rType == context.typeSystem.intTy){
+        auto realValue = context.builder.CreateSIToFP(rValue, context.typeSystem.realTy);
+        rValue = realValue;
+    }
+
+    if(variantReference->IdvpartList.size()!=0){
+        if(variantReference->IdvpartList[0]->flag == 0){ //数组元素
+            codeGenArrayAssign(leftVar->id, lValue, rValue);
+        }
+        else{    //record成员
+            string memberId = variantReference->IdvpartList[0]->IdvpartId.first;
+            codeGenRecordAssign(leftVar->type, memberId, lValue, rValue);
+        }
+    }
+    else{    //普通变量
+        context.builder.CreateStore(rValue, lValue);
+    }
+
+    return lValue;    //如果是函数返回语句，把lValue填到函数的llValue里
 }
 
 llvm::Value* _IfStatement::codeGen(){
@@ -463,19 +494,92 @@ llvm::Value* _RepeatStatement::codeGen(){
       return nullptr;
 }
 
-llvm::Value* _Idvpart::codeGen(){
+llvm::Value* _Idvpart::codeGen(_SymbolRecord* variant){
+    //varId: _VariantReference节点的对应字段，表示变量名
+    /*
+class _VariantReference
+    pair<string, int> variantId; //变量或常量标识符和行号
+    //如果这个变量是结构体或数组：
+    vector<_Idvpart *> IdvpartList; //结构体.属性或数组元素
+    
+class _Idvpart
+    vector<_Expression *> expressionList; // flag = 0;
+    pair<string, int> IdvpartId;          // flag = 1
+    int flag;  
+    */
 
+    if(variant->flag == "array"){        //如果是数组元素
+
+    }
+
+    else if(variant->flag == "normal variant"){   //如果是record成员
+        //取对应record类型的llValue
+        string recName = variant->type;     //record类型的名称
+        int loc = mainSymbolTable->custom[recName].top();
+        auto varPtr = mainSymbolTable->recordList[loc]->llValue;  //获取CreateAlloca的返回值(局部变量的指针)
+        //CreateLoad
+        auto recPtr = context.builder.CreateLoad(varPtr, "recPtr");
+        recPtr->setAlignment(4);    //按4字节对齐
+
+        //获取该成员在record中的位置
+        long index = context.typeSystem.getRecordMemberIndex(recName, IdvpartId.first);
+        vector<llvm::Value *> indices;
+        indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, 0));               //基地址
+        indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTY, (uint64_t)index)); //偏移量
+        auto ptr = context.builder.CreateInBoundsGEP(varPtr, indices, "memberPtr");
+
+        return context.builder.CreateLoad(ptr);
+    }
 }
 
-llvm::Value* codeGenRecMember(llvm::Value* addr, string recName, _SymbolRecord* member){
-    auto recPtr = context.builder.CreateLoad(addr, "recPtr");
-    recPtr->setAlignment(4);    //按4字节对齐
+//数组元素赋值
+void _AssignStatement::codeGenArrayAssign(string arrayName, llvm::Value* lValue, llvm::Value* rValue)
+{   //lValue是数组的首地址
 
-    long index = context.typeSystem.getRecordMemberIndex(recName, member->id);
-    vector<llvm::Value *> indices;
-    indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, 0));                     //基地址
-    indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTY, (uint64_t)index)); //偏移量
-    auto ptr = context.builder.CreateInBoundsGEP(addr, indices, "memberPtr");
+    //CreateLoad
+    //arrayPtr = context.builder.CreateLoad(lValue, "arrayPtr");
+    //arrayPtr->setAlignment(16);
 
-    return context.builder.CreateLoad(ptr);
+/***************按照TinyCompiler的写法****************/
+    //获取数组元素地址
+    //[refer]   auto index = calcArrayIndex(arrayIndex, context);
+    // auto index = calcArrayIndex();  //该函数未写
+    // llvm::ArrayRef<llvm::Value*> gep2array{
+    //     llvm::ConstantInt::get(context.typeSystem.getllType("int64"), 0), index};
+    // auto ptr = context.builder.CreateInBoundsGEP(lValue, gep2array, "elementPtr");
+
+/***************按照教程的写法***************/
+    //获取数组对应的LLVM Type
+    auto arrayType = context.typeSystem.getllType(arrayName);
+    //获取数组元素地址
+    vector<pair<int, int>> indices = this->variantReference->IdvpartList[0]->expressionList;
+    if(indices.size()>1){   //暂不支持多维数组赋值
+        cout<< "[codeGenArrayAssign]    multidimensional array is not available now." << endl;
+        return;
+    }
+    int loc = indices[0].intNum;  //数组元素下标
+    auto index_0 = llvm::ConstantInt::get(context.typeSystem.intTy, 0);      //基地址
+    auto index_1 = llvm::ConstantInt::get(context.typeSystem.intTy, loc);    //偏移量
+    auto ptr = context.builder.CreateGEP(arrayType, lValue, {index_0, index_1});
+
+    //赋值
+    context.builder.CreateStore(rValue, ptr);
+}
+
+//record成员赋值
+void _AssignStatement::codeGenRecordAssign(string recName, string memberId, llvm::Value* lValue, llvm::Value* rValue)
+{
+    // CreateLoad
+    //auto recPtr = context.builder.CreateLoad(lValue, "recPtr");
+    //recPtr->setAlignment(4); //按4字节对齐
+
+    //获取该成员在record中的位置
+    long index = context.typeSystem.getRecordMemberIndex(recName, memberId);
+    vector<llvm::Value*> indices;
+    indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, 0));               //基地址
+    indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, (uint64_t)index)); //偏移量
+    auto ptr = context.builder.CreateInBoundsGEP(lValue, indices, "RecMemberPtr");
+    
+    //赋值
+    context.builder.CreateStore(rValue, ptr);
 }
