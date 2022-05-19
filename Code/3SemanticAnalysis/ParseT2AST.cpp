@@ -524,6 +524,10 @@ _Type* getType(Token *now){
     }
     _Type* _type = new _Type;
     int loc=int(now->children.size()-1);
+    if(loc==0){ //type->IDENTIFIER
+        _type->type= _type->type = make_pair(now->children[0]->value, now->children[0]->lineNo);
+        return _type;
+    }
 	if(loc != 2)
     _type->type=make_pair(now->children[loc]->children[0]->value,now->children[loc]->children[0]->lineNo);
     if(loc==5){
@@ -535,7 +539,6 @@ _Type* getType(Token *now){
     if(loc == 2){
         _type->type = make_pair("record", now->children[0]->lineNo);
         getrecordBody(now->children[1],_type->recordList);
-        
     }
     return _type;
 }
