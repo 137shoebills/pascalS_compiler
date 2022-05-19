@@ -13,10 +13,11 @@
 
 using namespace std;
 
-extern _SymbolTable *mainSymbolTable;	
+set<string> lib; //存放库函数名
+extern _SymbolTable *mainSymbolTable;
 extern _SymbolTable *currentSymbolTable;
-																						//主符号表
-extern _SymbolRecord *findSymbolRecord(_SymbolTable *currentSymbolTable, string id);												//从符号表中找出id对应的记录
+// extern CodeGenContext context;																							//主符号表
+extern _SymbolRecord *findSymbolRecord(_SymbolTable *currentSymbolTable, string id); //从符号表中找出id对应的记录
 // extern void inputFunctionCall(_FunctionCall *functionCallNode, string &functionCall, int mode = 0);									//获取函数调用
 // extern int inputExpression(_Expression *expressionNode, string &expression, int mode = 0, bool isReferedActualPara = false);		//获取表达式
 // extern void inputVariantRef(_VariantReference *variantRefNode, string &variantRef, int mode = 0, bool isReferedActualPara = false); //获取变量引用
@@ -27,7 +28,7 @@ vector<string> semanticErrorInformation;   //存储错误信息的列表
 vector<string> semanticWarningInformation; //存储警告信息的列表
 
 void SemanticAnalyse(_Program *ASTRoot);
-void createSymbolTableAndInit(); //创建主符号表并初始化	
+void createSymbolTableAndInit(); //创建主符号表并初始化
 
 void SemanticAnalyseSubprogram(_SubProgram *subprogram);						   //对分程序进行语义分析
 void SemanticAnalyseProgram(_Program *program);									   //对程序进行语义分析
@@ -98,12 +99,12 @@ void SemanticAnalyseProgram(_Program *program)
 		cout << "[SemanticAnalyseProgram] pointer of _Program is null" << endl;
 		return;
 	}
+	lib.clear();
+	lib.insert("read");
+	lib.insert("write");
 	//库函数名、主程序名、主程序参数，在检查是否重定义时，优先级按照前面列举的顺序，
 	//即主程序名不能和库函数名，主程序参数不能和库函数名、主程序名同名
 	//添加主程序名、行号、参数个数等信息
-	set<string> lib;
-	lib.insert("read");
-	lib.insert("write");
 	if (lib.count(program->programId.first)) //检查有没有用到库函数中的名字
 		addGeneralErrorInformation("[Duplicate defined error!] <Line " + itos(program->programId.second) + "> Name of program \"" + program->programId.first + "\" has been defined as a lib program.");
 
@@ -168,9 +169,14 @@ void SemanticAnalyseConst(_Constant *constant)
 		return;
 	}
 	std::pair<string, int> CID = constant->constId;
-	if (mainSymbolTable->idToLoc.count(CID.first)) //判断id是否已经使用过
+	if (lib.count(CID.first)) //判断id是否为库函数
 	{
-		semanticErrorInformation.push_back((string) "line:" + char('0' + CID.second) + "Error: Duplicate identifier" + CID.first);
+		addDuplicateDefinitionErrorInformation(CID.first, -1, "", "", CID.second);
+	}
+	else if (mainSymbolTable->idToLoc.count(CID.first)) //判断id是否已经使用过
+	{
+		int IDloc = mainSymbolTable->idToLoc[CID.first].top();
+		addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, CID.second);
 		return;
 	}
 	if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
@@ -212,27 +218,37 @@ void SemanticAnalyseConst(_Constant *constant)
 //对自定义类型进行语义分析
 void SemanticAnalyseTypedef(_TypeDef *typedefi)
 {
+	//对自定义类型进行语义分析
+void SemanticAnalyseTypedef(_TypeDef *typedefi)
+{
 	if (typedefi == NULL)
 	{
 		cout << "[SemanticAnalyseTypedef] pointer of _TypeDef is null" << endl;
 		return;
 	}
 	std::pair<string, int> TID = typedefi->typedefId;
-	if (mainSymbolTable->idToLoc.count(TID.first))
+	if (lib.count(TID.first)) //判断id是否为库函数
 	{
-		semanticErrorInformation.push_back((string) "line:" + char('0' + TID.second) + "Error: Duplicate identifier" + TID.first);
+		addDuplicateDefinitionErrorInformation(TID.first, -1, "", "", TID.second);
+	}
+	else if (mainSymbolTable->idToLoc.count(TID.first)) //判断id是否已经使用过
+	{
+		int IDloc = mainSymbolTable->idToLoc[TID.first].top();
+		addDuplicateDefinitionErrorInformation(TID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, TID.second);
 		return;
 	}
 
-	if(typedefi->type->type.first=="record") //如果此时是record
+	if (typedefi->type->type.first == "record") //如果此时是record
 	{
 		SemanticAnalyseRecord(typedefi->type->recordList, TID, 1);
 	}
-	else if(typedefi->type->flag){ //如果此时是数组
+	else if (typedefi->type->flag)
+	{ //如果此时是数组
 		mainSymbolTable->addArray(TID.first, TID.second, typedefi->type->type.first, typedefi->type->arrayRangeList.size(), typedefi->type->arrayRangeList);
 		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
-	else{
+	else
+	{
 		mainSymbolTable->addVar(TID.first, TID.second, typedefi->type->type.first);
 		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
@@ -252,9 +268,14 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 			return;
 		}
 		pair<string, int> aVID = recordList[i]->variantId;
-		if (ids.count(aVID.first))
+		if (lib.count(aVID.first)) //判断id是否为库函数
 		{
-			semanticErrorInformation.push_back((string) "line:" + char('0' + aVID.second) + "Error: Duplicate identifier record" + aVID.first);
+			addDuplicateDefinitionErrorInformation(aVID.first, -1, "", "", aVID.second);
+		}
+		else if (mainSymbolTable->idToLoc.count(aVID.first)) //判断id是否已经使用过
+		{
+			int IDloc = mainSymbolTable->idToLoc[aVID.first].top();
+			addDuplicateDefinitionErrorInformation(aVID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, aVID.second);
 			return;
 		}
 		if (recordList[i]->type->type.first == "record")
@@ -270,12 +291,12 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 		ids[aVID.first] = aVID.second;
 	}
 
-	if(is_type == 0) //表示此时不是type中定义新类型，而是声明语句
+	if(is_type == 0) //var中 定义+声明record类型变量
 	{
 		mainSymbolTable->addRecords(VID.first + "_", VID.second, records); //id名后加_下划线表示record类型名
 		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");		
 	}
-	else{
+	else{	//type中 定义record类型
 		mainSymbolTable->addRecords(VID.first, VID.second, records);
 		//mainSymbolTable->custom[VID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
@@ -293,16 +314,21 @@ void SemanticAnalyseVariant(_Variant *variant)
 	}
 	std::pair<string, int> VID = variant->variantId;
 	
-	if (mainSymbolTable->idToLoc.count(VID.first))
+	if (lib.count(VID.first)) //判断id是否为库函数
 	{
-		semanticErrorInformation.push_back((string) "line:" + char('0' + VID.second) + "Error: Duplicate identifier" + VID.first);
+		addDuplicateDefinitionErrorInformation(VID.first, -1, "", "", VID.second);
+	}
+	else if (mainSymbolTable->idToLoc.count(VID.first)) //判断id是否已经使用过
+	{
+		int IDloc = mainSymbolTable->idToLoc[VID.first].top();
+		addDuplicateDefinitionErrorInformation(VID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, VID.second);
 		return;
 	}
 
 	if(variant->type->type.first == "record"){
 		SemanticAnalyseRecord(variant->type->recordList,VID, 0);
 	}
-	else if (variant->type->flag)
+	else if (variant->type->flag)	//数组
 		mainSymbolTable->addArray(VID.first, VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
 	else
 		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
@@ -316,7 +342,7 @@ void SemanticAnalyseVariant(_Variant *variant)
 //对子程序定义进行语义分析
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition)
 {
-	if(functionDefinition==NULL)
+	if(functionDefinition == NULL)
 	{
 		cout << "[SemanticAnalyseSubprogramDefinition] pointer of _FunctionDefinition is null" << endl;
 		return;
@@ -374,9 +400,14 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 		return;
 	}
 	std::pair<string, int> PID = formalParameter->paraId;
-	if (mainSymbolTable->idToLoc.count(PID.first))
+	if (lib.count(PID.first)) //判断id是否为库函数
 	{
-		semanticErrorInformation.push_back((string) "line:" + char('0' + PID.second) + "Error: Duplicate identifier" + PID.first);
+		addDuplicateDefinitionErrorInformation(PID.first, -1, "", "", PID.second);
+	}
+	else if (mainSymbolTable->idToLoc.count(PID.first)) //判断id是否已经使用过
+	{
+		int IDloc = mainSymbolTable->idToLoc[PID.first].top();
+		semanticWarningInformation.push_back("[Duplicate defined warning!] <Line " + itos(PID.second) + ">" + "\"" + PID.first + "\"" + " has already been defined as a " + mainSymbolTable->recordList[IDloc]->flag + " at line " + itos(mainSymbolTable->recordList[IDloc]->lineNumber) + ".");
 		return;
 	}
 	if (formalParameter->flag == 0) //传值调用
@@ -508,7 +539,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 		//对右值表达式进行类型检查,获得rightType
 		string rightType = SemanticAnalyseExpression(assignStatement->expression);
 		if (assignStatement->variantReference->kind == "function return reference")
-		{ //如果是返回值语句
+		{ //为函数返回值赋值
 			//需检查返回值表达式是否和函数返回值类型一致
 			if (assignStatement->variantReference->variantType != rightType && !(assignStatement->variantReference->variantType == "real" && rightType == "integer"))
 			{
@@ -519,26 +550,31 @@ void SemanticAnalyseStatement(_Statement *statement)
 			assignStatement->isReturnStatement = true;
 			return;
 		}
-		//比较左值和右值类型,获得赋值语句的类型；类型不同时，只支持整型到实型的隐式转换
-		if (leftType != rightType && !(leftType == "real" && rightType == "integer"))
+		//左值和右值类型不同时
+		if (leftType != rightType)
 		{
-			//checked
-			addAssignTypeMismatchErrorInformation(assignStatement->variantReference, assignStatement->expression);
-			assignStatement->statementType = "error";
+			//只支持整型到实型的隐式转换
+			if (leftType == "real" && rightType == "integer")
+			{
+				semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable.\n");
+			}
+			else
+			{
+				addAssignTypeMismatchErrorInformation(assignStatement->variantReference, assignStatement->expression);
+				assignStatement->statementType = "error";
+			}
 		}
-		else
-			assignStatement->statementType = "void";
 
 		//codeGen
 		assignStatement->codeGen();
-
 	}
-	else if (statement->type == "procedure")	//过程调用
-	{ //read的参数只能是变量或数组元素; 这段比较难写
+	else if (statement->type == "procedure") //过程调用
+	{
 		_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(statement);
 		//通过procedureId查表，获得参数个数、参数类型等信息
 		_SymbolRecord *record = findSymbolRecord(mainSymbolTable, procedureCall->procedureId.first);
 		procedureCall->statementType = "void";
+
 		if (record == NULL)
 		{ //未定义 checked
 			addUndefinedErrorInformation(procedureCall->procedureId.first, procedureCall->procedureId.second);
@@ -551,46 +587,11 @@ void SemanticAnalyseStatement(_Statement *statement)
 			procedureCall->statementType = "error";
 			return;
 		}
-		// if (record->id == "exit")
-		// {
-		// 	/*exit出现在过程中时，exit不能带参数，出现在函数中时，exit只能带一个参数，
-		// 	且该参数表达式的类型必须和函数的返回值类型一致*/
-		// 	//所以需判断当前程序是过程还是函数
-		// 	if (currentSymbolTable->recordList[0]->subprogramType == "procedure")
-		// 	{ //如果是过程
-		// 		//exit不能带参数表达式
-		// 		if (procedureCall->actualParaList.size() != 0)
-		// 		{ //如果实参个数不为0 checked
-		// 			addGeneralErrorInformation("[Return value redundancy!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of procedure must be 0, that is, exit must have no actual parameters.");
-		// 			procedureCall->statementType = "error";
-		// 		}
-		// 		return;
-		// 	}
-		// 	//如果是函数
-		// 	if (procedureCall->actualParaList.size() != 1)
-		// 	{												   //如果实参个数不为1
-		// 		if (procedureCall->actualParaList.size() == 0) //checked
-		// 			addGeneralErrorInformation("[Return value missing!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of function must be 1, that is, exit must have 1 actual parameters.");
-		// 		else //checked
-		// 			addGeneralErrorInformation("[Return value redundancy!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of function must be 1, that is, exit must have 1 actual parameters.");
-		// 		return;
-		// 	}
-		// 	//如果实参个数为1，检查实参表达式的类型，检查是否与函数返回值类型一致
-		// 	string returnType = SemanticAnalyseExpression(procedureCall->actualParaList[0]);
-		// 	if (currentSymbolTable->recordList[0]->type != returnType && !(currentSymbolTable->recordList[0]->type == "real" && returnType == "integer"))
-		// 	{
-		// 		//checked
-		// 		addGeneralErrorInformation("[Return type of funciton mismatch!] <Line " + itos(procedureCall->actualParaList[0]->lineNumber) + "> The type of return expression is " + returnType + " ,but not " + currentSymbolTable->recordList[0]->type + " as function \"" + currentSymbolTable->recordList[0]->id + "\" defined.");
-		// 		procedureCall->statementType = "error";
-		// 	}
-		// 	procedureCall->isReturnStatement = true;
-		// 	return;
-		// }
-		
+
 		if (record->id == "read" || record->id == "write")
 		{
 			if (procedureCall->actualParaList.size() == 0)
-			{ //read、write的参数个数不能为 0 checked
+			{ // read、write的参数个数不能为 0 checked
 				string tmp = record->id;
 				// tmp[0] -= 'a' - 'A';
 				addGeneralErrorInformation("[" + tmp + " actual parameter missing!] <Line " + itos(procedureCall->procedureId.second) + "> procedure \"" + record->id + "\" must have at least one actual parameter.");
@@ -602,7 +603,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
 			{
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
-				//checked
+				// checked
 				if (!(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
 					addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNo, record->id, i + 1, procedureCall->actualParaList[i]);
 				if (procedureCall->actualParaList[i]->expressionType == "boolean")
@@ -612,48 +613,55 @@ void SemanticAnalyseStatement(_Statement *statement)
 			}
 			return;
 		}
-		if (record->amount == -1)
-		{ //如果是变参过程（本编译器涉及的变参过程(除了read)对参数类型没有要求，但不能为error）
+		if (record->amount == -1) //如果是变参过程 本编译器支持从变参过程只有read和write
+		{
 			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
 			{
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
-				if (actualType == "error")
+				if (actualType == "error") //要求支持变参过程的参数类型不能为error
 					procedureCall->statementType = "error";
 			}
 			return;
 		}
 		if (procedureCall->actualParaList.size() != record->amount)
-		{ //checked
+		{ // checked
 			addNumberErrorInformation(procedureCall->procedureId.first, procedureCall->procedureId.second, int(procedureCall->actualParaList.size()), record->amount, "procedure");
 			procedureCall->statementType = "error";
 			return;
 		}
 		// 形参在符号表中的定位
 		for (int i = 0; i < procedureCall->actualParaList.size(); i++)
-		{ //检查actualParaList各表达式的类型，检查实参和形参的类型一致性
+		{ //检查实参和形参的类型一致性
 			string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
 			string formalType = record->findXthFormalParaType(i);
-			bool isRefered = record->isXthFormalParaRefered(i);	//是否是引用调用
+			bool isRefered = record->isXthFormalParaRefered(i); //是否是引用调用
 			if (isRefered && !(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
 			{
-				//该表达式不能作为引用形参对应的实参 checked
+				//引用参数对应的实参只能是变量、参数或者数组元素 不能为常数、复杂表达式等 checked
 				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(procedureCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
 				continue;
 			}
 			if (!isRefered)
-			{ //传值参数支持integer到real的隐式类型转换
-				if (actualType != formalType && !(actualType == "integer" && formalType == "real"))
-				{ //如果类型不一致
-					//checked
-					addExpressionTypeErrorInformation(procedureCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of procedure call of \"" + procedureCall->procedureId.first + "\"");
-					procedureCall->statementType = "error";
+			{
+				if (actualType != formalType) //如果类型不一致
+				{
+					//传值参数支持integer到real的隐式类型转换
+					if (actualType == "integer" && formalType == "real")
+					{
+						semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(procedureCall->lineNo) + "> The " + itos(i + 1) + "th actual parameter of procedure call is integer while the corresponding formal parameter is real.\n");
+					}
+					else
+					{
+						addExpressionTypeErrorInformation(procedureCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of procedure call of \"" + procedureCall->procedureId.first + "\"");
+						procedureCall->statementType = "error";
+					}
 				}
 			}
 			else
 			{ //引用参数需保持类型强一致
 				if (actualType != formalType)
 				{ //如果类型不一致
-					//checked
+					// checked
 					addExpressionTypeErrorInformation(procedureCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of procedure call of \"" + procedureCall->procedureId.first + "\"");
 					procedureCall->statementType = "error";
 				}
@@ -679,7 +687,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	std::pair<string, int> FCID = functionCall->functionId;
 	if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
 	{
-		semanticErrorInformation.push_back((string) "line:" + char('0' + FCID.second) + "Error: Identifier not found " + FCID.first);
+		addUndefinedErrorInformation(FCID.first, FCID.second);
 		return "error";
 	}
 
@@ -689,7 +697,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	int decParaSize = mainSymbolTable->recordList[decID]->amount;
 	if (decParaSize != functionCall->actualParaList.size()) //参数表数目不对
 	{
-		semanticErrorInformation.push_back((string) "line:" + char('0' + FCID.second) + "Error: Wrong number of parameters specified for call to " + FCID.first);
+		addNumberErrorInformation(FCID.first, FCID.second, functionCall->actualParaList.size(), decParaSize, "function");
 	}
 
 	int ParaSize = functionCall->actualParaList.size();
@@ -700,7 +708,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 		string expType = functionCall->actualParaList[i]->expressionType;
 		if (expType != decType && !(expType == "integer" && decType == "real"))
 		{
-			semanticErrorInformation.push_back((string) "line:" + char('0' + FCID.second) + "Error: Incompatible type for arg no. " + char('1' + i) + ": Got \"" + expType + "\", expected \"" + decType + "\"");
+			addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
 		}
 	}
 	return functionCall->returnType;
@@ -761,9 +769,9 @@ string SemanticAnalyseExpression(_Expression *expression)
 	else if (expression->type == "char")
 		return expression->expressionType = "char";
 
-	//表达式为字符常量Letter <ok>
-	else if (expression->type == "LETTER")
-		return expression->expressionType = "letter";
+	//表达式类型为布尔类型boolean
+	else if (expression->type == "boolean")
+		return expression->expressionType = "boolean";
 
 	//表达式类型为函数调用 <ok>
 	else if (expression->type == "function") //获得函数调用的返回值类型
@@ -953,6 +961,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	//非数组元素、非结构体.属性（传值参数、引用参数、普通变量、常量、函数名）<ok>
 	if (variantReference->IdvpartList.size() == 0)
 	{
+
 		//函数名：只有当前函数可以作为左值，必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
 		if (record->flag == "function")
 		{
@@ -1056,6 +1065,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 //符号表重定位
 void relocation()
 {
+	cout << "\nBefore Poping:\n";
+	// mainSymbolTable->putTable();
 	int top = mainSymbolTable->indexTable.back(); //此时最近的block索引位置
 	int sizeTable = mainSymbolTable->recordList.size();
 	for (int i = sizeTable - 1; i > top; i--)
@@ -1072,6 +1083,7 @@ void relocation()
 		mainSymbolTable->recordList.pop_back();
 	}
 	mainSymbolTable->indexTable.pop_back();
+	// mainSymbolTable->putTable();
 }
 
 void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber)
@@ -1099,9 +1111,9 @@ void addExpressionTypeErrorInformation(_Expression *exp, string curType, string 
 void addUndefinedErrorInformation(string id, int curLineNumber)
 {
 	string errorInformation = "[Undefined identifier!] <Line " + itos(curLineNumber) + "> ";
-	errorInformation += id + " has not been defined.";
+	errorInformation += "\"" + id + "\" has not been defined.";
 	semanticErrorInformation.push_back(errorInformation);
-	//CHECK_ERROR_BOUND
+	// CHECK_ERROR_BOUND
 }
 
 void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag, int preLineNumber, string preFlag)
