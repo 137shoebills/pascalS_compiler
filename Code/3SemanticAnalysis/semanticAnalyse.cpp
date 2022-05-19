@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+
 #include <sstream>
 #include <set>
 #include "symbolTable.h"
@@ -955,6 +956,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	//非数组元素、非结构体.属性（传值参数、引用参数、普通变量、常量、函数名）<ok>
 	if (variantReference->IdvpartList.size() == 0)
 	{
+		//cout<<"record->flag:"<<record->flag<<endl;
 
 		//函数名：只有当前函数可以作为左值，必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
 		if (record->flag == "function")
@@ -991,6 +993,16 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 		variantReference->kind = "var";
 		if (record->flag == "constant")
 			variantReference->kind = "constant";
+
+		//类型等价检查，将类型别名转为基本类型	
+		if(record->flag=="normal variant"){
+			//获取类型别名记录
+			_SymbolRecord *recordSource = findSymbolRecord(mainSymbolTable, record->type);
+			//若存在别名记录则进行替换
+			if(recordSource!=NULL){
+				return variantReference->variantType = recordSource->type;
+			}
+		}
 		return variantReference->variantType = record->type;
 	}
 
@@ -1039,11 +1051,30 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	//结构体.属性
 	else if (record->flag == "normal variant")
 	{
+		/* 【别删别删哈】cout<<"record->type:"<<record->type<<endl;
+		cout<<"IdvpartList.size(): "<<variantReference->IdvpartList.size()<<endl;
+		printvariantReference(variantReference);*/
+
+		//获取record类型定义记录
+		_SymbolRecord *recordSource=mainSymbolTable->recordList[mainSymbolTable->idToLoc[record->type].top()];
+
+		if(recordSource==NULL){
+			cout<<"record type variant"<<record->type<<" is not defines"<<endl;
+			return  variantReference->variantType ="error";
+		}
+		cout<<"recordSource->records.size()="<<recordSource->records.size()<<endl;
+		if(recordSource->records.size())
+			cout<<"recordSource->records[0]->id="<<recordSource->records[0]->id<<endl;
 		//检查属性是否与结构体匹配
-		for (int i = 0; i < record->records.size(); i++)
+		for (int i = 0; i < recordSource->records.size(); i++)
 		{
-			if (record->records[i]->id == variantReference->IdvpartList[0]->IdvpartId.first)
-				return variantReference->variantType = record->records[i]->type;
+			cout<<"recordSource->records["<<i<<"]->id: "<<recordSource->records[i]->id<<endl;
+			cout<<"IdvpartList: "<<variantReference->IdvpartList[0]->IdvpartId.first<<endl;
+			if (recordSource->records[i]->id == variantReference->IdvpartList[0]->IdvpartId.first){
+				cout<<"find!"<<endl;
+				cout<<"recordSource->records->type"<<recordSource->records[i]->type<<endl;
+				return variantReference->variantType = recordSource->records[i]->type;
+			}
 		}
 		addGeneralErrorInformation("record reference is illegal");
 		return variantReference->variantType = "error";
@@ -1051,7 +1082,10 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 
 	else
 	{
-		cout << "[SemanticAnalyseVariantReference] flag of variantReference is not 0 or 1" << endl;
+		cout << "[SemanticAnalyseVariantReference] flag of variantReference is not 0 or 1: " <<endl;
+		//【debug用，暂时请不要删除】
+		//cout<<record->flag<<endl;
+		//cout<<variantReference->variantId.first<<endl;
 		return variantReference->variantType = "error";
 	}
 }
