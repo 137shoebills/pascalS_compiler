@@ -1034,8 +1034,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 //符号表重定位
 void relocation()
 {
-	cout << "\nBefore Poping:\n";
-	mainSymbolTable->putTable();
+	//cout << "\nBefore Poping:\n";
+	//mainSymbolTable->putTable();
 	int top = mainSymbolTable->indexTable.back(); //此时最近的block索引位置
 	int sizeTable = mainSymbolTable->recordList.size();
 	for (int i = sizeTable - 1; i > top; i--)
@@ -1052,7 +1052,7 @@ void relocation()
 		mainSymbolTable->recordList.pop_back();
 	}
 	mainSymbolTable->indexTable.pop_back();
-	mainSymbolTable->putTable();
+	//mainSymbolTable->putTable();
 }
 
 void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber)
