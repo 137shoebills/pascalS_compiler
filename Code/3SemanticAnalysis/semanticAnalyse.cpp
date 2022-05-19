@@ -406,7 +406,7 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 	else if (mainSymbolTable->idToLoc.count(PID.first)) //判断id是否已经使用过
 	{
 		int IDloc = mainSymbolTable->idToLoc[PID.first].top();
-		addDuplicateDefinitionErrorInformation(PID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, PID.second);
+		semanticWarningInformation.push_back("[Duplicate defined warning!] <Line " + itos(PID.second) + ">" + "\"" + PID.first + "\"" + " has already been defined as a " + mainSymbolTable->recordList[IDloc]->flag + " at line " + itos(mainSymbolTable->recordList[IDloc]->lineNumber) + ".");
 		return;
 	}
 	if (formalParameter->flag == 0) //传值调用
