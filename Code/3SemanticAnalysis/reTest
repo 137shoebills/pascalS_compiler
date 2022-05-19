@@ -16,7 +16,7 @@ i=1
 while [ $i -le $count ]
 do
     cur_file=`sed -n ${i}p "test.tmp"` 
-    log=`./test.exe ${cur_path}/testCode/${cur_file}`
+    log=`./test.exe /workspaces/Code/0Pascal_S_testcode/${cur_file}`
 
     #获取错误情况
     lexErrLoc=`echo "${log}" | grep -n  "Lexical Errrors:" | sed 's/\([0-9][0-9]*\).*/\1/g'` 
