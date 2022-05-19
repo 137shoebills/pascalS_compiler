@@ -56,4 +56,4 @@ do
 done    
 
 
-rm log  errordata test.tmp -rf 
+rm test.tmp -rf 
