@@ -1,0 +1,58 @@
+#【语义分析回归测试】
+#step1: 进入目录3SemanticAnalysis，第一次运行前需要在终端执行 chmod u+x reTest
+#step2: 测试前先手动执行make命令
+#step3: 将所有能正确通过词法、语法、语义分析的test.pas样例放入testCode目录下
+#step4: 使用命令 source reTest 执行脚本，当存在测试样例不通过时，请在testCode目录外修改调试
+#!!!!!!!!!代码上传git前记得做回归测试，通过再上传
+
+cur_path="/workspaces/Code/3SemanticAnalysis"
+cd ${cur_path}
+#make
+ls "${cur_path}/testCode" | sort -n > test.tmp
+count=`cat test.tmp | wc -l`
+
+i=1
+while [ $i -le $count ]
+do
+    cur_file=`sed -n ${i}p "test.tmp"` 
+    log=`./test.exe ${cur_path}/testCode/${cur_file}`
+
+    #获取错误情况
+    lexErrLoc=`echo "${log}" | grep -n  "Lexical Errrors:" | sed 's/\([0-9][0-9]*\).*/\1/g'` 
+    parseErrLoc=`echo "${log}" | grep -n  "Parse Errors:" | sed 's/\([0-9][0-9]*\).*/\1/g'`
+    semanticErrLoc=`echo "${log}" | grep -n  "Semantic Errors:" | sed 's/\([0-9][0-9]*\).*/\1/g'`
+    semanticWarnLoc=`echo "${log}" | grep -n  "Semantic Warnings:" | sed 's/\([0-9][0-9]*\).*/\1/g'`
+    parse_err=`echo "${log}" | grep "yntax error"|wc -l`
+
+    #debug
+    #echo "lexErrLoc:${lexErrLoc}"
+    #echo "parseErrLoc:${parseErrLoc}"
+    #echo "semanticErrLoc:${semanticErrLoc}"
+    #echo "semanticWarnLoc:${semanticWarnLoc}"
+    #echo "parse_err:${parse_err}"
+
+    #打印测试结果
+    if [ "${lexErrLoc}" = "" -o  "${parseErrLoc}" = ""  -o "${semanticErrLoc}" = "" -o "${semanticWarnLoc}" = "" ]
+        then
+            echo "【##############${cur_file} Segmentation fault###########】"
+            #./test.exe ${cur_path}/testCode/${cur_file}
+    elif [ `expr ${parseErrLoc} - ${lexErrLoc}` -gt 2 ]
+        then
+            echo "【##############${cur_file} 未通过词法分析###########】"
+            #./test.exe ${cur_path}/testCode/${cur_file}
+    elif [ ${parse_err} -gt 0 ]
+        then 
+            echo "【##############${cur_file} 未通过语法分析###########】"
+            #./test.exe ${cur_path}/testCode/${cur_file}
+    elif [ `expr ${semanticWarnLoc} - ${semanticErrLoc}` -gt 2 ]
+        then
+            echo "【##############${cur_file} 未通过语义分析###########】"
+            #./test.exe ${cur_path}/testCode/${cur_file}
+    else
+        echo "${cur_file} 通过！"
+    fi
+    i=`expr $i + 1 `
+done    
+
+
+rm log  errordata test.tmp -rf 
