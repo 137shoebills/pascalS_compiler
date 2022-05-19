@@ -37,7 +37,7 @@ void SemanticAnalyseVariant(_Variant *variant);									   //对变量定义进�
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition); //对子程序定义进行语义分析
 void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter);			   //对形式参数进行语义分析
 void SemanticAnalyseStatement(_Statement *statement);							   //对语句进行语义分析
-void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type);  //对record类型进行语义分析
+void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type); //对record类型进行语义分析
 
 string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
@@ -223,16 +223,18 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 		semanticErrorInformation.push_back((string) "line:" + char('0' + TID.second) + "Error: Duplicate identifier" + TID.first);
 		return;
 	}
-	
-	if(typedefi->type->type.first=="record") //如果此时是record
+
+	if (typedefi->type->type.first == "record") //如果此时是record
 	{
 		SemanticAnalyseRecord(typedefi->type->recordList, TID, 1);
 	}
-	else if(typedefi->type->flag){ //如果此时是数组
+	else if (typedefi->type->flag)
+	{ //如果此时是数组
 		mainSymbolTable->addArray(TID.first, TID.second, typedefi->type->type.first, typedefi->type->arrayRangeList.size(), typedefi->type->arrayRangeList);
 		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
-	else{
+	else
+	{
 		mainSymbolTable->addVar(TID.first, TID.second, typedefi->type->type.first);
 		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
@@ -270,12 +272,13 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 		ids[aVID.first] = aVID.second;
 	}
 
-	if(is_type == 0) //表示此时不是type中定义新类型，而是声明语句
+	if (is_type == 0) //表示此时不是type中定义新类型，而是声明语句
 	{
 		mainSymbolTable->addRecords(VID.first + "_", VID.second, records); //id名后加_下划线表示record类型名
-		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");		
+		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");
 	}
-	else{
+	else
+	{
 		mainSymbolTable->addRecords(VID.first, VID.second, records);
 		mainSymbolTable->custom[VID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
@@ -292,15 +295,16 @@ void SemanticAnalyseVariant(_Variant *variant)
 		return;
 	}
 	std::pair<string, int> VID = variant->variantId;
-	
+
 	if (mainSymbolTable->idToLoc.count(VID.first))
 	{
 		semanticErrorInformation.push_back((string) "line:" + char('0' + VID.second) + "Error: Duplicate identifier" + VID.first);
 		return;
 	}
 
-	if(variant->type->type.first == "record"){
-		SemanticAnalyseRecord(variant->type->recordList,VID,0);
+	if (variant->type->type.first == "record")
+	{
+		SemanticAnalyseRecord(variant->type->recordList, VID, 0);
 	}
 	else if (variant->type->flag)
 		mainSymbolTable->addArray(VID.first, VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
@@ -308,7 +312,7 @@ void SemanticAnalyseVariant(_Variant *variant)
 		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
 
 	//codeGen
-	int loc = mainSymbolTable->recordList.size()-1;
+	int loc = mainSymbolTable->recordList.size() - 1;
 	// llvm::Value* value = variant->codeGen();
 	// mainSymbolTable->recordList[loc]->llValue = value;
 }
@@ -508,7 +512,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 		//对右值表达式进行类型检查,获得rightType
 		string rightType = SemanticAnalyseExpression(assignStatement->expression);
 		if (assignStatement->variantReference->kind == "function return reference")
-		{ //如果是返回值语句
+		{	//为函数返回值赋值
 			//需检查返回值表达式是否和函数返回值类型一致
 			if (assignStatement->variantReference->variantType != rightType && !(assignStatement->variantReference->variantType == "real" && rightType == "integer"))
 			{
@@ -519,22 +523,28 @@ void SemanticAnalyseStatement(_Statement *statement)
 			assignStatement->isReturnStatement = true;
 			return;
 		}
-		//比较左值和右值类型,获得赋值语句的类型；类型不同时，只支持整型到实型的隐式转换
-		if (leftType != rightType && !(leftType == "real" && rightType == "integer"))
+		//左值和右值类型不同时
+		if (leftType != rightType)
 		{
-			// checked
-			addAssignTypeMismatchErrorInformation(assignStatement->variantReference, assignStatement->expression);
-			assignStatement->statementType = "error";
+			//只支持整型到实型的隐式转换
+			if (leftType == "real" && rightType == "integer")
+			{
+				semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable\n");
+			}
+			else
+			{
+				addAssignTypeMismatchErrorInformation(assignStatement->variantReference, assignStatement->expression);
+				assignStatement->statementType = "error";
+			}
 		}
-		else
-			assignStatement->statementType = "void";
 	}
 	else if (statement->type == "procedure") //过程调用
-	{										 // read的参数只能是变量或数组元素; 这段比较难写
+	{
 		_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(statement);
 		//通过procedureId查表，获得参数个数、参数类型等信息
 		_SymbolRecord *record = findSymbolRecord(mainSymbolTable, procedureCall->procedureId.first);
 		procedureCall->statementType = "void";
+		
 		if (record == NULL)
 		{ //未定义 checked
 			addUndefinedErrorInformation(procedureCall->procedureId.first, procedureCall->procedureId.second);
@@ -547,42 +557,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			procedureCall->statementType = "error";
 			return;
 		}
-		// if (record->id == "exit")
-		// {
-		// 	/*exit出现在过程中时，exit不能带参数，出现在函数中时，exit只能带一个参数，
-		// 	且该参数表达式的类型必须和函数的返回值类型一致*/
-		// 	//所以需判断当前程序是过程还是函数
-		// 	if (currentSymbolTable->recordList[0]->subprogramType == "procedure")
-		// 	{ //如果是过程
-		// 		//exit不能带参数表达式
-		// 		if (procedureCall->actualParaList.size() != 0)
-		// 		{ //如果实参个数不为0 checked
-		// 			addGeneralErrorInformation("[Return value redundancy!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of procedure must be 0, that is, exit must have no actual parameters.");
-		// 			procedureCall->statementType = "error";
-		// 		}
-		// 		return;
-		// 	}
-		// 	//如果是函数
-		// 	if (procedureCall->actualParaList.size() != 1)
-		// 	{												   //如果实参个数不为1
-		// 		if (procedureCall->actualParaList.size() == 0) //checked
-		// 			addGeneralErrorInformation("[Return value missing!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of function must be 1, that is, exit must have 1 actual parameters.");
-		// 		else //checked
-		// 			addGeneralErrorInformation("[Return value redundancy!] <Line " + itos(procedureCall->procedureId.second) + "> Number of return value of function must be 1, that is, exit must have 1 actual parameters.");
-		// 		return;
-		// 	}
-		// 	//如果实参个数为1，检查实参表达式的类型，检查是否与函数返回值类型一致
-		// 	string returnType = SemanticAnalyseExpression(procedureCall->actualParaList[0]);
-		// 	if (currentSymbolTable->recordList[0]->type != returnType && !(currentSymbolTable->recordList[0]->type == "real" && returnType == "integer"))
-		// 	{
-		// 		//checked
-		// 		addGeneralErrorInformation("[Return type of funciton mismatch!] <Line " + itos(procedureCall->actualParaList[0]->lineNumber) + "> The type of return expression is " + returnType + " ,but not " + currentSymbolTable->recordList[0]->type + " as function \"" + currentSymbolTable->recordList[0]->id + "\" defined.");
-		// 		procedureCall->statementType = "error";
-		// 	}
-		// 	procedureCall->isReturnStatement = true;
-		// 	return;
-		// }
-
+		
 		if (record->id == "read" || record->id == "write")
 		{
 			if (procedureCall->actualParaList.size() == 0)
@@ -608,12 +583,12 @@ void SemanticAnalyseStatement(_Statement *statement)
 			}
 			return;
 		}
-		if (record->amount == -1)
-		{ //如果是变参过程（本编译器涉及的变参过程(除了read)对参数类型没有要求，但不能为error）
+		if (record->amount == -1) //如果是变参过程 本编译器支持从变参过程只有read和write
+		{
 			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
 			{
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
-				if (actualType == "error")
+				if (actualType == "error")	//要求支持变参过程的参数类型不能为error
 					procedureCall->statementType = "error";
 			}
 			return;
@@ -626,23 +601,30 @@ void SemanticAnalyseStatement(_Statement *statement)
 		}
 		// 形参在符号表中的定位
 		for (int i = 0; i < procedureCall->actualParaList.size(); i++)
-		{ //检查actualParaList各表达式的类型，检查实参和形参的类型一致性
+		{   //检查实参和形参的类型一致性
 			string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
 			string formalType = record->findXthFormalParaType(i);
 			bool isRefered = record->isXthFormalParaRefered(i); //是否是引用调用
 			if (isRefered && !(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
 			{
-				//该表达式不能作为引用形参对应的实参 checked
+				//引用参数对应的实参只能是变量、参数或者数组元素 不能为常数、复杂表达式等 checked
 				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(procedureCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
 				continue;
 			}
 			if (!isRefered)
-			{ //传值参数支持integer到real的隐式类型转换
-				if (actualType != formalType && !(actualType == "integer" && formalType == "real"))
-				{ //如果类型不一致
-					// checked
-					addExpressionTypeErrorInformation(procedureCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of procedure call of \"" + procedureCall->procedureId.first + "\"");
-					procedureCall->statementType = "error";
+			{
+				if (actualType != formalType) //如果类型不一致
+				{ 
+					//传值参数支持integer到real的隐式类型转换
+					if (actualType == "integer" && formalType == "real")
+					{
+						semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(procedureCall->lineNo) + "> The " + itos(i + 1) + "th actual parameter of procedure call is integer while the corresponding formal parameter is real.\n");
+					}
+					else
+					{
+						addExpressionTypeErrorInformation(procedureCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of procedure call of \"" + procedureCall->procedureId.first + "\"");
+						procedureCall->statementType = "error";
+					}
 				}
 			}
 			else
@@ -755,9 +737,10 @@ string SemanticAnalyseExpression(_Expression *expression)
 	else if (expression->type == "char")
 		return expression->expressionType = "char";
 
-	//表达式类型为布尔类型boolean	
-	else if(expression->type == "boolean")
-		return expression->expressionType="boolean";
+
+	//表达式类型为布尔类型boolean
+	else if (expression->type == "boolean")
+		return expression->expressionType = "boolean";
 
 	//表达式类型为函数调用 <ok>
 	else if (expression->type == "function") //获得函数调用的返回值类型
@@ -1051,6 +1034,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 //符号表重定位
 void relocation()
 {
+	cout << "\nBefore Poping:\n";
+	mainSymbolTable->putTable();
 	int top = mainSymbolTable->indexTable.back(); //此时最近的block索引位置
 	int sizeTable = mainSymbolTable->recordList.size();
 	for (int i = sizeTable - 1; i > top; i--)
@@ -1067,6 +1052,7 @@ void relocation()
 		mainSymbolTable->recordList.pop_back();
 	}
 	mainSymbolTable->indexTable.pop_back();
+	mainSymbolTable->putTable();
 }
 
 void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber)
@@ -1093,7 +1079,7 @@ void addExpressionTypeErrorInformation(_Expression *exp, string curType, string 
 void addUndefinedErrorInformation(string id, int curLineNumber)
 {
 	string errorInformation = "[Undefined identifier!] <Line " + itos(curLineNumber) + "> ";
-	errorInformation += id + " has not been defined.";
+	errorInformation += "\"" + id + "\" has not been defined.";
 	semanticErrorInformation.push_back(errorInformation);
 	// CHECK_ERROR_BOUND
 }
