@@ -524,7 +524,8 @@ _Type* getType(Token *now){
     }
     _Type* _type = new _Type;
     int loc=int(now->children.size()-1);
-    if(loc==0){ //type->IDENTIFIER
+    if(loc==0&&now->children[0]->type!="standard_type"){ //type->IDENTIFIER
+        _type->flag=0;
         _type->type= _type->type = make_pair(now->children[0]->value, now->children[0]->lineNo);
         return _type;
     }
