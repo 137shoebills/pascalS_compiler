@@ -327,18 +327,24 @@ llvm::Value* _AssignStatement::codeGen(){
     llvm::Type *lType = nullptr, *rType = nullptr;
     lType = context.typeSystem.getVarllType(variantReference);
 
-    switch(this->expression->type){
-        case "integer": case "real": case "char": case "boolean":   //右值为常量
+    map<string, int> types;
+    types["integer"] = types["real"] = types["char"] = types["boolean"] = 1;
+    types["var"] = 2;
+    types["function"] = 3;
+    types["compound"] = 4;
+
+    switch(types[this->expression->type]){
+        case 1:   //右值为常量
             rType = context.typeSystem.getllType(this->expression->type);
             break;
-        case "var":     //右值为变量
+        case 2:     //右值为变量
             rType = context.typeSystem.getVarllType(this->expression->variantReference);
             break;
-        case "function":    //右值为函数调用
+        case 3:    //右值为函数调用
             if(this->expression->functionCall->returnType != "error")
                 rType = context.typeSystem.getllType(this->expression->functionCall->returnType);
             break;
-        case "compound":    //右值为复杂表达式
+        case 4:    //右值为复杂表达式
             //TODO
             //rType = rValue->getType();
             break;
