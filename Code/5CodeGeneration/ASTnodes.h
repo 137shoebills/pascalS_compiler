@@ -177,6 +177,8 @@ public:
     _AssignStatement();
     ~_AssignStatement();
     llvm::Value* codeGen();
+    void _AssignStatement::codeGenArrayAssign(string arrayName, llvm::Value* lValue, llvm::Value* rValue);   //数组元素赋值
+    void _AssignStatement::codeGenRecordAssign(string recName, string memberId, llvm::Value* lValue, llvm::Value* rValue);  //record成员赋值
 };
 
 class _ProcedureCall : public _Statement
