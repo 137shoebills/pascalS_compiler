@@ -529,7 +529,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			//只支持整型到实型的隐式转换
 			if (leftType == "real" && rightType == "integer")
 			{
-				semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable\n");
+				semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable.\n");
 			}
 			else
 			{
