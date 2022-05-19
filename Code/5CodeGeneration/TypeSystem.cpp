@@ -4,31 +4,27 @@ TypeSystem::TypeSystem(llvm::LLVMContext& context): llvmContext(context){}
 
 //获取标识符对应的LLVM类型
 llvm::Type* TypeSystem::getllType(string type){
-    switch(type){
-        case "integer":
-            return this->intTy;
-        case "real":
-            return this->realTy;
-        case "char":
-            return this->charTy;
-        case "boolean":
-            return this->boolTy;
-        case "void":
-            return this->voidTy;
-        case "int64":
-            return this->int64Ty;
-        default:
-        {
-            //数组类型(这里type是数组变量的名称)
-            if (this->arrayTypes.find(type) != this->arrayTypes.end())
-                return this->arrayTypes[type];
-            // record类型
-            else if (this->recordTypes.find(type) != this->recordTypes.end())
-                return this->recordTypes[type];
-            else
-                return nullptr;
-        }
-    }
+    if(type == "integer")
+        return this->intTy;
+    if(type == "real")
+        return this->realTy;
+    if(type == "char")
+        return this->charTy;
+    if(type == "boolean")
+        return this->boolTy;
+    if(type == "void")
+        return this->voidTy;
+    if(type == "int64")
+        return this->int64Ty;
+
+    //数组类型(这里type是数组变量的名称)
+    if (this->arrayTypes.find(type) != this->arrayTypes.end())
+        return this->arrayTypes[type];
+    // record类型
+    else if (this->recordTypes.find(type) != this->recordTypes.end())
+        return this->recordTypes[type];
+    else
+        return nullptr;
 }
 
  //新增record对应的LLVM类型
