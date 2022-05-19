@@ -524,8 +524,13 @@ _Type* getType(Token *now){
     }
     _Type* _type = new _Type;
     int loc=int(now->children.size()-1);
+    if(loc==0&&now->children[0]->type!="standard_type"){ //type->IDENTIFIER
+        _type->flag=0;
+        _type->type= _type->type = make_pair(now->children[0]->value, now->children[0]->lineNo);
+        return _type;
+    }
 	if(loc != 2)
-    _type->type=make_pair(now->children[loc]->children[0]->value,now->children[loc]->children[0]->lineNo);
+        _type->type=make_pair(now->children[loc]->children[0]->value,now->children[loc]->children[0]->lineNo);
     if(loc==5){
         _type->flag=1;
         getArrayRangeList(now->children[2],_type->arrayRangeList);
@@ -535,7 +540,6 @@ _Type* getType(Token *now){
     if(loc == 2){
         _type->type = make_pair("record", now->children[0]->lineNo);
         getrecordBody(now->children[1],_type->recordList);
-        
     }
     return _type;
 }
@@ -782,11 +786,11 @@ void getVpart(Token *now,vector<_Idvpart*> &idvpartlist){
         return;
     }
     _Idvpart* idvpart = new _Idvpart;
-    if(now->children.size() == 3){
+    if(now->children.size() == 3){  //数组元素
         idvpart->flag = 0;
         getExpressionList(now->children[1],idvpart->expressionList);
     }
-    else if(now->children.size() == 2){
+    else if(now->children.size() == 2){ //record成员
         idvpart->flag = 1;
         idvpart->IdvpartId = make_pair(now->children[1]->value, now->children[1]->lineNo);
     }
