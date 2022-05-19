@@ -755,9 +755,9 @@ string SemanticAnalyseExpression(_Expression *expression)
 	else if (expression->type == "char")
 		return expression->expressionType = "char";
 
-	//表达式为字符常量Letter <ok>
-	else if (expression->type == "LETTER")
-		return expression->expressionType = "letter";
+	//表达式类型为布尔类型boolean	
+	else if(expression->type == "boolean")
+		return expression->expressionType="boolean";
 
 	//表达式类型为函数调用 <ok>
 	else if (expression->type == "function") //获得函数调用的返回值类型
