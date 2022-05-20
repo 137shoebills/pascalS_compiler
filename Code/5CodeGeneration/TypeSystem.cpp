@@ -24,7 +24,10 @@ llvm::Type* TypeSystem::getllType(string type){
     else if (this->recordTypes.find(type) != this->recordTypes.end())
         return this->recordTypes[type];
     else
-        return nullptr;
+    {
+        //报错：未知类型
+        return LogErrorV("[getllType]  Unknown type: " + type);
+    }
 }
 
  //新增record对应的LLVM类型
@@ -34,11 +37,11 @@ void TypeSystem::addRecordType(string name, llvm::StructType* type){
 }
 
 //新增record成员
-void TypeSystem::addRecordMember(string recName, int lineNo, string memName, string memType){
-    if(recordTypes.find(recName) == recordTypes.end()){
-        //报错：未定义的record类型
-        semanticErrorInformation.push_back((string) "line:" + char('0' + lineNo) + "Error: Undefined record type: " + recName);
-    }
+void TypeSystem::addRecordMember(string recName, string memName, string memType){
+    // if(recordTypes.find(recName) == recordTypes.end()){
+    //     //报错：未定义的record类型
+    //     //semanticErrorInformation.push_back("Error: Undefined record type: " + recName);
+    // }
     recordMembers[recName].push_back(make_pair(memName, memType));
 }
 
@@ -57,28 +60,6 @@ long TypeSystem::getRecordMemberIndex(string recName, string memName){
 }
 
 //新增数组变量对应的LLVM类型
-void TypeSystem::addArrayType(string name, llvm::ArrayType* type){
-    arrayTypes[name] = type;
-    //arrayMembers[name] = vector<NameType>();
-}
-
-//获取变量对应的LLVM Type(普通变量，数组元素，record成员，函数标识符)
-llvm::Type* TypeSystem::getVarllType(_VariantReference* varRef){
-    int loc = mainSymbolTable->idToLoc[varRef->variantId.first].top();
-    _SymbolRecord* var = mainSymbolTable->recordList[loc];
-    llvm::Type* type = nullptr;
-    
-    if(var->records.size() > 0){   //record成员
-        string vpartId = varRef->IdvpartList[0]->IdvpartId.first;
-        for(auto it = var->records.begin(); it != var->records.end(); it++)
-        {
-            if((*it)->id == vpartId)
-                type = getllType((*it)->type);
-                break;
-        }
-    }
-    else    //普通变量/数组元素/函数返回值类型
-        type = getllType(var->type);
-
-    return type;
+void TypeSystem::addArrayType(string typeName, llvm::ArrayType* type, int lineNo){
+    arrayTypes[typeName] = type;
 }
