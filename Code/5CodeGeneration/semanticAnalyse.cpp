@@ -38,7 +38,8 @@ void SemanticAnalyseVariant(_Variant *variant);									   //对变量定义进�
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition); //对子程序定义进行语义分析
 void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter);			   //对形式参数进行语义分析
 void SemanticAnalyseStatement(_Statement *statement);							   //对语句进行语义分析
-void SemanticAnalyseRecord(vector<_Variant*> recordList,pair<string, int> VID, int is_type);    //对record类型进行语义分析
+
+vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type); //对record类型进行语义分析
 
 string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
@@ -218,9 +219,6 @@ void SemanticAnalyseConst(_Constant *constant)
 //对自定义类型进行语义分析
 void SemanticAnalyseTypedef(_TypeDef *typedefi)
 {
-	//对自定义类型进行语义分析
-void SemanticAnalyseTypedef(_TypeDef *typedefi)
-{
 	if (typedefi == NULL)
 	{
 		cout << "[SemanticAnalyseTypedef] pointer of _TypeDef is null" << endl;
@@ -242,20 +240,22 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 	{
 		SemanticAnalyseRecord(typedefi->type->recordList, TID, 1);
 	}
-	else if (typedefi->type->flag)
-	{ //如果此时是数组
+	else if (typedefi->type->flag) //如果此时是数组
+	{
 		mainSymbolTable->addArray(TID.first, TID.second, typedefi->type->type.first, typedefi->type->arrayRangeList.size(), typedefi->type->arrayRangeList);
-		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
 	else
 	{
 		mainSymbolTable->addVar(TID.first, TID.second, typedefi->type->type.first);
 		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
+
+	typedefi->codeGen();
 }
 
 //对record类型进行语义分析
-void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type)
+//void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type)
+vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int type)
 {
 	vector<_SymbolRecord *> records;
 	map<string, int> ids;
@@ -265,7 +265,7 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 		if (recordList[i] == NULL)
 		{
 			cout << "[SemanticAnalyseRecord] pointer of _Variant is null" << endl;
-			return;
+			return records;
 		}
 		pair<string, int> aVID = recordList[i]->variantId;
 		if (lib.count(aVID.first)) //判断id是否为库函数
@@ -276,14 +276,19 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 		{
 			int IDloc = mainSymbolTable->idToLoc[aVID.first].top();
 			addDuplicateDefinitionErrorInformation(aVID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, aVID.second);
-			return;
+			return records;
 		}
 		if (recordList[i]->type->type.first == "record")
 		{
-			SemanticAnalyseRecord(recordList[i]->type->recordList, aVID, 0);
+			tmpRecord->setRecords(aVID.first+"_", aVID.second, SemanticAnalyseRecord(recordList[i]->type->recordList, aVID, 2));
+			tmpRecord->setVar(aVID.first, aVID.second, aVID.first+"_");
 		}
 		else if (recordList[i]->type->flag)
-			tmpRecord->setArray(aVID.first, aVID.second, recordList[i]->type->type.first, recordList[i]->type->arrayRangeList.size(), recordList[i]->type->arrayRangeList);
+		{
+			tmpRecord->setArray(aVID.first+"_", aVID.second, recordList[i]->type->type.first, recordList[i]->type->arrayRangeList.size(), recordList[i]->type->arrayRangeList);
+			records.push_back(tmpRecord);
+			tmpRecord->setVar(aVID.first, aVID.second, aVID.first+"_");
+		}
 		else
 			tmpRecord->setVar(aVID.first, aVID.second, recordList[i]->type->type.first);
 
@@ -291,7 +296,7 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 		ids[aVID.first] = aVID.second;
 	}
 
-	if(is_type == 0) //var中 定义+声明record类型变量
+	if (type == 0) //表示此时不是type中定义新类型，而是声明语句
 	{
 		mainSymbolTable->addRecords(VID.first + "_", VID.second, records); //id名后加_下划线表示record类型名
 		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");		
@@ -300,6 +305,15 @@ void SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID,
 		mainSymbolTable->addRecords(VID.first, VID.second, records);
 		//mainSymbolTable->custom[VID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
+	else if(type == 2) //表示此时是嵌套record
+	{
+		return records;
+	}
+	else if(type == 1)
+	{
+		mainSymbolTable->addRecords(VID.first, VID.second, records);
+	}
+	return records;
 
 	//使用_Variant的codeGen?
 }
@@ -329,7 +343,10 @@ void SemanticAnalyseVariant(_Variant *variant)
 		SemanticAnalyseRecord(variant->type->recordList,VID, 0);
 	}
 	else if (variant->type->flag)	//数组
-		mainSymbolTable->addArray(VID.first, VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+	{
+		mainSymbolTable->addArray(VID.first+"_", VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+		mainSymbolTable->addVar(VID.first, VID.second,VID.first+"_");
+	}
 	else
 		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
 
@@ -566,7 +583,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 		}
 
 		//codeGen
-		assignStatement->codeGen();
+		assignStatement->codeGen(leftType, rightType);
 	}
 	else if (statement->type == "procedure") //过程调用
 	{
@@ -940,7 +957,6 @@ string SemanticAnalyseExpression(_Expression *expression)
 
 //对变量引用进行语义分析
 //可能是传值参数、引用参数、普通变量、数组元素、结构体.属性、函数名
-//函数名不能作为左值
 string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 {
 	if (variantReference == NULL)
@@ -963,7 +979,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	{
 		//cout<<"record->flag:"<<record->flag<<endl;
 
-		//函数名：只有当前函数可以作为左值，必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
+		//函数名：只有当前函数可以作为左值，其他情况必须作为右值，且形参个数必须为0 ||注意：被识别为variantReference的函数调用一定不含实参，所以需要检查形参个数
 		if (record->flag == "function")
 		{
 			variantReference->kind = "function";
