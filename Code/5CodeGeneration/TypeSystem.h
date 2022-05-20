@@ -14,7 +14,8 @@ using namespace std;
 
 using NameType = pair<string, string>;  //record成员，pair<id,type>
 
-extern vector<string> semanticErrorInformation;   //存储错误信息的列表
+//extern vector<string> semanticErrorInformation;   //存储错误信息的列表
+extern llvm::Value* LogErrorV(string str);
 
 class TypeSystem{
 private:
