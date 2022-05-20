@@ -48,6 +48,7 @@ void _SymbolTable::addArray(string id, int lineNumber, string type, int amount, 
 	tmpRecord->setArray(id, lineNumber, type, amount, arrayRangeList);
 	this->recordList.push_back(tmpRecord);
 	this->idToLoc[id].push(int(recordList.size() - 1));
+	this->custom[id].push(int(recordList.size()-1));	//将array类型记录到自定义类型表custom中
 }
 
 void _SymbolTable::addProcedure(string id, int lineNumber, int amount, vector<_FormalParameter *> paras)
@@ -94,7 +95,7 @@ void _SymbolTable::addRecords(string id, int lineNumber, vector<_SymbolRecord *>
 	tmpRecord->setRecords(id, lineNumber, records);
 	this->recordList.push_back(tmpRecord);
 	this->idToLoc[id].push(int(recordList.size() - 1));
-	this->custom[id].push(int(recordList.size()-1));
+	this->custom[id].push(int(recordList.size()-1));	//将record类型记录到自定义类型表custom中
 }
 
 void _SymbolTable::addProgram(string id, int lineNumber, int amount, string returnType)
