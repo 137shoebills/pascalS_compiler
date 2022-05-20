@@ -110,7 +110,11 @@ public:
     _Type();
     _Type(pair<string, int> _type, int _flag, vector<pair<int, int> > _arrayRangeList);
     ~_Type() {}
-    llvm::Value* codeGen();
+
+    //创建数组的LLVM类型
+    llvm::Type* _Type::InitArrayType(string arrTypeName, string type);  //arrTypeName:自定义类型名，type:数组元素类型
+    //创建record的LLVM类型
+    llvm::Type* _Type::InitRecordType(string recTypeName);  //recTypeName:自定义类型名
 };
 
 class _FunctionDefinition
@@ -176,9 +180,9 @@ public:
 public:
     _AssignStatement();
     ~_AssignStatement();
-    llvm::Value* codeGen();
-    void _AssignStatement::codeGenArrayAssign(string arrayName, llvm::Value* lValue, llvm::Value* rValue);   //数组元素赋值
-    void _AssignStatement::codeGenRecordAssign(string recName, string memberId, llvm::Value* lValue, llvm::Value* rValue);  //record成员赋值
+    llvm::Value* codeGen(string leftType, string rightType);
+    void _AssignStatement::codeGenArrayAssign(_SymbolRecord* leftVar, llvm::Value* rValue);   //数组元素赋值
+    void _AssignStatement::codeGenRecordAssign(_SymbolRecord* leftVar, string memberId, llvm::Value* rValue);   //record成员赋值
 };
 
 class _ProcedureCall : public _Statement
@@ -248,8 +252,8 @@ public:
     pair<string, int> variantId; //变量或常量标识符和行号
     //如果这个变量是结构体或数组：
     vector<_Idvpart *> IdvpartList; //结构体.属性或数组元素
-                                    //        int flag;
-                                    //        string str;
+    //IdvpartList:考虑多层访问  a.b.c; a[b].c
+
 public:
     _VariantReference();
     ~_VariantReference();
