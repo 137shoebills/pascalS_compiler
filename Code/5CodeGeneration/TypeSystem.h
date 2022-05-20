@@ -45,7 +45,7 @@ public:
     long getRecordMemberIndex(string recName, string memName);
 
     //新增数组变量对应的LLVM类型
-    void addArrayType(string name, llvm::ArrayType* type);
+    void addArrayType(string typeName, llvm::ArrayType* type);
 
     //获取变量对应的LLVM Type(普通变量，数组元素，record成员，函数标识符)
     llvm::Type* getVarllType(_VariantReference* varRef);
