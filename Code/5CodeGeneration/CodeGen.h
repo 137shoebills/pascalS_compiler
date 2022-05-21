@@ -66,7 +66,7 @@ llvm::Value* LogErrorV(string str)
 }
 
 //获取数组元素的指针
-llvm::Value* getArrayItemPtr(_SymbolRecord* array, vector<pair<int, int>> indices);
+llvm::Value* getArrayItemPtr(_SymbolRecord* array, vector<_Expression*> indices);
 
 //获取record成员的指针
 llvm::Value* getRecordItemPtr(_SymbolRecord* record, string memberId);
