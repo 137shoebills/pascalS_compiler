@@ -529,10 +529,11 @@ llvm::Value* _Idvpart::codeGen(_SymbolRecord* variant){
 
     if(variant->flag == "array"){        //如果是数组元素
         //获取数组元素指针
-        vector<pair<int, int>> indices = this->variantReference->IdvpartList[0]->expressionList;
+        vector<_Expression*> indices = this->expressionList;
         llvm::Value* ptr = getArrayItemPtr(variant, indices);
         //LOAD
-        return context.builder.CreateLoad(ptr);
+        if(ptr) //如果是多维数组，会返回空指针
+            return context.builder.CreateLoad(ptr);
     }
 
     else if(variant->flag == "normal variant"){   //如果是record成员
@@ -548,10 +549,11 @@ void _AssignStatement::codeGenArrayAssign(_SymbolRecord* leftVar, llvm::Value* r
 {
     cout << "codeGenArrayAssign" << endl;
     //获取数组元素指针
-    vector<pair<int, int>> indices = this->variantReference->IdvpartList[0]->expressionList;
+    vector<_Expression*> indices = this->variantReference->IdvpartList[0]->expressionList;
     llvm::Value* ptr = getArrayItemPtr(leftVar, indices);
     //赋值
-    context.builder.CreateStore(rValue, ptr);
+    if(ptr) //如果是多维数组，会返回空指针
+        context.builder.CreateStore(rValue, ptr);
 }
 
 //record成员赋值
@@ -606,7 +608,7 @@ llvm::Type* _Type::InitRecordType(string recTypeName)
 }
 
 //获取数组元素的指针
-llvm::Value* getArrayItemPtr(_SymbolRecord* array, vector<pair<int, int>> indices)
+llvm::Value* getArrayItemPtr(_SymbolRecord* array, vector<_Expression*> indices)
 {
     //获取数组对应的LLVM Type
     string arrayTypeName = array->type;
@@ -616,7 +618,7 @@ llvm::Value* getArrayItemPtr(_SymbolRecord* array, vector<pair<int, int>> indice
         //报错：暂不支持多维数组
         return LogErrorV("[codeGenArrayAssign]   multidimensional array is not available now: " + array->id + ", line " + array->lineNumber);
     }
-    int loc = indices[0].intNum;  //数组元素下标
+    int loc = indices[0]->intNum;  //数组元素下标
     auto index_0 = llvm::ConstantInt::get(context.typeSystem.intTy, 0);      //基地址
     auto index_1 = llvm::ConstantInt::get(context.typeSystem.intTy, loc);    //偏移量
     auto ptr = context.builder.CreateGEP(arrayType, array->llValue, {index_0, index_1});
