@@ -36,8 +36,8 @@ public:
 	vector<_SymbolRecord *> records;		//记录records中各个记录
 	vector<_FormalParameter*> paras;	//function的形参列表 
 
-	llvm::Value* llValue;		//LLVM类型值
-	llvm::Value* funcRetValue; 	//函数返回值
+	llvm::Value* llValue = nullptr;		//LLVM类型值
+	llvm::Value* funcRetValue = nullptr; 	//函数返回值
 
 	void setPara(string id, int lineNumber, string type);	//设置传值参数
 	void setVarPara(string id, int lineNumber, string type);//设置传引用参数
