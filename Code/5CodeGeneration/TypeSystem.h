@@ -27,7 +27,8 @@ private:
 
 public:
     llvm::Type* intTy = llvm::Type::getInt32Ty(llvmContext);
-    llvm::Type* realTy = llvm::Type::getDoubleTy(llvmContext);
+    //llvm::Type* realTy = llvm::Type::getDoubleTy(llvmContext);
+    llvm::Type* realTy = llvm::Type::getFloatTy(llvmContext);
     llvm::Type* charTy = llvm::Type::getInt8Ty(llvmContext);
     llvm::Type* boolTy = llvm::Type::getInt1Ty(llvmContext);
     llvm::Type* voidTy = llvm::Type::getVoidTy(llvmContext);
@@ -47,9 +48,6 @@ public:
 
     //新增数组变量对应的LLVM类型
     void addArrayType(string typeName, llvm::ArrayType* type);
-
-    //获取变量对应的LLVM Type(普通变量，数组元素，record成员，函数标识符)
-    llvm::Type* getVarllType(_VariantReference* varRef);
 }
 
 #endif
