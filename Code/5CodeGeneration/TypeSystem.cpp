@@ -17,7 +17,7 @@ llvm::Type* TypeSystem::getllType(string type){
     if(type == "int64")
         return this->int64Ty;
 
-    //数组类型(这里type是数组变量的名称)
+    //数组类型(这里type是数组的类型名)
     if (this->arrayTypes.find(type) != this->arrayTypes.end())
         return this->arrayTypes[type];
     // record类型
@@ -46,7 +46,7 @@ void TypeSystem::addRecordMember(string recName, string memName, string memType)
 }
 
 
-//获取record中成员所在的位置下标
+//获取record中成员所在的位置
 long TypeSystem::getRecordMemberIndex(string recName, string memName){
     auto& members = recordMembers[recName];
     for(auto it=members.begin(); it!=members.end(); it++)
@@ -55,8 +55,8 @@ long TypeSystem::getRecordMemberIndex(string recName, string memName){
             return distance(members.begin(), it);
     }
     //报错：未知的record成员
-    semanticErrorInformation.push_back("Error: Undefined record member: " + recName + "." + memName);
-    return 0;
+    LogErrorV("[getRecordMemberIndex]   Unknown record member: " + recName + "." + memName);
+    return -1;
 }
 
 //新增数组变量对应的LLVM类型
