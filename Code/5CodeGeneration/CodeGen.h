@@ -28,8 +28,8 @@ using namespace std;
 using legacy::PassManager;
 
 extern _SymbolTable *mainSymbolTable;
-extern vector<string> semanticErrorInformation;   //存储错误信息的列表
-extern vector<string> semanticWarningInformation; //存储警告信息的列表
+//extern vector<string> semanticErrorInformation;   //存储错误信息的列表
+//extern vector<string> semanticWarningInformation; //存储警告信息的列表
 
 CodeGenContext context;
 
