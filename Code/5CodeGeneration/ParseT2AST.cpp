@@ -526,13 +526,15 @@ _Type* getType(Token *now){
     int loc=int(now->children.size()-1);
     if(loc==0&&now->children[0]->type!="standard_type"){ //type->IDENTIFIER
         _type->flag=0;
-        _type->type= _type->type = make_pair(now->children[0]->value, now->children[0]->lineNo);
+        _type->type = make_pair(now->children[0]->value, now->children[0]->lineNo);
         return _type;
     }
 	if(loc != 2)
         _type->type=make_pair(now->children[loc]->children[0]->value,now->children[loc]->children[0]->lineNo);
     if(loc==5){
         _type->flag=1;
+        _Type* Type=(_Type*)(getType(now->children[5]));
+        _type->type = make_pair(Type->type.first, now->children[0]->lineNo);
         getArrayRangeList(now->children[2],_type->arrayRangeList);
     }
     else
@@ -709,11 +711,9 @@ _Statement* getStatement(Token *now){
         _assignStatement->variantReference->variantId = make_pair(now->children[0]->value, now->children[0]->lineNo);
         getidVpartList(now->children[1],_assignStatement->variantReference->IdvpartList);
         _assignStatement->expression=getExpression(now->children[3]);
-        if(_assignStatement->expression->type=="function"){
+		if(_assignStatement->expression->type=="function"){
 			_assignStatement->expression->variantReference = new _VariantReference;
-			_assignStatement->expression->variantReference->locFlag=1;
-        }
-
+			_assignStatement->expression->variantReference->locFlag=1;}
         return _assignStatement;
     }
     else if(now->children[0]->type=="procedure_call")
