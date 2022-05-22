@@ -606,6 +606,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 				assignStatement->statementType = "error";
 			}
 			assignStatement->isReturnStatement = true;
+			assignStatement->codeGen(leftType, rightType);
 			return;
 		}
 		//左值和右值类型不同时
