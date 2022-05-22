@@ -477,6 +477,16 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 	// 	semanticWarningInformation.push_back("[Duplicate defined warning!] <Line " + itos(PID.second) + ">" + "\"" + PID.first + "\"" + " has already been defined as a " + mainSymbolTable->recordList[IDloc]->flag + " at line " + itos(mainSymbolTable->recordList[IDloc]->lineNumber) + ".");
 	// 	return;
 	// }
+	else if(mainSymbolTable->idToLoc[PID.first].size() > 0) //此处默认所有函数、过程不得同名
+	{
+		int loc = mainSymbolTable->idToLoc[PID.first].top();
+		string Tname = mainSymbolTable->recordList[loc]->flag;
+		if (Tname == "program" || Tname == "procedure" || Tname == "function")
+		{
+			semanticWarningInformation.push_back("[Invalid formal parameter name!] <Line " + itos(PID.second) + ">" + "The formal parameter \"" + PID.first + "\"" + " has the same name as the " + Tname  + " \"" + mainSymbolTable->recordList[loc]->id + "\" at line " + itos(mainSymbolTable->recordList[loc]->lineNumber) + ".");
+			return;
+		}
+	}
 	if (formalParameter->flag == 0) //传值调用
 	{
 		mainSymbolTable->addPara(PID.first, PID.second, formalParameter->type);
