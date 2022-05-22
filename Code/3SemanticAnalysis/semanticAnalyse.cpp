@@ -180,11 +180,20 @@ void SemanticAnalyseConst(_Constant *constant)
 	{
 		addDuplicateDefinitionErrorInformation(CID.first, -1, "", "", CID.second);
 	}
-	else if (mainSymbolTable->idToLoc.count(CID.first)) //判断id是否已经使用过
+	// else if (mainSymbolTable->idToLoc.count(CID.first)) //判断id是否已经使用过
+	// {
+	// 	int IDloc = mainSymbolTable->idToLoc[CID.first].top();
+	// 	addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, CID.second);
+	// 	return;
+	// }
+	else if (mainSymbolTable->idToLoc[CID.first].size() > 0) //如果此常量已经出现过
 	{
-		int IDloc = mainSymbolTable->idToLoc[CID.first].top();
-		addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, CID.second);
-		return;
+		int loc = mainSymbolTable->idToLoc[CID.first].top(); //获取最近一次出现的位置
+		if (mainSymbolTable->indexTable.back() < loc)		 //如果和当前变量在同一个作用域
+		{
+			addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, CID.second);
+			return;
+		}
 	}
 	if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
 	{
@@ -235,11 +244,20 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 	{
 		addDuplicateDefinitionErrorInformation(TID.first, -1, "", "", TID.second);
 	}
-	else if (mainSymbolTable->idToLoc.count(TID.first)) //判断id是否已经使用过
+	// else if (mainSymbolTable->idToLoc.count(TID.first)) //判断id是否已经使用过
+	// {
+	// 	int IDloc = mainSymbolTable->idToLoc[TID.first].top();
+	// 	addDuplicateDefinitionErrorInformation(TID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, TID.second);
+	// 	return;
+	// }
+	else if (mainSymbolTable->idToLoc[TID.first].size() > 0) //如果此常量已经出现过
 	{
-		int IDloc = mainSymbolTable->idToLoc[TID.first].top();
-		addDuplicateDefinitionErrorInformation(TID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, TID.second);
-		return;
+		int loc = mainSymbolTable->idToLoc[TID.first].top(); //获取最近一次出现的位置
+		if (mainSymbolTable->indexTable.back() < loc)		 //如果和当前变量在同一个作用域
+		{
+			addDuplicateDefinitionErrorInformation(TID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, TID.second);
+			return;
+		}
 	}
 
 	if (typedefi->type->type.first == "record") //如果此时是record
@@ -275,12 +293,21 @@ vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pai
 		{
 			addDuplicateDefinitionErrorInformation(aVID.first, -1, "", "", aVID.second);
 		}
-		else if (mainSymbolTable->idToLoc.count(aVID.first)) //判断id是否已经使用过
+		// else if (mainSymbolTable->idToLoc.count(aVID.first)) //判断id是否已经使用过
+		// {
+		// 	int IDloc = mainSymbolTable->idToLoc[aVID.first].top();
+		// 	addDuplicateDefinitionErrorInformation(aVID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, aVID.second);
+		// 	return records;
+		// }
+		else if (mainSymbolTable->idToLoc[aVID.first].size() > 0) //如果此常量已经出现过
 		{
-			int IDloc = mainSymbolTable->idToLoc[aVID.first].top();
-			addDuplicateDefinitionErrorInformation(aVID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, aVID.second);
-			return records;
+			int loc = mainSymbolTable->idToLoc[aVID.first].top(); //获取最近一次出现的位置
+			if (mainSymbolTable->indexTable.back() < loc)		 //如果和当前变量在同一个作用域
+			{
+				addDuplicateDefinitionErrorInformation(aVID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, aVID.second);
+			}
 		}
+
 		if (recordList[i]->type->type.first == "record")
 		{
 			tmpRecord->setRecords(aVID.first+"_", aVID.second, SemanticAnalyseRecord(recordList[i]->type->recordList, aVID, 2));
@@ -326,15 +353,24 @@ void SemanticAnalyseVariant(_Variant *variant)
 	}
 	std::pair<string, int> VID = variant->variantId;
 
-	if (lib.count(VID.first)) //判断id是否为库函数
+	if (lib.count(VID.first)) //判断变量id是否与库函数同名
 	{
 		addDuplicateDefinitionErrorInformation(VID.first, -1, "", "", VID.second);
 	}
-	else if (mainSymbolTable->idToLoc.count(VID.first)) //判断id是否已经使用过
+	// else if (mainSymbolTable->idToLoc.count(VID.first)) //判断id是否已经使用过
+	// {
+	// 	int IDloc = mainSymbolTable->idToLoc[VID.first].top();
+	// 	addDuplicateDefinitionErrorInformation(VID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, VID.second);
+	// 	return;
+	// }
+	else if(mainSymbolTable->idToLoc[VID.first].size() > 0) //如果此变量已经出现过
 	{
-		int IDloc = mainSymbolTable->idToLoc[VID.first].top();
-		addDuplicateDefinitionErrorInformation(VID.first, mainSymbolTable->recordList[IDloc]->lineNumber, mainSymbolTable->recordList[IDloc]->flag, mainSymbolTable->recordList[IDloc]->type, VID.second);
-		return;
+		int loc = mainSymbolTable->idToLoc[VID.first].top(); //获取最近一次出现的位置
+		if (mainSymbolTable->indexTable.back() < loc)	//如果和当前变量在同一个作用域
+		{
+			addDuplicateDefinitionErrorInformation(VID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, VID.second);
+			return;
+		}
 	}
 
 	if (variant->type->type.first == "record")
@@ -433,13 +469,14 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 	if (lib.count(PID.first)) //判断id是否为库函数
 	{
 		addDuplicateDefinitionErrorInformation(PID.first, -1, "", "", PID.second);
-	}
-	else if (mainSymbolTable->idToLoc.count(PID.first)) //判断id是否已经使用过
-	{
-		int IDloc = mainSymbolTable->idToLoc[PID.first].top();
-		semanticWarningInformation.push_back("[Duplicate defined warning!] <Line " + itos(PID.second) + ">" + "\"" + PID.first + "\"" + " has already been defined as a " + mainSymbolTable->recordList[IDloc]->flag + " at line " + itos(mainSymbolTable->recordList[IDloc]->lineNumber) + ".");
 		return;
 	}
+	// else if (mainSymbolTable->idToLoc.count(PID.first)) //判断id是否已经使用过
+	// {
+	// 	int IDloc = mainSymbolTable->idToLoc[PID.first].top();
+	// 	semanticWarningInformation.push_back("[Duplicate defined warning!] <Line " + itos(PID.second) + ">" + "\"" + PID.first + "\"" + " has already been defined as a " + mainSymbolTable->recordList[IDloc]->flag + " at line " + itos(mainSymbolTable->recordList[IDloc]->lineNumber) + ".");
+	// 	return;
+	// }
 	if (formalParameter->flag == 0) //传值调用
 	{
 		mainSymbolTable->addPara(PID.first, PID.second, formalParameter->type);
@@ -1159,7 +1196,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 //符号表重定位
 void relocation()
 {
-	cout << "\nBefore Poping:\n";
+	// cout << "\nBefore Poping:\n";
 	// mainSymbolTable->putTable();
 	int top = mainSymbolTable->indexTable.back(); //此时最近的block索引位置
 	int sizeTable = mainSymbolTable->recordList.size();
