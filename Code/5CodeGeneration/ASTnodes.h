@@ -83,19 +83,7 @@ public:
     _TypeDef();
     _TypeDef(pair<string, int> _typeDefId, _Type *_type);
     ~_TypeDef();
-    llvm::Value* codeGen();
-};
-
-class _Variant //变量定义
-{
-public:
-    pair<string, int> variantId; //变量标识符ID及行号
-    _Type *type;                 //变量类型
-public:
-    _Variant();
-    _Variant(pair<string, int> _variantId, _Type *_type);
-    ~_Variant();
-    llvm::Value* codeGen();
+    void codeGen();
 };
 
 class _Type //类型
@@ -115,6 +103,18 @@ public:
     llvm::Type* _Type::InitArrayType(string arrTypeName, string type);  //arrTypeName:自定义类型名，type:数组元素类型
     //创建record的LLVM类型
     llvm::Type* _Type::InitRecordType(string recTypeName);  //recTypeName:自定义类型名
+};
+
+class _Variant //变量定义
+{
+public:
+    pair<string, int> variantId; //变量标识符ID及行号
+    _Type *type;                 //变量类型
+public:
+    _Variant();
+    _Variant(pair<string, int> _variantId, _Type *_type);
+    ~_Variant();
+    llvm::Value* codeGen();
 };
 
 class _FunctionDefinition
@@ -194,7 +194,7 @@ public:
 public:
     _ProcedureCall();
     ~_ProcedureCall();
-    llvm::Value* codeGen();
+    void codeGen();
 };
 
 class _FunctionCall
@@ -274,7 +274,7 @@ public:
 public:
     _Idvpart();
     ~_Idvpart();
-    llvm::Value* codeGen();
+    llvm::Value* codeGen(_SymbolRecord* variant);
 };
 
 class _IfStatement : public _Statement
