@@ -15,6 +15,8 @@
 
 using namespace std;
 
+int layer=0; //标记程序的嵌套层数
+
 set<string> lib; //存放库函数名
 extern _SymbolTable *mainSymbolTable;
 extern _SymbolTable *currentSymbolTable;
@@ -356,6 +358,7 @@ void SemanticAnalyseVariant(_Variant *variant)
 //对子程序定义进行语义分析
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition)
 {
+	layer++; //层数++
 	if (functionDefinition == NULL)
 	{
 		cout << "[SemanticAnalyseSubprogramDefinition] pointer of _FunctionDefinition is null" << endl;
@@ -396,6 +399,17 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	//对变量定义进行语义分析
 	for (int i = 0; i < functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
+
+	if(layer <= 3)
+	{
+		for(int i=0;i<functionDefinition->subprogramDefinitionList.size();i++)
+			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);		
+	}
+	else
+	{
+		addGeneralErrorInformation("too much layers in" + functionDefinition->functionID.first + itos(functionDefinition->functionID.second));
+	}
+
 	//对compound进行语义分析(在这一步获取函数返回值的llValue)
 	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound));
 
@@ -403,6 +417,8 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	// llvm::Value* value = functionDefinition->codeGen(funcRec);
 	//❓需要区分：函数返回值的LLVM Value 和 函数本身的LLVM Value，上面的codeGen得到的是后者
 	//如果不会用到函数本身的LLVM Value，则函数的codeGen可以不设返回值
+
+	layer--; //层数--
 }
 
 //对形式参数进行语义分析，形式参数一定是基本类型
