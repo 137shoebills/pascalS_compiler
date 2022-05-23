@@ -766,7 +766,50 @@ _Statement* getStatement(Token *now){
         return NULL;
     }
 }
+//构建for循环增量
+void getforStatementOperation(_ForStatement* &_forStatement){
+    //构建for循环条件condition
+    _forStatement->condition->operationType="relop";
+     _forStatement->condition->type="compound";
+     if(now->children[4]->children[0]->value=="downto"){
+       _forStatement->condition->operation=">=";
+     }
+     else{
+       _forStatement->condition->operation="<=";
+     }
+      _forStatement->condition->operand1->type="var";
+     _forStatement->condition->operand1->variantReference = new _VariantReference;
+     _forStatement->condition->operand1->variantReference->variantId = _forStatement->id;
+    _forStatement->condition->lineNo = _forStatement->lineNo;
+      _forStatement->condition->operand2 = _forStatement->end;
 
+      //构建for循环初始化initial
+      _forStatement->initial->lineNo =  _forStatement->lineNo;
+      _forStatement->initial->type="assign";
+      _forStatement->initial->variantReference = new _VariantReference;
+      _forStatement->initial->variantReference->variantId = _forStatement->id;
+      _forStatement->expression = start;
+
+    _forStatement->increment->lineNo = _forStatement->lineNo;
+    _forStatement->increment->type="assign";
+    _forStatement->increment->variantReference = new _VariantReference;
+    _forStatement->increment->variantReference->variantId = _forStatement->id;
+    _forStatement->increment->expression = new _Expression;
+    _forStatement->increment->expression->type="compound";
+    _forStatement->increment->expression->operationType="addop";
+    _forStatement->increment->expression->lineNo =  _forStatement->lineNo;
+    //判断循环量递增还是递减
+    if(_forStatement->condition->operation==">=")
+        _forStatement->increment->expression->operation = "-";
+    else
+        _forStatement->increment->expression->operation = "+";
+    _forStatement->increment->expression->operand1 =   _forStatement->condition->operand1;
+    _forStatement->increment->expression->operand2 = new _Expression;
+    _forStatement->increment->expression->operand2->type="integer";
+    _forStatement->increment->expression->operand2->strOfNum = "1";
+    _forStatement->increment->expression->operand2->intNum=1;
+    _forStatement->increment->expression->operand2->lineNo=_forStatement->lineNo;
+}
 //获取结构体.属性或数组维度上下限
 void getidVpartList(Token *now,vector<_Idvpart*> &idvpartlist){
     if(now->type!="variable"){
