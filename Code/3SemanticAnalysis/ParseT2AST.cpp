@@ -1,3 +1,5 @@
+
+   
 /*
 普通语法分析树到抽象语法树的转换
 */
@@ -228,7 +230,7 @@ void dfssubprogramDefinitionList(vector<_FunctionDefinition*> subprogramDefiniti
         cout<<"type: ";
         cout<<subprogramDefinitionList[i]->type.first<<" "<<subprogramDefinitionList[i]->type.second<<endl;
         if(subprogramDefinitionList[i]->constList.size()){
-            cout<<"SubP Constlist:"<<endl;
+             cout<<"SubP Constlist:"<<endl;
             dfsconstlist(subprogramDefinitionList[i]->constList);}
         if(subprogramDefinitionList[i]->typedefList.size()){
             cout<<"SubP Typedeflist:"<<endl;
@@ -319,13 +321,13 @@ void dfssubP(_SubProgram* subProgram){
     }
 }
 void dfsAST(_Program* ASTRoot){
-    cout<<"~~_Program->programId:"<<ASTRoot->programId.first<<" "<<ASTRoot->programId.second<<endl;
-    cout<<"~~_Program->paraList: ";
-    for(int i = 0;i < ASTRoot->paraList.size();i++)
-        cout<<ASTRoot->paraList[i].first<<" "<<ASTRoot->paraList[i].second<<" ";
-    cout<<endl;
-    cout<<"~~_Program->subProgram: ";
-    dfssubP(ASTRoot->subProgram);
+    // cout<<"~~_Program->programId:"<<ASTRoot->programId.first<<" "<<ASTRoot->programId.second<<endl;
+    // cout<<"~~_Program->paraList: ";
+    // for(int i = 0;i < ASTRoot->paraList.size();i++)
+    //     cout<<ASTRoot->paraList[i].first<<" "<<ASTRoot->paraList[i].second<<" ";
+    // cout<<endl;
+    // cout<<"~~_Program->subProgram: ";
+    // dfssubP(ASTRoot->subProgram);
 }
 int str2int(string str){
     int res=0;
@@ -849,7 +851,7 @@ _Expression* getSimpleExpression(Token *now){
     }
     _Expression* _expression=NULL;
     if(now->children.size()==3){
-        _expression = new _Expression;
+        _expression = new _Expression();
         _expression->type="compound";
         _expression->operation=now->children[1]->value;
         _expression->operationType="addop";
@@ -858,10 +860,12 @@ _Expression* getSimpleExpression(Token *now){
 		_expression->lineNo = _expression->operand1->lineNo;
     }
     else if(now->children.size()==2){
-         _expression=getTerm(now->children[1]);
-          _expression->isMinusShow=0;
+          _expression = new _Expression();
+          _expression->operand1=getTerm(now->children[1]);
+          _expression->type="compound";
+          _expression->isMinusShow=0;          
 		  _expression->operation="minus";
-		  _expression->operationType="single";
+		  _expression->operationType="single";        
          if(now->children[0]->type=="MINUS")
             _expression->isMinusShow=1;
     }
@@ -963,4 +967,3 @@ _Statement* getElseStatement(Token *now){
         return NULL;
     return getStatement(now->children[1]);
 }
-
