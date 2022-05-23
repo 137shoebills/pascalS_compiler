@@ -120,7 +120,21 @@ _IfStatement::~_IfStatement(){
     DEL(then)
     DEL(els)
 }
-
+_CaseStatement::_CaseStatement(){
+    branch.clear();
+    
+}
+_CaseStatement::~_CaseStatement(){
+    for(int i = 0;i < branch.size();i++)
+        DEL(branch[i])
+}
+_Branch::_Branch(){
+    condition.clear();
+}
+_Branch::~_Branch(){
+    for(int i = 0;i < condition.size();i++)
+        DEL(condition[i])
+        }
 _AssignStatement::_AssignStatement(){
     isReturnStatement = false;
     variantReference=NULL;

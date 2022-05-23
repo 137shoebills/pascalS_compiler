@@ -46,6 +46,11 @@ _Expression* getExpression(Token *now);
 _Expression* getSimpleExpression(Token *now);
 _Expression* getTerm(Token *now);
 _Expression* getFactor(Token *now);
+void getCaseBody(Token *now,_CaseStatement* &_caseStatement);
+void getBranchlist(Token *now,_CaseStatement* &_caseStatement);
+void getBranch(Token *now,_CaseStatement* &_caseStatement);
+void getConstlist(Token *now,vector<_Constant *> &constlist);
+void const2exp(_Constant * constant,_Expression *& exp);
 void dfsAST(_Program* ASTRoot);
 void dfssubP(_SubProgram* subProgram);
 void dfsconstlist(vector<_Constant*> constList);
@@ -732,6 +737,14 @@ _Statement* getStatement(Token *now){
         _ifStatement->els=getElseStatement(now->children[4]);
         return _ifStatement;
     }
+    else if(now->children[0]->type=="CASE"){
+           _CaseStatement* _caseStatement = new _CaseStatement;
+           _caseStatement->type = "case";
+           _caseStatement->lineNo = now->children[0]->lineNo;
+           _caseStatement->caseid = getExpression(now->children[1]);
+           getCaseBody(now->children[3],_caseStatement);
+           return _caseStatement;
+       }
     else if(now->children[0]->type=="FOR"){
         _ForStatement* _forStatement = new _ForStatement;
         _forStatement->lineNo = now->children[0]->lineNo;
@@ -766,6 +779,69 @@ _Statement* getStatement(Token *now){
     else{
         cout << "[getStatement] statement token error" << endl;
         return NULL;
+    }
+}
+void getCaseBody(Token *now,_CaseStatement* &_caseStatement){
+    if(now->type!="case_body"){
+        cout << "getCaseBody error" << endl;
+        return;
+    }
+    if(now->children.size() > 0){
+        getBranchlist(now,_caseStatement);
+    }
+}
+void getBranchlist(Token *now,_CaseStatement* &_caseStatement){
+    if(now->type!="branch_list"){
+        cout << "getBranchlist error" << endl;
+        return;
+    }
+    int loc = now->children.size()-1;
+    getBranch(now->children[loc],_caseStatement);
+    if(loc > 0){
+        getBranchlist(now->children[0],_caseStatement);
+    }
+    else{
+        reverse(_caseStatement->branch.begin(), _caseStatement->branch.end());
+    }
+}
+void getBranch(Token *now,_CaseStatement* &_caseStatement){
+    if(now->type!="branch"){
+        cout << "getBranch error" << endl;
+        return;
+    }
+    vector<_Constant *> constlist;
+    _Branch* branch = new _Branch;
+    getConstlist(now->children[0],constlist);
+    for(int i = 0;i < constlist.size();i++){
+        _Expression * condition = new _Expression;
+        //构建for循环条件condition
+        condition->operationType="relop";
+        condition->type="compound";
+        condition->operation="=";
+        condition->operand1 = new _Expression;
+        condition->operand1=_caseStatement->caseid;
+        condition->operand2 = new _Expression;
+        const2exp(constlist[i], condition->operand2);
+        branch->condition.push_back(condition);
+    }
+    branch->_do = getStatement(now->children[2]);
+    _caseStatement->branch.push_back(branch);
+    
+}
+void getConstlist(Token *now,vector<_Constant *> &constlist){
+    if(now->type!="const_list"){
+        cout << "getConstlist error" << endl;
+        return;
+    }
+    int loc = now->children.size() - 1;
+    _Constant * _constant = new _Constant;
+    setConst(now->children[loc], _constant);
+    constlist.push_back(_constant);
+    if(loc > 0){
+        getConstlist(now, constlist);
+    }
+    else{
+        reverse(constlist.begin(), constlist.end());
     }
 }
 //构建for循环增量
@@ -1015,4 +1091,64 @@ _Statement* getElseStatement(Token *now){
     if(now->children.size()==0)
         return NULL;
     return getStatement(now->children[1]);
+}
+
+void const2exp(_Constant * constant,_Expression *& _expression){
+    if(constant->isMinusShow == 1){
+        _expression->type="compound";
+        _expression->isMinusShow=1;
+        _expression->operation="minus";
+        _expression->operationType="single";
+        _expression->operand1 = new _Expression;
+        if(constant->type == "integer"){
+            _expression->operand1->type = "integer";
+            _expression->operand1->intNum = constant->intValue;
+        }
+        else if(constant->type == "real"){
+            _expression->operand1->type = "real";
+            _expression->operand1->realNum=constant->realValue;
+        }
+        else if(constant->type == "char"){
+            _expression->operand1->type = "char";
+            _expression->operand1->charVal = constant->charValue;
+        }
+        else if(constant->type == "bool"){
+            _expression->operand1->type = "boolean";
+            _expression->operand1->totalIntValue = constant->boolvalue;
+        }
+        else{
+            //id
+            _expression->operand1->type = "var";
+            _expression->operand1->variantReference = new _VariantReference;
+            _expression->operand1->variantReference->variantId =constant->constId;
+        }
+        _expression->operand1->strOfNum = constant->strOfVal;
+        
+    }
+    else{
+        if(constant->type == "integer"){
+            _expression->type = "integer";
+            _expression->intNum = constant->intValue;
+        }
+        else if(constant->type == "real"){
+            _expression->type = "real";
+            _expression->realNum=constant->realValue;
+        }
+        else if(constant->type == "char"){
+            _expression->type = "char";
+            _expression->charVal = constant->charValue;
+        }
+        else if(constant->type == "bool"){
+            _expression->type = "boolean";
+            _expression->totalIntValue = constant->boolvalue;
+        }
+        else{
+            //id
+            _expression->type = "var";
+            _expression->variantReference = new _VariantReference;
+            _expression->variantReference->variantId =constant->constId;
+        }
+        _expression->strOfNum = constant->strOfVal;
+    }
+    
 }
