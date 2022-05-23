@@ -786,9 +786,24 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 		SemanticAnalyseExpression(functionCall->actualParaList[i]);
 		string decType = mainSymbolTable->recordList[decID + i + 1]->type;
 		string expType = functionCall->actualParaList[i]->expressionType;
-		if (expType != decType && !(expType == "integer" && decType == "real"))
+		string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
+		if (flag == "var parameter")
 		{
-			addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			if (expType != decType)
+				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			if (!(functionCall->actualParaList[i]->type == "var" && (functionCall->actualParaList[i]->variantReference->kind == "var" || functionCall->actualParaList[i]->variantReference->kind == "array")))
+			{
+				//引用参数对应的实参只能是变量、参数或者数组元素 不能为常数、复杂表达式等
+				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(functionCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
+				continue;
+			}
+		}
+		else
+		{
+			if (expType != decType && !(expType == "integer" && decType == "real"))
+			{
+				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			}
 		}
 	}
 	return functionCall->returnType;
