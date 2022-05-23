@@ -371,18 +371,30 @@ void SemanticAnalyseVariant(_Variant *variant)
 			return;
 		}
 	}
-
-	if (variant->type->type.first == "record")
+	string type = variant->type->type.first;
+	cout<<"variant->variantId.first: "<<variant->variantId.first<<endl;
+	cout<<"type:"<<type<<endl;
+	if(type == "record") //判断是否为record
 	{
 		SemanticAnalyseRecord(variant->type->recordList, VID, 0);
 	}
-	else if (variant->type->flag)
+	else if (variant->type->flag) //判断是否为数组
 	{
-		mainSymbolTable->addArray(VID.first+"_", VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
-		mainSymbolTable->addVar(VID.first, VID.second,VID.first+"_");
+		mainSymbolTable->addArray(VID.first, VID.second, type, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
 	}
-	else
-		mainSymbolTable->addVar(VID.first, VID.second, variant->type->type.first);
+	 //非标准类型时进行类型检查
+	else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
+	{
+		_SymbolRecord *recordSource = findSymbolRecord(mainSymbolTable, type);	
+		if(recordSource==NULL){
+			addUndefinedErrorInformation(type,variant->variantId.second);
+		}
+		mainSymbolTable->addVar(VID.first, VID.second, type);
+	}
+	else //普通变量
+	{
+		mainSymbolTable->addVar(VID.first, VID.second, type);
+	}
 
 	//codeGen
 	llvm::Value* value = variant->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
@@ -472,6 +484,16 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 	// 	semanticWarningInformation.push_back("[Duplicate defined warning!] <Line " + itos(PID.second) + ">" + "\"" + PID.first + "\"" + " has already been defined as a " + mainSymbolTable->recordList[IDloc]->flag + " at line " + itos(mainSymbolTable->recordList[IDloc]->lineNumber) + ".");
 	// 	return;
 	// }
+	else if (mainSymbolTable->idToLoc[PID.first].size() > 0) //此处默认所有函数、过程不得同名
+	{
+		int loc = mainSymbolTable->idToLoc[PID.first].top();
+		string Tname = mainSymbolTable->recordList[loc]->flag;
+		if (Tname == "program" || Tname == "procedure" || Tname == "function")
+		{
+			semanticWarningInformation.push_back("[Invalid formal parameter name!] <Line " + itos(PID.second) + ">" + "The formal parameter \"" + PID.first + "\"" + " has the same name as the " + Tname + " \"" + mainSymbolTable->recordList[loc]->id + "\" at line " + itos(mainSymbolTable->recordList[loc]->lineNumber) + ".");
+			return;
+		}
+	}
 	if (formalParameter->flag == 0) //传值调用
 	{
 		mainSymbolTable->addPara(PID.first, PID.second, formalParameter->type);
@@ -765,6 +787,8 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	}
 
 	int ParaSize = functionCall->actualParaList.size();
+	if(ParaSize > decParaSize)
+		ParaSize = decParaSize;
 	for (int i = 0; i < ParaSize; ++i) //判断每个参数的类型
 	{
 		SemanticAnalyseExpression(functionCall->actualParaList[i]);
@@ -1059,12 +1083,14 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 		if (record->flag == "constant")
 			variantReference->kind = "constant";
 
-		//类型等价检查，将类型别名转为基本类型	
-		if(record->flag=="normal variant"){
+		//类型等价检查，将类型别名转为基本类型
+		if (record->flag == "normal variant")
+		{
 			//获取类型别名记录
 			_SymbolRecord *recordSource = findSymbolRecord(mainSymbolTable, record->type);
 			//若存在别名记录则进行替换
-			if(recordSource!=NULL){
+			if (recordSource != NULL)
+			{
 				return variantReference->variantType = recordSource->type;
 			}
 		}
@@ -1075,41 +1101,41 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	else if(record->flag =="array"){
 		variantReference->kind = "array";
 
-			//引用时的下标维数和符号表所存不一致
-			if (variantReference->IdvpartList.size() != record->amount)
-			{
-				addNumberErrorInformation(variantReference->variantId.first, variantReference->variantId.second, int(variantReference->IdvpartList.size()), record->amount, "array");
-				variantReference->variantType = "error";
-				return variantReference->variantType = "error";
-			}
+		//引用时的下标维数和符号表所存不一致
+		if (variantReference->IdvpartList.size() != record->amount)
+		{
+			addNumberErrorInformation(variantReference->variantId.first, variantReference->variantId.second, int(variantReference->IdvpartList.size()), record->amount, "array");
+			variantReference->variantType = "error";
+			return variantReference->variantType = "error";
+		}
 
-			variantReference->variantType = record->type;
-			
-			for (int i = 0; i < variantReference->IdvpartList.size(); i++)
-			{
+		variantReference->variantType = record->type;
 
-				for (int j = 0; j < variantReference->IdvpartList[i]->expressionList.size(); j++)
+		for (int i = 0; i < variantReference->IdvpartList.size(); i++)
+		{
+
+			for (int j = 0; j < variantReference->IdvpartList[i]->expressionList.size(); j++)
+			{
+				string type = SemanticAnalyseExpression(variantReference->IdvpartList[i]->expressionList[j]);
+				//检查每一维下标表达式的类型是否是整型
+				if (type != "integer")
 				{
-					string type = SemanticAnalyseExpression(variantReference->IdvpartList[i]->expressionList[j]);
-					//检查每一维下标表达式的类型是否是整型
-					if (type != "integer")
+					addExpressionTypeErrorInformation(variantReference->IdvpartList[i]->expressionList[j], type, "integer", itos(i + 1) + "th index of array \"" + variantReference->variantId.first + "\"");
+					variantReference->variantType = "error";
+					return variantReference->variantType = "error";
+				}
+				//检查越界
+				if (variantReference->IdvpartList[i]->expressionList[j]->totalIntValueValid)
+				{
+					if (!record->checkArrayXthIndexRange(i, variantReference->IdvpartList[i]->expressionList[j]->totalIntValue))
 					{
-						addExpressionTypeErrorInformation(variantReference->IdvpartList[i]->expressionList[j], type, "integer", itos(i + 1) + "th index of array \"" + variantReference->variantId.first + "\"");
-						variantReference->variantType = "error";
+						addArrayRangeOutOfBoundErrorInformation(variantReference->IdvpartList[i]->expressionList[j], variantReference->variantId.first, i, record->arrayRangeList[i]);
 						return variantReference->variantType = "error";
-					}
-					//检查越界
-					if (variantReference->IdvpartList[i]->expressionList[j]->totalIntValueValid)
-					{
-						if (!record->checkArrayXthIndexRange(i, variantReference->IdvpartList[i]->expressionList[j]->totalIntValue))
-						{
-							addArrayRangeOutOfBoundErrorInformation(variantReference->IdvpartList[i]->expressionList[j], variantReference->variantId.first, i, record->arrayRangeList[i]);
-							return variantReference->variantType = "error";
-						}
 					}
 				}
 			}
-			return record->type;
+		}
+		return record->type;
 	}
 
 	//结构体属性
@@ -1132,56 +1158,59 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	//结构体.属性、数组元素作类型检查与替换(即处理结构中含数组、数组中含结构体的嵌套)
 	else if (record->flag == "normal variant")
 	{	
-		string curType=record->type;
-		
-		for(int n=0;n<variantReference->IdvpartList.size();n++){
+		string curType = record->type;
 
-			if(curType=="integer"||curType=="real"||curType=="char"||curType=="boolean"){
-				addVariantReferenceErrorInformation(variantReference->variantId.second,"illegal array element access or illegal record attribute access");
-				return variantReference->variantType="error";
+		for (int n = 0; n < variantReference->IdvpartList.size(); n++)
+		{
+
+			if (curType == "integer" || curType == "real" || curType == "char" || curType == "boolean")
+			{
+				addVariantReferenceErrorInformation(variantReference->variantId.second, "illegal array element access or illegal record attribute access");
+				return variantReference->variantType = "error";
 			}
 			//获取类型定义记录
-			_SymbolRecord *recordSource=mainSymbolTable->recordList[mainSymbolTable->idToLoc[curType].top()];
-			
-			if(recordSource==NULL)
+			_SymbolRecord *recordSource = mainSymbolTable->recordList[mainSymbolTable->idToLoc[curType].top()];
+
+			if (recordSource == NULL)
 			{
-				string info= variantReference->variantId.first;
-				info +=": type ";
-				info+=record->type;
-				info+=" is not defined;";
-				addVariantReferenceErrorInformation(variantReference->variantId.second,info);
-				return  variantReference->variantType ="error";
+				string info = variantReference->variantId.first;
+				info += ": type ";
+				info += record->type;
+				info += " is not defined;";
+				addVariantReferenceErrorInformation(variantReference->variantId.second, info);
+				return variantReference->variantType = "error";
 			}
 
 			//构造变量引用
-			 _VariantReference *curVariantReference = new _VariantReference();
-			curVariantReference->variantId=make_pair(curType, variantReference->variantId.second);
-		    curVariantReference->locFlag=0;
+			_VariantReference *curVariantReference = new _VariantReference();
+			curVariantReference->variantId = make_pair(curType, variantReference->variantId.second);
+			curVariantReference->locFlag = 0;
 
 			//属性字段
-			if(recordSource->flag=="records"){
+			if (recordSource->flag == "records")
+			{
 				curVariantReference->IdvpartList.push_back(variantReference->IdvpartList[n]);
 			}
 			//数组元素字段
-			else if(recordSource->flag=="array")
+			else if (recordSource->flag == "array")
 			{
-				for(int s=0;s<recordSource->amount&&n+s<variantReference->IdvpartList.size();s++)
-					curVariantReference->IdvpartList.push_back(variantReference->IdvpartList[n+s]);
-				n+=recordSource->amount-1;
+				for (int s = 0; s < recordSource->amount && n + s < variantReference->IdvpartList.size(); s++)
+					curVariantReference->IdvpartList.push_back(variantReference->IdvpartList[n + s]);
+				n += recordSource->amount - 1;
 			}
-			else{
-				cout<<"flag of " <<variantReference->variantId.first<<" is not record or array"<<endl;
+			else
+			{
+				cout << "flag of " << variantReference->variantId.first << " is not record or array" << endl;
 			}
 
 			//获取当前类型
-			curType=SemanticAnalyseVariantReference(curVariantReference);
-			
-			//错误信息已经记录在了递归子程序中，此处不重复记录
-			if(curType=="error")
-				return variantReference->variantType="error";
-		}
-		return variantReference->variantType=curType;
+			curType = SemanticAnalyseVariantReference(curVariantReference);
 
+			//错误信息已经记录在了递归子程序中，此处不重复记录
+			if (curType == "error")
+				return variantReference->variantType = "error";
+		}
+		return variantReference->variantType = curType;
 	}
 
 	else
@@ -1382,7 +1411,8 @@ void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression *exp, st
 }
 
 //添加变量引用错误信息
-void addVariantReferenceErrorInformation(int line,string info){
+void addVariantReferenceErrorInformation(int line,string info)
+{
 	string errorInformation="[variable reference error]";
 	errorInformation += "<Line " + itos(line) + "> ";
 	errorInformation += info;
