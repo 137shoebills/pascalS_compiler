@@ -1,3 +1,5 @@
+
+
 /*
 普通语法分析树到抽象语法树的转换
 */
@@ -34,6 +36,7 @@ void getSubprogramBody(Token *now,vector<_Constant*>& _constList,vector<_TypeDef
 _Compound* getCompoundStatement(Token *now);
 void getStatementList(Token *now,vector<_Statement*>& _statementList);
 _Statement* getStatement(Token *now);
+void getforStatementOperation(Token *now,_ForStatement* &_forStatement);
 _Statement* getElseStatement(Token *now);
 void getidVpartList(Token *now,vector<_Idvpart*> &idvpartlist);
 void getVpart(Token *now,vector<_Idvpart*> &idvpartlist);
@@ -228,7 +231,7 @@ void dfssubprogramDefinitionList(vector<_FunctionDefinition*> subprogramDefiniti
         cout<<"type: ";
         cout<<subprogramDefinitionList[i]->type.first<<" "<<subprogramDefinitionList[i]->type.second<<endl;
         if(subprogramDefinitionList[i]->constList.size()){
-            cout<<"SubP Constlist:"<<endl;
+             cout<<"SubP Constlist:"<<endl;
             dfsconstlist(subprogramDefinitionList[i]->constList);}
         if(subprogramDefinitionList[i]->typedefList.size()){
             cout<<"SubP Typedeflist:"<<endl;
@@ -319,13 +322,13 @@ void dfssubP(_SubProgram* subProgram){
     }
 }
 void dfsAST(_Program* ASTRoot){
-    cout<<"~~_Program->programId:"<<ASTRoot->programId.first<<" "<<ASTRoot->programId.second<<endl;
-    cout<<"~~_Program->paraList: ";
-    for(int i = 0;i < ASTRoot->paraList.size();i++)
-        cout<<ASTRoot->paraList[i].first<<" "<<ASTRoot->paraList[i].second<<" ";
-    cout<<endl;
-    cout<<"~~_Program->subProgram: ";
-    dfssubP(ASTRoot->subProgram);
+    // cout<<"~~_Program->programId:"<<ASTRoot->programId.first<<" "<<ASTRoot->programId.second<<endl;
+    // cout<<"~~_Program->paraList: ";
+    // for(int i = 0;i < ASTRoot->paraList.size();i++)
+    //     cout<<ASTRoot->paraList[i].first<<" "<<ASTRoot->paraList[i].second<<" ";
+    // cout<<endl;
+    // cout<<"~~_Program->subProgram: ";
+    // dfssubP(ASTRoot->subProgram);
 }
 int str2int(string str){
     int res=0;
@@ -367,7 +370,7 @@ _Program* getProgram(Token *now){
 void getProgramHead(Token *now,pair<string,int>& _programId,vector< pair<string,int> >& _paraList){
     if(now->type!="program_head"){
         cout << "getProgramHead error" << endl;
-        return; 
+        return;
     }
     _programId=make_pair(now->children[1]->value,now->children[1]->lineNo);
     getIdList(now->children[3],_paraList,true);
@@ -383,7 +386,7 @@ _SubProgram* getProgramBody(Token *now){
     getTypeDefList(now->children[1],_subProgram->typedefList);
     getVariantList(now->children[2],_subProgram->variantList);
     getSubprogramDefinitionList(now->children[3],_subProgram->subprogramDefinitionList);
-	_subProgram->compound = getCompoundStatement(now->children[4]);
+    _subProgram->compound = getCompoundStatement(now->children[4]);
     return _subProgram;
 }
 
@@ -398,8 +401,8 @@ void getIdList(Token *now,vector< pair<string,int> >& res,bool reverseFlag){
     }
     else{
         res.push_back(make_pair(now->children[0]->value,now->children[0]->lineNo));
-		if(reverseFlag)
-			reverse(res.begin(),res.end());
+        if(reverseFlag)
+            reverse(res.begin(),res.end());
     }
 }
 
@@ -439,33 +442,33 @@ void setConst(Token *now,_Constant* &_constant){//pascal在定义常量时，并
     if(now->children[loc]->type=="IDENTIFIER"){//如果右值是标识符
         _constant->type="id";
         _constant->valueId = make_pair(now->children[loc]->value,now->children[loc]->lineNo);
-		_constant->strOfVal = now->children[loc]->value;
-		_constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
+        _constant->strOfVal = now->children[loc]->value;
+        _constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
     else if(now->children[loc]->type=="UINUM"){
         _constant->type="integer";
         _constant->intValue=str2int(now->children[loc]->value);
-		_constant->strOfVal = now->children[loc]->value;
-		_constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
+        _constant->strOfVal = now->children[loc]->value;
+        _constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
     else if(now->children[loc]->type=="UFNUM"){
         _constant->type="real";
         _constant->realValue=str2float(now->children[loc]->value);
-		_constant->strOfVal = now->children[loc]->value;
-		_constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
+        _constant->strOfVal = now->children[loc]->value;
+        _constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
     else if(now->children[loc]->type=="BOOL_CONSTANT"){
         _constant->type="bool";
-		if(now->children[loc]->value == "true")
-        	_constant->boolvalue=true;
-		else
-        	_constant->boolvalue=false;
-		_constant->strOfVal = now->children[loc]->value;
+        if(now->children[loc]->value == "true")
+            _constant->boolvalue=true;
+        else
+            _constant->boolvalue=false;
+        _constant->strOfVal = now->children[loc]->value;
     }
     else if(now->children[loc]->type=="CHAR"){
         _constant->type="char";
         _constant->charValue=now->children[loc]->value[0];
-		_constant->strOfVal = now->children[loc]->value;
+        _constant->strOfVal = now->children[loc]->value;
     }
     else{
         cout << "setConst error" << endl;
@@ -529,8 +532,8 @@ _Type* getType(Token *now){
         _type->type = make_pair(now->children[0]->value, now->children[0]->lineNo);
         return _type;
     }
-	if(loc != 2)
-        _type->type=make_pair(now->children[loc]->children[0]->value,now->children[loc]->children[0]->lineNo);
+    if(loc != 2)
+    _type->type=make_pair(now->children[loc]->children[0]->value,now->children[loc]->children[0]->lineNo);
     if(loc==5){
         _type->flag=1;
         _Type* Type=(_Type*)(getType(now->children[5]));
@@ -582,10 +585,10 @@ void getSubprogramDefinitionList(Token *now,vector<_FunctionDefinition*>& _subpr
         cout << "getSubprogramDefinitionList error" << endl;
         return;
     }
-	if (now->children.size()) {
-		_subprogramDefinitionList.push_back(getSubprogramDefinition(now->children[1]));
-		getSubprogramDefinitionList(now->children[0], _subprogramDefinitionList);
-	}
+    if (now->children.size()) {
+        _subprogramDefinitionList.push_back(getSubprogramDefinition(now->children[1]));
+        getSubprogramDefinitionList(now->children[0], _subprogramDefinitionList);
+    }
     else
         reverse(_subprogramDefinitionList.begin(),_subprogramDefinitionList.end());
 }
@@ -607,9 +610,9 @@ void getSubprogramHead(Token *now,pair<string,int>& functionID,vector<_FormalPar
     }
     functionID=make_pair(now->children[1]->value,now->children[1]->lineNo);
     getFormalParaList(now->children[2],_formalParaList);
-	_type=make_pair("",-1);//pocedure
-    if (now->children.size() == 6) 
-		_type = make_pair(now->children[4]->children[0]->value, now->children[4]->children[0]->lineNo);//function
+    _type=make_pair("",-1);//pocedure
+    if (now->children.size() == 6)
+        _type = make_pair(now->children[4]->children[0]->value, now->children[4]->children[0]->lineNo);//function
 }
 void getFormalParaList(Token *now,vector<_FormalParameter*>& _formalParaList){
     if(now->type!="formal_parameter"){
@@ -665,7 +668,7 @@ void getSubprogramBody(Token *now,vector<_Constant*>& _constList,vector<_TypeDef
     getTypeDefList(now->children[1],_typedefList);
     getVariantList(now->children[2],_variantList);
     getSubprogramDefinitionList(now->children[3],_subprogramDefinitionList);
-	_compound = getCompoundStatement(now->children[4]);
+    _compound = getCompoundStatement(now->children[4]);
 }
 
 _Compound* getCompoundStatement(Token *now){
@@ -673,9 +676,9 @@ _Compound* getCompoundStatement(Token *now){
         cout << "getCompoundStatement error" << endl;
         return NULL;
     }
-	_Compound *_compound = new _Compound;
-	_compound->lineNo = now->children[0]->lineNo;
-	_compound->type = "compound";
+    _Compound *_compound = new _Compound;
+    _compound->lineNo = now->children[0]->lineNo;
+    _compound->type = "compound";
     getStatementList(now->children[1],_compound->statementList);
     return _compound;
 }
@@ -687,9 +690,9 @@ void getStatementList(Token *now,vector<_Statement*>& _statementList){
         return;
     }
     int loc=int(now->children.size()-1);
-	_Statement* statement = getStatement(now->children[loc]);
-	if(statement != NULL)
-		_statementList.push_back(statement);
+    _Statement* statement = getStatement(now->children[loc]);
+    if(statement != NULL)
+        _statementList.push_back(statement);
     if(loc==2)
         getStatementList(now->children[0],_statementList);
     else
@@ -700,29 +703,29 @@ _Statement* getStatement(Token *now){
         cout << "getStatement error" << endl;
         return NULL;
     }
-	if (now->children.size() == 0)
-		return NULL;
+    if (now->children.size() == 0)
+        return NULL;
     if(now->children[0]->type=="IDENTIFIER"){
         _AssignStatement *_assignStatement = new _AssignStatement;
-		_assignStatement->lineNo = now->children[2]->lineNo;
+        _assignStatement->lineNo = now->children[2]->lineNo;
         _assignStatement->type="assign";//！！！！！！！！！
         _assignStatement->variantReference = new _VariantReference;
-        _assignStatement->variantReference->locFlag = -1;
+        _assignStatement->variantReference->locFlag= -1;
         _assignStatement->variantReference->variantId = make_pair(now->children[0]->value, now->children[0]->lineNo);
         getidVpartList(now->children[1],_assignStatement->variantReference->IdvpartList);
         _assignStatement->expression=getExpression(now->children[3]);
-		if(_assignStatement->expression->type=="function"){
-			_assignStatement->expression->variantReference = new _VariantReference;
-			_assignStatement->expression->variantReference->locFlag=1;}
+        if(_assignStatement->expression->type=="function"){
+            _assignStatement->expression->variantReference = new _VariantReference;
+            _assignStatement->expression->variantReference->locFlag=1;}
         return _assignStatement;
     }
     else if(now->children[0]->type=="procedure_call")
-		return getProcedureCall(now->children[0]);
+        return getProcedureCall(now->children[0]);
     else if(now->children[0]->type=="compound_statement")
-		return getCompoundStatement(now->children[0]);
+        return getCompoundStatement(now->children[0]);
     else if(now->children[0]->type=="IF"){
         _IfStatement* _ifStatement = new _IfStatement;
-		_ifStatement->lineNo = now->children[0]->lineNo;
+        _ifStatement->lineNo = now->children[0]->lineNo;
         _ifStatement->type="if";
         _ifStatement->condition=getExpression(now->children[1]);
         _ifStatement->then=getStatement(now->children[3]);
@@ -731,22 +734,22 @@ _Statement* getStatement(Token *now){
     }
     else if(now->children[0]->type=="FOR"){
         _ForStatement* _forStatement = new _ForStatement;
-		_forStatement->lineNo = now->children[0]->lineNo;
+        _forStatement->lineNo = now->children[0]->lineNo;
         _forStatement->type="for";
         _forStatement->id=make_pair(now->children[1]->value,now->children[1]->lineNo);
-		
         _forStatement->start=getExpression(now->children[3]);
-		if(_forStatement->start->type=="function" || _forStatement->start->type=="var")
-			_forStatement->start->variantReference->locFlag=1;
+        if(_forStatement->start->type=="function" || _forStatement->start->type=="var")
+            _forStatement->start->variantReference->locFlag=1;
         _forStatement->end=getExpression(now->children[5]);
-		if(_forStatement->end->type=="function" || _forStatement->end->type=="var")
-			_forStatement->end->variantReference->locFlag=1;
+        if(_forStatement->end->type=="function" || _forStatement->end->type=="var")
+            _forStatement->end->variantReference->locFlag=1;
         _forStatement->_do=getStatement(now->children[7]);
+        getforStatementOperation(now,_forStatement);
         return _forStatement;
     }
     else if(now->children[0]->type=="WHILE"){
         _WhileStatement* _whileStatement = new _WhileStatement;
-		_whileStatement->lineNo = now->children[0]->lineNo;
+        _whileStatement->lineNo = now->children[0]->lineNo;
         _whileStatement->type="while";
         _whileStatement->condition=getExpression(now->children[1]);
         _whileStatement->_do=getStatement(now->children[3]);
@@ -754,7 +757,7 @@ _Statement* getStatement(Token *now){
     }
     else if(now->children[0]->type=="REPEAT"){
         _RepeatStatement* _repeatStatement = new _RepeatStatement;
-		_repeatStatement->lineNo = now->children[0]->lineNo;
+        _repeatStatement->lineNo = now->children[0]->lineNo;
         _repeatStatement->type="repeat";
         _repeatStatement->condition=getExpression(now->children[3]);
         getStatementList(now->children[1],_repeatStatement->_do);
@@ -765,12 +768,59 @@ _Statement* getStatement(Token *now){
         return NULL;
     }
 }
+//构建for循环增量
+void getforStatementOperation(Token *now,_ForStatement* &_forStatement){
+    //构建for循环条件condition
+    _forStatement->condition->operationType="relop";
+     _forStatement->condition->type="compound";
+     if(now->children[4]->children[0]->value=="downto"){
+       _forStatement->condition->operation=">=";
+     }
+     else{
+       _forStatement->condition->operation="<=";
+     }
+    _forStatement->condition->operand1 = new _Expression;
+      _forStatement->condition->operand1->type="var";
+     _forStatement->condition->operand1->variantReference = new _VariantReference;
+     _forStatement->condition->operand1->variantReference->variantId = _forStatement->id;
+    _forStatement->condition->lineNo = _forStatement->lineNo;
+    _forStatement->condition->operand2 = new _Expression;
+      _forStatement->condition->operand2 = _forStatement->end;
 
+      //构建for循环初始化initial
+      _forStatement->initial->lineNo =  _forStatement->lineNo;
+      _forStatement->initial->type="assign";
+      _forStatement->initial->variantReference = new _VariantReference;
+      _forStatement->initial->variantReference->variantId = _forStatement->id;
+    _forStatement->initial->expression = new _Expression;
+      _forStatement->initial->expression = _forStatement->start;
+
+    _forStatement->increment->lineNo = _forStatement->lineNo;
+    _forStatement->increment->type="assign";
+    _forStatement->increment->variantReference = new _VariantReference;
+    _forStatement->increment->variantReference->variantId = _forStatement->id;
+    _forStatement->increment->expression = new _Expression;
+    _forStatement->increment->expression->type="compound";
+    _forStatement->increment->expression->operationType="addop";
+    _forStatement->increment->expression->lineNo =  _forStatement->lineNo;
+    //判断循环量递增还是递减
+    if(_forStatement->condition->operation==">=")
+        _forStatement->increment->expression->operation = "-";
+    else
+        _forStatement->increment->expression->operation = "+";
+    _forStatement->increment->expression->operand1 = new _Expression;
+    _forStatement->increment->expression->operand1 =   _forStatement->condition->operand1;
+    _forStatement->increment->expression->operand2 = new _Expression;
+    _forStatement->increment->expression->operand2->type="integer";
+    _forStatement->increment->expression->operand2->strOfNum = "1";
+    _forStatement->increment->expression->operand2->intNum=1;
+    _forStatement->increment->expression->operand2->lineNo=_forStatement->lineNo;
+}
 //获取结构体.属性或数组维度上下限
 void getidVpartList(Token *now,vector<_Idvpart*> &idvpartlist){
     if(now->type!="variable"){
         cout << "getVariantList error" << endl;
-		return;
+        return;
     }
     if(now->children.size()!=0){
         getVpart(now->children[1],idvpartlist);
@@ -786,11 +836,11 @@ void getVpart(Token *now,vector<_Idvpart*> &idvpartlist){
         return;
     }
     _Idvpart* idvpart = new _Idvpart;
-    if(now->children.size() == 3){  //数组元素
+    if(now->children.size() == 3){
         idvpart->flag = 0;
         getExpressionList(now->children[1],idvpart->expressionList);
     }
-    else if(now->children.size() == 2){ //record成员
+    else if(now->children.size() == 2){
         idvpart->flag = 1;
         idvpart->IdvpartId = make_pair(now->children[1]->value, now->children[1]->lineNo);
     }
@@ -798,17 +848,17 @@ void getVpart(Token *now,vector<_Idvpart*> &idvpartlist){
 }
 
 _Statement* getProcedureCall(Token *now) {
-	if (now->type != "procedure_call") {
-		cout << "getProcedureCall error" << endl;
-		return NULL;
-	}
-	_ProcedureCall *_procedureCall = new _ProcedureCall;
-	_procedureCall->lineNo = now->children[0]->lineNo;
-	_procedureCall->type = "procedure";
-	_procedureCall->procedureId = make_pair(now->children[0]->value, now->children[0]->lineNo);
-	if (now->children.size() == 4)
-		getExpressionList(now->children[2], _procedureCall->actualParaList);
-	return _procedureCall;
+    if (now->type != "procedure_call") {
+        cout << "getProcedureCall error" << endl;
+        return NULL;
+    }
+    _ProcedureCall *_procedureCall = new _ProcedureCall;
+    _procedureCall->lineNo = now->children[0]->lineNo;
+    _procedureCall->type = "procedure";
+    _procedureCall->procedureId = make_pair(now->children[0]->value, now->children[0]->lineNo);
+    if (now->children.size() == 4)
+        getExpressionList(now->children[2], _procedureCall->actualParaList);
+    return _procedureCall;
 }
 
 void getExpressionList(Token *now,vector<_Expression*>& _expressionList){
@@ -827,7 +877,7 @@ void getExpressionList(Token *now,vector<_Expression*>& _expressionList){
 _Expression* getExpression(Token *now){
     if(now->type!="expression"){
         cout << "getExpression error" << endl;
-		return NULL;
+        return NULL;
     }
     _Expression* _expression=NULL;
     if(now->children.size() == 3){
@@ -837,7 +887,7 @@ _Expression* getExpression(Token *now){
         _expression->operationType="relop";
         _expression->operand1=getSimpleExpression(now->children[0]);
         _expression->operand2=getSimpleExpression(now->children[2]);
-		_expression->lineNo = _expression->operand1->lineNo;
+        _expression->lineNo = _expression->operand1->lineNo;
     }
     else
         _expression=getSimpleExpression(now->children[0]);
@@ -846,23 +896,25 @@ _Expression* getExpression(Token *now){
 _Expression* getSimpleExpression(Token *now){
     if(now->type!="simple_expression"){
         cout << "getSimpleExpression error" << endl;
-		return NULL;
+        return NULL;
     }
     _Expression* _expression=NULL;
     if(now->children.size()==3){
-        _expression = new _Expression;
+        _expression = new _Expression();
         _expression->type="compound";
         _expression->operation=now->children[1]->value;
         _expression->operationType="addop";
         _expression->operand1=getSimpleExpression(now->children[0]);
         _expression->operand2=getTerm(now->children[2]);
-		_expression->lineNo = _expression->operand1->lineNo;
+        _expression->lineNo = _expression->operand1->lineNo;
     }
     else if(now->children.size()==2){
-         _expression=getTerm(now->children[1]);
+          _expression = new _Expression();
+          _expression->operand1=getTerm(now->children[1]);
+          _expression->type="compound";
           _expression->isMinusShow=0;
-          _expression->operation = "minus";
-          _expression->operationType = "single";
+          _expression->operation="minus";
+          _expression->operationType="single";
          if(now->children[0]->type=="MINUS")
             _expression->isMinusShow=1;
     }
@@ -874,7 +926,7 @@ _Expression* getSimpleExpression(Token *now){
 _Expression* getTerm(Token *now){
     if(now->type!="term"){
         cout << "term" << endl;
-		return NULL;
+        return NULL;
     }
     _Expression* _expression=NULL;
     if(now->children.size()==3){
@@ -884,7 +936,7 @@ _Expression* getTerm(Token *now){
         _expression->operationType="mulop";
         _expression->operand1=getTerm(now->children[0]);
         _expression->operand2=getFactor(now->children[2]);
-		_expression->lineNo = _expression->operand1->lineNo;
+        _expression->lineNo = _expression->operand1->lineNo;
     }
     else
         _expression=getFactor(now->children[0]);
@@ -893,19 +945,19 @@ _Expression* getTerm(Token *now){
 _Expression* getFactor(Token *now){
     if(now->type!="factor"){
         cout << "getFactor error" << endl;
-		return NULL;
+        return NULL;
     }
     _Expression* _expression = new _Expression;
     _expression->operand1=_expression->operand2=NULL;
     if(now->children[0]->type=="UINUM"){
         _expression->type="integer";
-		_expression->strOfNum = now->children[0]->value;
+        _expression->strOfNum = now->children[0]->value;
         _expression->intNum=str2int(now->children[0]->value);
         _expression->lineNo=now->children[0]->lineNo;
     }
     else if(now->children[0]->type=="UFNUM"){
         _expression->type="real";
-		_expression->strOfNum = now->children[0]->value;
+        _expression->strOfNum = now->children[0]->value;
         _expression->realNum=str2float(now->children[0]->value);
         _expression->lineNo=now->children[0]->lineNo;
     }
@@ -922,32 +974,32 @@ _Expression* getFactor(Token *now){
         _expression->functionCall = new _FunctionCall;
         _expression->functionCall->functionId=make_pair(now->children[0]->value,now->children[0]->lineNo);
         getExpressionList(now->children[2],_expression->functionCall->actualParaList);
-		_expression->lineNo = _expression->functionCall->functionId.second;
+        _expression->lineNo = _expression->functionCall->functionId.second;
     }
     else if(now->children[0]->type=="("){
         _expression->type="compound";
-		_expression->operationType = "single";
+        _expression->operationType = "single";
         _expression->operation="bracket";
         _expression->operand1=getExpression(now->children[1]);
-		_expression->lineNo = _expression->operand1->lineNo;
+        _expression->lineNo = _expression->operand1->lineNo;
     }
     else if(now->children[0]->type=="NOT"){
         _expression->type="compound";
-		_expression->operationType = "single";
+        _expression->operationType = "single";
         _expression->operation="not";
         _expression->operand1=getFactor(now->children[1]);
-		_expression->lineNo = _expression->operand1->lineNo;
+        _expression->lineNo = _expression->operand1->lineNo;
     }
-	else if (now->children[0]->type == "LETTER") {
-		_expression->type = "char";
-		_expression->charVal = now->children[0]->value[0];
-		_expression->lineNo = now->children[0]->lineNo;
-	}
+    else if (now->children[0]->type == "LETTER") {
+        _expression->type = "char";
+        _expression->charVal = now->children[0]->value[0];
+        _expression->lineNo = now->children[0]->lineNo;
+    }
     else if (now->children[0]->type == "BOOL_CONSTANT"){
-		_expression->type = "boolean";
-		_expression->totalIntValue = now->children[0]->value[0];
-		_expression->lineNo = now->children[0]->lineNo;
-	}
+        _expression->type = "boolean";
+        _expression->totalIntValue= now->children[0]->value[0];
+        _expression->lineNo = now->children[0]->lineNo;
+    }
     else{
         cout << "getFactor error" << endl;
         return NULL;

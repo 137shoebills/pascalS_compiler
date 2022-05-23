@@ -1,7 +1,6 @@
 #ifndef ASTNODES_H
 #define ASTNODES_H
 
-#include<llvm/IR/Value.h>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -71,7 +70,6 @@ public:
 public:
     _Constant() {}
     ~_Constant() {}
-    llvm::Value* codeGen();
 };
 
 class _TypeDef //变量定义
@@ -83,7 +81,17 @@ public:
     _TypeDef();
     _TypeDef(pair<string, int> _typeDefId, _Type *_type);
     ~_TypeDef();
-    void codeGen();
+};
+
+class _Variant //变量定义
+{
+public:
+    pair<string, int> variantId; //变量标识符ID及行号
+    _Type *type;                 //变量类型
+public:
+    _Variant();
+    _Variant(pair<string, int> _variantId, _Type *_type);
+    ~_Variant();
 };
 
 class _Type //类型
@@ -98,23 +106,6 @@ public:
     _Type();
     _Type(pair<string, int> _type, int _flag, vector<pair<int, int> > _arrayRangeList);
     ~_Type() {}
-
-    //创建数组的LLVM类型
-    llvm::Type* _Type::InitArrayType(string arrTypeName, string type);  //arrTypeName:自定义类型名，type:数组元素类型
-    //创建record的LLVM类型
-    llvm::Type* _Type::InitRecordType(string recTypeName);  //recTypeName:自定义类型名
-};
-
-class _Variant //变量定义
-{
-public:
-    pair<string, int> variantId; //变量标识符ID及行号
-    _Type *type;                 //变量类型
-public:
-    _Variant();
-    _Variant(pair<string, int> _variantId, _Type *_type);
-    ~_Variant();
-    llvm::Value* codeGen();
 };
 
 class _FunctionDefinition
@@ -132,7 +123,6 @@ public:
 public:
     _FunctionDefinition();
     ~_FunctionDefinition();
-    llvm::Value* codeGen(_SymbolRecord*);
 };
 
 class _FormalParameter //形式参数
@@ -145,7 +135,6 @@ public:
     _FormalParameter();
     _FormalParameter(pair<string, int> _paraId, string _type, int _flag);
     ~_FormalParameter() {}
-    llvm::Value* codeGen();
 };
 
 class _Statement
@@ -158,7 +147,6 @@ public:
 public:
     _Statement() {}
     ~_Statement() {}
-    llvm::Value* codeGen();
 };
 
 class _Compound : public _Statement
@@ -180,9 +168,6 @@ public:
 public:
     _AssignStatement();
     ~_AssignStatement();
-    llvm::Value* codeGen(string leftType, string rightType);
-    void _AssignStatement::codeGenArrayAssign(_SymbolRecord* leftVar, llvm::Value* rValue);   //数组元素赋值
-    void _AssignStatement::codeGenRecordAssign(_SymbolRecord* leftVar, string memberId, llvm::Value* rValue);   //record成员赋值
 };
 
 class _ProcedureCall : public _Statement
@@ -194,7 +179,6 @@ public:
 public:
     _ProcedureCall();
     ~_ProcedureCall();
-    void codeGen();
 };
 
 class _FunctionCall
@@ -206,7 +190,6 @@ public:
 public:
     _FunctionCall();
     ~_FunctionCall();
-    llvm::Value* codeGen();
 };
 
 class _Expression
@@ -238,7 +221,6 @@ public:
 public:
     _Expression();
     ~_Expression();
-    llvm::Value* codeGen();
     //语义分析相关
 public:
     int totalIntValue;
@@ -252,12 +234,11 @@ public:
     pair<string, int> variantId; //变量或常量标识符和行号
     //如果这个变量是结构体或数组：
     vector<_Idvpart *> IdvpartList; //结构体.属性或数组元素
-    //IdvpartList:考虑多层访问  a.b.c; a[b].c
-
+                                    //        int flag;
+                                    //        string str;
 public:
     _VariantReference();
     ~_VariantReference();
-    llvm::Value* codeGen();
 
 public:
     int locFlag;        //-1表示左值，1表示右值，0表示什么都不是 左值特判
@@ -274,7 +255,6 @@ public:
 public:
     _Idvpart();
     ~_Idvpart();
-    llvm::Value* codeGen(_SymbolRecord* variant);
 };
 
 class _IfStatement : public _Statement
@@ -287,7 +267,6 @@ public:
 public:
     _IfStatement();
     ~_IfStatement();
-    llvm::Value* codeGen();
 };
 
 class _ForStatement : public _Statement
@@ -299,9 +278,11 @@ public:
     _Statement *_do;      //循环体语句
                           //行号由for的位置决定
 public:
+    _Expression *condition;//判断条件
+    _AssignStatement *increment;//增量
+    _AssignStatement *initial;//初始化
     _ForStatement();
     ~_ForStatement();
-    llvm::Value* codeGen();
 };
 
 class _RepeatStatement : public _Statement
@@ -313,7 +294,6 @@ public:
 public:
     _RepeatStatement();
     ~_RepeatStatement();
-    llvm::Value* codeGen();
 };
 
 class _WhileStatement : public _Statement
@@ -325,6 +305,5 @@ public:
 public:
     _WhileStatement();
     ~_WhileStatement();
-    llvm::Value* codeGen();
 };
 #endif

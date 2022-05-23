@@ -39,7 +39,7 @@ _FunctionCall::~_FunctionCall(){
 
 _VariantReference::_VariantReference(){
     IdvpartList.clear();
-	locFlag = 0;//默认是右值
+    locFlag = 0;//默认是右值
 }
 
 _VariantReference::~_VariantReference(){
@@ -56,7 +56,7 @@ _Idvpart::~_Idvpart(){
     
 }
 _Compound::_Compound(){
-	isReturnStatement = false;
+    isReturnStatement = false;
     statementList.clear();
 }
 
@@ -67,7 +67,7 @@ _Compound::~_Compound(){
 }
 
 _RepeatStatement::_RepeatStatement(){
-	isReturnStatement = false;
+    isReturnStatement = false;
     condition=NULL;
     _do.resize(0);
 }
@@ -79,7 +79,7 @@ _RepeatStatement::~_RepeatStatement(){
 }
 
 _WhileStatement::_WhileStatement(){
-	isReturnStatement = false;
+    isReturnStatement = false;
     condition=NULL;
     _do=NULL;
 }
@@ -90,20 +90,26 @@ _WhileStatement::~_WhileStatement(){
 }
 
 _ForStatement::_ForStatement(){
-	isReturnStatement = false;
+    isReturnStatement = false;
     start=NULL;
     end=NULL;
     _do=NULL;
+    condition=new _Expression;
+    initial=new _AssignStatement();
+    increment = new _AssignStatement();
 }
 
 _ForStatement::~_ForStatement(){
     DEL(start)
     DEL(end)
     DEL(_do)
+        DEL(condition)
+        DEL(initial)
+        DEL(increment)
 }
 
 _IfStatement::_IfStatement(){
-	isReturnStatement = false;
+    isReturnStatement = false;
     condition=NULL;
     then=NULL;
     els=NULL;
@@ -116,7 +122,7 @@ _IfStatement::~_IfStatement(){
 }
 
 _AssignStatement::_AssignStatement(){
-	isReturnStatement = false;
+    isReturnStatement = false;
     variantReference=NULL;
     expression=NULL;
 }
@@ -128,7 +134,7 @@ _AssignStatement::~_AssignStatement(){
 }
 
 _ProcedureCall::_ProcedureCall(){
-	isReturnStatement = false;
+    isReturnStatement = false;
     actualParaList.clear();
 }
 
