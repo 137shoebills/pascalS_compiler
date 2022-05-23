@@ -380,7 +380,8 @@ void SemanticAnalyseVariant(_Variant *variant)
 	}
 	else if (variant->type->flag) //判断是否为数组
 	{
-		mainSymbolTable->addArray(VID.first, VID.second, type, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+		mainSymbolTable->addArray(VID.first+"_", VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+		mainSymbolTable->addVar(VID.first, VID.second,VID.first+"_");
 	}
 	 //非标准类型时进行类型检查
 	else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
