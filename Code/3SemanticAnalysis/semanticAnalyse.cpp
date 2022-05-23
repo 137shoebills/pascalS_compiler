@@ -1,4 +1,3 @@
-
 /*
 语义分析实现代码
 */
@@ -373,17 +372,24 @@ void SemanticAnalyseVariant(_Variant *variant)
 		}
 	}
 	string type = variant->type->type.first;
+	cout<<"variant->variantId.first: "<<variant->variantId.first<<endl;
+	cout<<"type:"<<type<<endl;
 	if (type == "record") //判断是否为record
 	{
 		SemanticAnalyseRecord(variant->type->recordList, VID, 0);
 	}
-	else if (type != "integer" && type != "char" && type != "real" && type != "boolean") //类型错误
-	{
-		addUsageTypeErrorInformation(variant->variantId.first, variant->variantId.second, type, "variant", "standard type");
-	}
 	else if (variant->type->flag) //判断是否为数组
 	{
 		mainSymbolTable->addArray(VID.first, VID.second, type, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+	}
+	 //非标准类型时进行类型检查
+	else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
+	{
+		_SymbolRecord *recordSource = findSymbolRecord(mainSymbolTable, type);	
+		if(recordSource==NULL){
+			addUndefinedErrorInformation(type,variant->variantId.second);
+		}
+		mainSymbolTable->addVar(VID.first, VID.second, type);
 	}
 	else //普通变量
 	{
@@ -786,24 +792,9 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 		SemanticAnalyseExpression(functionCall->actualParaList[i]);
 		string decType = mainSymbolTable->recordList[decID + i + 1]->type;
 		string expType = functionCall->actualParaList[i]->expressionType;
-		string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
-		if (flag == "var parameter")
+		if (expType != decType && !(expType == "integer" && decType == "real"))
 		{
-			if (expType != decType)
-				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
-			if (!(functionCall->actualParaList[i]->type == "var" && (functionCall->actualParaList[i]->variantReference->kind == "var" || functionCall->actualParaList[i]->variantReference->kind == "array")))
-			{
-				//引用参数对应的实参只能是变量、参数或者数组元素 不能为常数、复杂表达式等
-				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(functionCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
-				continue;
-			}
-		}
-		else
-		{
-			if (expType != decType && !(expType == "integer" && decType == "real"))
-			{
-				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
-			}
+			addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
 		}
 	}
 	return functionCall->returnType;
