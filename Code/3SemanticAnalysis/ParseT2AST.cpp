@@ -811,7 +811,7 @@ void getBranch(Token *now,_CaseStatement* &_caseStatement){
     }
     vector<_Constant *> constlist;
     _Branch* branch = new _Branch;
-    getConst_list(now->children[0],constlist);
+    getConstlist(now->children[0],constlist);
     for(int i = 0;i < constlist.size();i++){
         _Expression * condition = new _Expression;
         //构建for循环条件condition
@@ -828,7 +828,7 @@ void getBranch(Token *now,_CaseStatement* &_caseStatement){
     _caseStatement->branch.push_back(branch);
     
 }
-void getConst_list(Token *now,vector<_Constant *> &constlist){
+void getConstlist(Token *now,vector<_Constant *> &constlist){
     if(now->type!="const_list"){
         cout << "getConstlist error" << endl;
         return;
