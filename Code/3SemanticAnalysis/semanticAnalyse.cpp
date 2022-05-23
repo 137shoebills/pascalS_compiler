@@ -447,7 +447,7 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	for (int i = 0; i < functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
 
-	if (layer <= 3)
+	if (layer <= 5)
 	{
 		for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
 			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);
