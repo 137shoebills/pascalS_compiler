@@ -27,7 +27,8 @@ class _WhileStatement;
 class _RepeatStatement;
 class _ProcedureCall;
 class _Idvpart;
-
+class _CaseStatement;
+class _Branch;
 class _Program //程序(相当于program_head)
 {
 public:
@@ -267,6 +268,23 @@ public:
 public:
     _IfStatement();
     ~_IfStatement();
+};
+class _CaseStatement : public _Statement
+{
+public:
+    _Expression *caseid;
+    vector<_Branch *> branch;
+    vector<_Statement *> _do;
+    _CaseStatement();
+    ~_CaseStatement();
+};
+class _Branch
+{
+public:
+    vector<_Expression *> condition;
+    _Statement* _do;
+    _Branch();
+    ~_Branch();
 };
 
 class _ForStatement : public _Statement
