@@ -26,6 +26,12 @@ RUN yum install -y flex-devel
 RUN yum install -y bison
 # 安装 LLVM/Clang 二进制文件
 RUN yum install llvm clang
+# 安装llvm9.0版本
+RUN wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+RUN yum localinstall epel-release-latest-7.noarch.rpm
+RUN yum install llvm9.0 llvm9.0-devel clang
+RUN cp /usr/lib64/llvm9.0/lib/libLLVM.so /usr/local/lib/    #将库的链接放置在local/bin目录下
+
 
 # 安装系统管理指令，为CMake做准备
 # RUN yum install sudo -y
