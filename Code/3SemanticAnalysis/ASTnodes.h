@@ -278,6 +278,9 @@ public:
     _Statement *_do;      //循环体语句
                           //行号由for的位置决定
 public:
+    _Expression *condition;//判断条件
+    _AssignStatement *increment;//增量
+    _AssignStatement *initial;//初始化
     _ForStatement();
     ~_ForStatement();
 };
