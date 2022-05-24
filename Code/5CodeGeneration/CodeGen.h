@@ -28,8 +28,7 @@ using namespace std;
 using legacy::PassManager;
 
 extern _SymbolTable *mainSymbolTable;
-//extern vector<string> semanticErrorInformation;   //存储错误信息的列表
-//extern vector<string> semanticWarningInformation; //存储警告信息的列表
+extern _SymbolRecord* findSymbolRecord(_SymbolTable *currentSymbolTable, string id);
 
 CodeGenContext context;
 
@@ -66,9 +65,15 @@ llvm::Value* LogErrorV(string str)
 }
 
 //获取数组元素的指针
-llvm::Value* getArrayItemPtr(_SymbolRecord* array, vector<_Expression*> indices);
+llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc);
 
 //获取record成员的指针
-llvm::Value* getRecordItemPtr(_SymbolRecord* record, string memberId);
+llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId);
+
+//获取数组元素/record成员的指针     (调用getArrayItemPtr和getRecordItemPtr)
+llvm::Value* getItemPtr(_VariantReference* varRef);
+
+//计算N维数组下标（N>=1）   (按C标准，从0开始)
+int calcArrayIndex(_SymbolRecord* record, vector<_Expression*> indices);
 
 #endif
