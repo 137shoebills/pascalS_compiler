@@ -38,10 +38,6 @@ void TypeSystem::addRecordType(string name, llvm::StructType* type){
 
 //新增record成员
 void TypeSystem::addRecordMember(string recName, string memName, string memType){
-    // if(recordTypes.find(recName) == recordTypes.end()){
-    //     //报错：未定义的record类型
-    //     //semanticErrorInformation.push_back("Error: Undefined record type: " + recName);
-    // }
     recordMembers[recName].push_back(make_pair(memName, memType));
 }
 
@@ -59,7 +55,30 @@ long TypeSystem::getRecordMemberIndex(string recName, string memName){
     return -1;
 }
 
+//获取record成员类型名
+string TypeSystem::getRecordMemberType(string recName, string memName)
+{
+    vector<NameType> members = recordMembers[recName];
+    for(int i=0; i < members.size(); i++){
+        if(members[i].first == memName)
+            return members[i].second;
+    }
+}
+
 //新增数组变量对应的LLVM类型
-void TypeSystem::addArrayType(string typeName, llvm::ArrayType* type, int lineNo){
-    arrayTypes[typeName] = type;
+void TypeSystem::addArrayType(string typeName, llvm::ArrayType* ArrayType, string memberType, vector<pair<int,int>> arrayRangeList){
+    arrayTypes[typeName] = ArrayType;
+    arrayMemberTypes[typeName] = memberType;
+    vector<pair<int, int>> rangeList(arrayRangeList);
+    arrayRangeLists[typeName] = rangeList;
+}
+
+//获取数组元素类型名
+string TypeSystem::getArrayMemberType(string arrName){
+    return arrayMemberTypes[arrName];
+}
+
+//获取数组上下界
+pair<int, int> getArrayRange(string arrName){
+    return arrayRangeLists[arrName][0];        
 }
