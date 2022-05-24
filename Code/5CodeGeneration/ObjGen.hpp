@@ -1,5 +1,9 @@
+//目标代码生成
 #ifndef __OBJGEN_HPP__
 #define __OBJGEN_HPP__
+
+#define ASSEMBLY_FILE 1
+#define OBJECT_FILE 2
 
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
@@ -20,29 +24,7 @@ using namespace std;
 
 void ObjCodeGen(CodeGenContext& context, string& filename);
 
-/*
-class CodeGenBlock{
-public:
-    llvm::BasicBlock* bb;
-    llvm::Value* retValue;
-
-    map<string, llvm::Value*> name_Value;
-    map<string, shared_ptr<Identifier>> name_type;
-}
-
-class CodeGenContext{
-private:
-    vector<CodeGenBlock*> blockStack;
-
-public:
-    llvm::LLVMContext llvmContext;
-    llvm::IRBuilder<> builder;
-    unique_ptr<llvm::Module> module;    //目标代码生成要用到
-}
-
-*/
-
-void ObjCodeGen(CodeGenContext& context, string& filename) {
+void ObjCodeGen(CodeGenContext& context, string& filename, int outputType) {
     //初始化llvm，设置目标机
     llvm::InitializeAllTargetInfos();
     llvm::InitializeAllTargets();
@@ -74,13 +56,15 @@ void ObjCodeGen(CodeGenContext& context, string& filename) {
     llvm::raw_fd_ostream dest(filename, ErrCode, llvm::sys::fs::OF_None);
     llvm::legacy::PassManager pass;
 
-    if(filename[filename.size()-1] == 's'){     //生成汇编文件
-        llvm::CodeGenFileType type = llvm::CGFT_AssemblyFile;
+    if(outputType == ASSEMBLY_FILE){    //生成汇编文件
+        //llvm::CodeGenFileType type = llvm::CGFT_AssemblyFile;
+        llvm::LLVMTargetMachine::CodeGenFileType type = llvm::LLVMTargetMachine::CGFT_AssemblyFile;
     }
-    else if(filename[filename.size()-1] == 'o'){    //生成可重定位目标文件
-        llvm::CodeGenFileType type = llvm::CGFT_ObjectFile;
+    else if(outputType == OBJECT_FILE){ //生成目标文件
+        //llvm::CodeGenFileType type = llvm::CGFT_ObjectFile;
+        llvm::LLVMTargetMachine::CodeGenFileType type = llvm::LLVMTargetMachine::CGFT_ObjectFile;
     }
-    else{   //.s和.o以外的后缀
+    else{
         cout<<"UNSUPPORTED output file format"<<endl;
         return;
     }
