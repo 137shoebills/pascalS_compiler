@@ -53,7 +53,7 @@ llvm::Value* _Constant::codeGen() {
 llvm::Value* _Variant::codeGen() {
     cout << "_Variant::codeGen" << endl;
 
-    _SymbolRecord* record = findSymbolRecord(mainSymbolTable, this->variantId.first);
+    _SymbolRecord* record = findSymbolRecord(this->variantId.first);
     llvm::Value* addr = nullptr;    //待获取：局部变量地址
     llvm::Type* varType = context.typeSystem.getllType(record->type);   //变量的llvm类型
     //record->type: 普通变量的这个字段记录了基本类型
@@ -68,7 +68,7 @@ llvm::Value* _Variant::codeGen() {
         if(arrayType == nullptr)
         {
             //要获取数组元素类型，需要查找符号表中数组定义的表项
-            _SymbolRecord* tmp = findSymbolRecord(mainSymbolTable, record->type);
+            _SymbolRecord* tmp = findSymbolRecord(record->type);
             if(!tmp){
                 //报错：未定义的数组类型
                 return LogErrorV("[_Variant::codeGen]  Undefined array type: " + record->type + ", line " + this->variantId.second);
@@ -139,6 +139,9 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
         type_str = "integer";
     }
     retType = context.typeSystem.getllType(type_str); 
+    if(!retType){
+        return LogErrorV("[_FunctionDefinition::codeGen]    Undefined function returnType: " + type_str);
+    }
 
     llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
     llvm::Function* function = llvm::Function::Create(funcType, llvm::GlobalValue::ExternalLinkage, functionID.first, context.module.get());
@@ -173,28 +176,27 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
     return function;    //返回Function::Create的返回值
 }
 
-//函数/过程的形参
+//❓函数/过程的形参
 //重用variant的codeGen
-llvm::Value* _FormalParameter::codeGen() {
+llvm::Value* _FormalParameter::codeGen(int index) {
     cout << "_FormalParameter::codeGen" << endl;
 
     //形参AST
     // int flag;                 // flag=0表示传值调用，flag=1表示引用调用
-    //❓如何实现传值/传引用？
-
-    _Variant* var = new _Variant;
+    
+    _Variant *var = new _Variant;
     var->variantId = this->paraId;
     var->type->type = make_pair(this->type, this->paraId.second);
     var->type->flag = 0;
 
-    return var->codeGen();  //返回形参的地址
+    return var->codeGen(); //返回形参的地址
 }
 
 //函数调用
 llvm::Value* _FunctionCall::codeGen(){
     cout << "_FunctionCall::codeGen" << endl;
 
-    _SymbolRecord* funcRec = findSymbolRecord(mainSymbolTable, this->functionId.first);
+    _SymbolRecord* funcRec = findSymbolRecord(this->functionId.first);
     if(!funcRec){
         //报错：函数定义未找到
         return LogErrorV("[_FunctionCall::codeGen] Function definition not found: " + this->functionId.first + ", line " + this->functionId.second);
@@ -203,7 +205,7 @@ llvm::Value* _FunctionCall::codeGen(){
     vector<llvm::Value*> args;
     //对每一个参数进行codeGen
     for(auto it = actualParaList.begin(); it!= actualParaList.end(); it++){
-        args.push_back((*it)->codeGen());
+        args.push_back((*it)->codeGen());   //获取实参的值
         if(!args.back())   //若某个参数codeGen失败，立即返回
         {
             //报错：参数解析失败
@@ -324,7 +326,7 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
 
     //获取左值（LLVM Value*）
     //左值类型：普通变量，数组元素，record成员，函数名
-    _SymbolRecord* leftVar = findSymbolRecord(mainSymbolTable, variantReference->variantId.first);
+    _SymbolRecord* leftVar = findSymbolRecord(variantReference->variantId.first);
     //若左值为数组元素/record成员，leftVar对应的只是数组/record变量，并不具体到成员本身
     llvm::Value* lValue = leftVar->llValue; //左值变量地址（在变量声明时即获得）
     
@@ -341,15 +343,16 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
     }
 
     if(variantReference->IdvpartList.size()!=0){
-        if(variantReference->kind == "array"){ //数组元素
-            codeGenArrayAssign(leftVar, rightValue);
+        //获取数组元素/record成员指针
+        llvm::Value* ptr = getItemPtr(this->variantReference);
+        //赋值
+        if(!ptr){
+            return LogErrorV("[_AssignStatement::codeGen]   Cannot get array item ptr, VarName: " + this->variantReference->variantId.first);
         }
-        else{    //record成员
-            string memberId = variantReference->IdvpartList[0]->IdvpartId.first;
-            codeGenRecordAssign(leftVar->type, memberId, lValue, rightValue);
-        }
+        context.builder.CreateStore(rValue, ptr);
     }
-    else if(leftVar->flag == "function"){   //左值为函数名（函数返回语句）
+    //else if(leftVar->flag == "function"){   //左值为函数名（函数返回语句）
+    else if(this->isReturnStatement){
         leftVar->funcRetValue = rightValue;     //设置函数的返回值
     }
     else{    //普通变量
@@ -502,7 +505,7 @@ llvm::Value* _VariantReference::codeGen(){
     cout << "_VariantReference::codeGen" << endl;
     //[refer]   等价于NIdentifier
 
-    _SymbolRecord* varRef = findSymbolRecord(mainSymbolTable, this->variantId.first);
+    _SymbolRecord* varRef = findSymbolRecord(this->variantId.first);
     llvm::Value* addr = varRef->llValue;    //获取普通变量的地址/数组、record的首地址
     if(!addr){
         //报错：未知的变量名
@@ -518,66 +521,34 @@ llvm::Value* _VariantReference::codeGen(){
         {
             return context.builder.CreateLoad(addr, false, "");
         }
-        //❓传值参数：执行函数/过程后值不变
+        //函数参数只支持基本类型
+        //传值参数
         else if (varRef->flag == "value parameter")
         {
-            // return context.builder.CreateLoad(addr, false, "");
+            //return context.builder.CreateLoad(addr, false, "");
         }
-        //❓引用参数：执行函数/过程后值改变
+        //引用参数
         else if (varRef->flag == "var parameter")
         {
             // return context.builder.CreateLoad(addr, false, "");
         }
     }
     else{   //数组元素和record成员
-        //0520：只支持一维数组
-        return this->IdvpartList[0]->codeGen(varRef);
+        if(this->IdvpartList.size() == 1){
+            return this->IdvpartList[0]->codeGen(this);
+        }
     }
 }
 
 //数组元素/record成员引用codeGen
-llvm::Value* _Idvpart::codeGen(_SymbolRecord* variant){
+llvm::Value* _Idvpart::codeGen(_VariantReference* varRef){
     cout << "_Idvpart::codeGen" << endl;
 
-    if(variant->flag == "array"){        //如果是数组元素
-        //获取数组元素指针
-        vector<_Expression*> indices = this->expressionList;
-        llvm::Value* ptr = getArrayItemPtr(variant, indices);
-        //LOAD
-        if(ptr) //如果是多维数组，会返回空指针
-            return context.builder.CreateLoad(ptr);
+    llvm::Value* ptr = getItemPtr(varRef);
+    if(!ptr){
+        return LogErrorV("[_Idvpart::codeGen]   Cannot get item ptr, varName: " + varRef->variantId.first);
     }
-
-    else if(variant->flag == "normal variant"){   //如果是record成员
-        //获取record成员指针
-        llvm::Value* ptr = getRecordItemPtr(variant, IdvpartId.first);
-        //LOAD
-        if(ptr)
-            return context.builder.CreateLoad(ptr);
-    }
-}
-
-//数组元素赋值
-void _AssignStatement::codeGenArrayAssign(_SymbolRecord* leftVar, llvm::Value* rValue)
-{
-    cout << "codeGenArrayAssign" << endl;
-    //获取数组元素指针
-    vector<_Expression*> indices = this->variantReference->IdvpartList[0]->expressionList;
-    llvm::Value* ptr = getArrayItemPtr(leftVar, indices);
-    //赋值
-    if(ptr) //如果是多维数组，会返回空指针
-        context.builder.CreateStore(rValue, ptr);
-}
-
-//record成员赋值
-void _AssignStatement::codeGenRecordAssign(_SymbolRecord* leftVar, string memberId, llvm::Value* rValue)
-{
-    cout << "codeGenRecordAssign" << endl;
-    //获取record成员指针
-    llvm::Value* ptr = getRecordItemPtr(leftVar, memberId);
-    //赋值
-    if(ptr)
-        context.builder.CreateStore(rValue, ptr);
+    return context.builder.CreateLoad(ptr);
 }
 
 //创建数组类型对应的LLVM类型
@@ -595,8 +566,11 @@ llvm::Type* _Type::InitArrayType(string arrTypeName, string type)
         arraySize *= range;
     }
     llvm::Type* llType = context.typeSystem.getllType(type);
+    if(!llType){
+        return LogErrorV("[InitArrayType]   Unknown array type: " + type);
+    }
     llvm::Type* arrayType = llvm::ArrayType::get(llType, arraySize);
-    context.typeSystem.addArrayType(arrTypeName, arrayType);
+    context.typeSystem.addArrayType(arrTypeName, arrayType, type, this->arrayRangeList);
 
     return arrayType;
 }
@@ -613,7 +587,11 @@ llvm::Type* _Type::InitRecordType(string recTypeName)
     for (auto it = this->recordList.begin(); it != this->recordList.end(); it++)
     {
         context.typeSystem.addRecordMember(recTypeName, (*it)->variantId.first, (*it)->type->type.first);
-        memberTypes.push_back(context.typeSystem.getllType((*it)->type->type.first));
+        llvm::Type* memType = context.typeSystem.getllType((*it)->type->type.first);
+        if(!memType){
+            return LogErrorV("[InitRecordType]  Unknown record member type: " + (*it)->type->type.first);
+        }
+        memberTypes.push_back(memType);
     }
     recordType->setBody(memberTypes);
 
@@ -621,40 +599,106 @@ llvm::Type* _Type::InitRecordType(string recTypeName)
 }
 
 //获取数组元素的指针
-llvm::Value* getArrayItemPtr(_SymbolRecord* array, vector<_Expression*> indices)
+llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc)
 {
     //获取数组对应的LLVM Type
-    string arrayTypeName = array->type;
-    auto arrayType = context.typeSystem.getllType(arrayTypeName);
-    //获取数组元素地址
-    if(indices.size() > 1){   //暂不支持多维数组赋值
-        //报错：暂不支持多维数组
-        return LogErrorV("[getArrayItemPtr]   multidimensional array is not available now: " + 
-            array->id + ", line " + array->lineNumber);
+    auto arrayType = context.typeSystem.getllType(varType);
+    if(!arrayType){
+        return LogErrorV("[getArrayItemPtr]    Unknown array type: " + varType);
     }
-    int loc = indices[0]->intNum;  //数组元素下标
+    //获取数组元素地址
     auto index_0 = llvm::ConstantInt::get(context.typeSystem.intTy, 0);      //基地址
     auto index_1 = llvm::ConstantInt::get(context.typeSystem.intTy, loc);    //偏移量
-    auto ptr = context.builder.CreateGEP(arrayType, array->llValue, {index_0, index_1});
+    auto ptr = context.builder.CreateGEP(arrayType, addr, {index_0, index_1});
 
     return ptr;
 }
 
 //获取record成员的指针
-llvm::Value* getRecordItemPtr(_SymbolRecord* record, string memberId)
+llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId)
 {
     // CreateLoad
-    auto recPtr = context.builder.CreateLoad(record->llValue, "recPtr");
+    auto recPtr = context.builder.CreateLoad(addr, "recPtr");
     recPtr->setAlignment(4); //按4字节对齐
 
     //获取该成员在record中的位置
-    long index = context.typeSystem.getRecordMemberIndex(record->type, memberId);
-    if(index == -1)
-        return nullptr;
+    long index = context.typeSystem.getRecordMemberIndex(varType, memberId);
+    if(index == -1){
+        return LogErrorV("[getRecordItemPtr]    Unknown record member: " + varType + "." + memberId);
+    }
     vector<llvm::Value*> indices;
     indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, 0));               //基地址
     indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, (uint64_t)index)); //偏移量
-    auto ptr = context.builder.CreateInBoundsGEP(record->llValue, indices);
+    auto ptr = context.builder.CreateInBoundsGEP(addr, indices);
 
+    return ptr;
+}
+
+//计算N维数组下标（N>=1）
+int calcArrayIndex(_SymbolRecord* record, vector<_Expression*> indices){
+    vector<pair<int,int>> rangeList(record->arrayRangeList);
+    int loc = 0;
+    int lower_size = 1;
+    for(int i=indices.size()-1; i>=0; i--){
+        loc += lower_size * (indices[i]->intNum - rangeList[i].first);
+        lower_size *= rangeList[i].second - rangeList[i].first + 1;
+    }
+    return loc;
+}
+
+//获取数组元素/record成员的指针
+llvm::Value* getItemPtr(_VariantReference* varRef)
+{
+    llvm::Value* ptr = nullptr;     //待获取的指针
+    //获取符号表记录
+    _SymbolRecord* record = findSymbolRecord(varRef->variantId.first);
+    //数组各维上下界：record->arrayRangeList(vector<pair<int, int>>)
+    //record成员列表：record->records(vector<_SymbolRecord *>)
+
+    //获取嵌套层数
+    int layer = varRef->IdvpartList.size();
+    
+    if(layer == 1){ //直接以当前变量varRef的地址作为基地址
+        int flag = varRef->IdvpartList[0]->flag;
+        if(flag == 1){  //record成员（a.b）
+            ptr = getRecordItemPtr(record->type, record->llValue, varRef->IdvpartList[0]->IdvpartId.first);
+            return ptr;
+        }
+        else{       //纯数组：a[1] 或 a[1][2][...][N]
+            //多维纯数组，转化为一维数组处理
+            //计算数组元素下标
+            int loc = calcArrayIndex(record, varRef->IdvpartList[0]->expressionList;);
+            ptr = getArrayItemPtr(record->type, record->llValue, loc);
+            return ptr;
+        }
+    }
+
+    //嵌套的情况
+    llvm::Value* cur_base = record->llValue;    //当前层基地址
+    string cur_varType = record->type;  //当前层对应的变量类型名
+    int flag = 0;   //当前层的类型（flag=0为数组，=1为record）
+
+    for(int i=0; i < layer; i++){
+        flag = varRef->IdvpartList[i]->flag;
+        if(flag == 0){   //本层为数组下标
+            //获取当前层下标表示
+            int lower = context.typeSystem.getArrayRange(cur_varType).first;    //当前层数组下界
+            int loc = varRef->IdvpartList[i]->expressionList[0]->intNum - lower;
+            //计算下一层的基地址
+            cur_base = getArrayItemPtr(cur_varType, cur_base, loc);
+            //下一层的类型即为当前层数组元素的类型
+            cur_varType = context.typeSystem.getArrayMemberType(cur_varType);
+        }
+        else{       //本层为成员名
+            //获取当前层成员名
+            string memberId = varRef->IdvpartList[i]->IdvpartId.first;
+            //计算下一层的基地址
+            cur_base = getRecordItemPtr(cur_varType, cur_base, memberId);
+            //下一层的类型即为当前层record成员的类型
+            cur_varType = context.typeSystem.getRecordMemberType(cur_varType, memberId);
+        }
+    }
+    
+    ptr = cur_base;
     return ptr;
 }
