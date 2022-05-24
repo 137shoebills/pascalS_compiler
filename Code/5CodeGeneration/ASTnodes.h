@@ -183,8 +183,6 @@ public:
     _AssignStatement();
     ~_AssignStatement();
     llvm::Value* codeGen(string leftType, string rightType);
-    void _AssignStatement::codeGenArrayAssign(_SymbolRecord* leftVar, llvm::Value* rValue);   //数组元素赋值
-    void _AssignStatement::codeGenRecordAssign(_SymbolRecord* leftVar, string memberId, llvm::Value* rValue);   //record成员赋值
 };
 
 class _ProcedureCall : public _Statement
