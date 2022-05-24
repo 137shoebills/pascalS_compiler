@@ -23,6 +23,8 @@ private:
     map<string, vector<NameType>> recordMembers;    //record列表
     map<string, llvm::StructType*> recordTypes;     //record类型的名称对应的LLVM Type
 
+    map<string, string> arrayMemberTypes;           //数组元素类型列表
+    map<string, vector<pair<int, int>> > arrayRangeLists;  //数组上下界列表
     map<string, llvm::ArrayType*> arrayTypes;       //数组变量对应的LLVM Type
 
 public:
@@ -45,9 +47,16 @@ public:
     void addRecordMember(string recName, int lineNo, string memName, string memType);
     //获取record中成员所在的位置（第几个）（处理record成员/record成员赋值时）
     long getRecordMemberIndex(string recName, string memName);
+    //获取record成员类型名
+    string getRecordMemberType(string recName, string memName);
 
     //新增数组变量对应的LLVM类型
-    void addArrayType(string typeName, llvm::ArrayType* type);
+    void addArrayType(string typeName, llvm::ArrayType* ArrayType, string memberType,
+        vector<pair<int,int>> ArrayRangeList);
+    //获取数组元素类型名
+    string getArrayMemberType(string arrName);
+    //获取数组上下界
+    pair<int, int> getArrayRange(string arrName);
 }
 
 #endif
