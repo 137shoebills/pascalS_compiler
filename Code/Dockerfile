@@ -29,11 +29,12 @@ RUN yum install llvm clang -y
 # 安装系统管理指令
 RUN yum install sudo -y
 RUN yum install wget -y
-# 安装llvm11版本
+# 安装llvm9.0版本
 RUN wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 RUN yum localinstall epel-release-latest-7.noarch.rpm -y
-RUN yum install llvm11 llvm11-devel clang -y
-RUN cp /usr/lib64/llvm11/lib/libLLVM.so /usr/local/lib/   #将库的链接放置在local/bin目录下
+RUN yum install llvm9.0 llvm9.0-devel clang -y
+RUN cp /usr/lib64/llvm9.0/lib/libLLVM.so /usr/local/lib/   #将库的链接放置在local/bin目录下
+RUN cp epel-release-latest-7.noarch.rpm /usr/bin/  
 
 
 # 安装CMake，centos7因为版本比较老所以要下载源码并编译。
