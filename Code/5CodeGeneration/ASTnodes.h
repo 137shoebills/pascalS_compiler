@@ -274,7 +274,7 @@ public:
 public:
     _Idvpart();
     ~_Idvpart();
-    llvm::Value* codeGen(_SymbolRecord* variant);
+    llvm::Value* codeGen(_VariantReference* varRef);
 };
 
 class _IfStatement : public _Statement
