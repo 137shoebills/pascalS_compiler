@@ -790,6 +790,11 @@ string SemanticAnalyseExpression(_Expression *expression)
 				expression->totalIntValue = -expression->totalIntValue;
 			expression->totalIntValueValid = true;
 		}
+		if(variantReferenceType=="boolean"&&expression->variantReference->kind=="constant"){
+			_SymbolRecord *record = findSymbolRecord(expression->variantReference->variantId.first);
+			expression->boolValue=record->value;
+			//cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+		}
 		return expression->expressionType = variantReferenceType;
 	}
 
@@ -810,8 +815,10 @@ string SemanticAnalyseExpression(_Expression *expression)
 		return expression->expressionType = "char";
 
 	//表达式类型为布尔类型boolean
-	else if (expression->type == "boolean")
+	else if (expression->type == "boolean"){
+		//cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 		return expression->expressionType = "boolean";
+	}
 
 	//表达式类型为函数调用 <ok>
 	else if (expression->type == "function") //获得函数调用的返回值类型
@@ -828,7 +835,9 @@ string SemanticAnalyseExpression(_Expression *expression)
 			string epType2 = SemanticAnalyseExpression(expression->operand2);
 			//类型兼容
 			if ((epType1 == epType2 && epType1 != "error") || (epType1 == "integer" && epType2 == "real") || (epType1 == "real" && epType2 == "integer"))
+			{
 				return expression->expressionType = "boolean";
+			}
 			//类型错误或类型不兼容
 			else
 			{
@@ -843,8 +852,15 @@ string SemanticAnalyseExpression(_Expression *expression)
 		{
 			string type = SemanticAnalyseExpression(expression->operand1);
 			//类型兼容
-			if (type == "boolean")
+			if (type == "boolean"){
+				if(expression->operand1->boolValue=="false")
+					expression->boolValue="true";
+				else{
+					expression->boolValue="false";
+				}
+				//cout<<"not "<<expression->operand1->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				return expression->expressionType = "boolean";
+			}
 			//类型错误或类型不兼容
 			else
 			{
@@ -882,6 +898,11 @@ string SemanticAnalyseExpression(_Expression *expression)
 			{
 				expression->totalIntValue = expression->operand1->totalIntValue;
 				expression->totalIntValueValid = true;
+			}
+			//bool类型记录值
+			if(expression->expressionType=="boolean"){
+				expression->boolValue=expression->operand1->boolValue;
+				//cout<<"("<<expression->operand1->variantReference->variantId.first<<") : "<<expression->boolValue<<endl;
 			}
 			return expression->expressionType;
 		}
@@ -954,8 +975,24 @@ string SemanticAnalyseExpression(_Expression *expression)
 		{
 			string epType1 = SemanticAnalyseExpression(expression->operand1);
 			string epType2 = SemanticAnalyseExpression(expression->operand2);
-			if (epType1 == "boolean" && epType2 == "boolean")
+			//bool值记录结果
+			if (epType1 == "boolean" && epType2 == "boolean"){
+				if(expression->operation=="and"){
+					if(expression->operand1->boolValue=="true"&&expression->operand2->boolValue=="true")
+						expression->boolValue="true";
+					else 
+						expression->boolValue="false";
+					//cout<<expression->operand1->variantReference->variantId.first<<" and "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+				}
+				else{
+					if(expression->operand1->boolValue=="true"||expression->operand2->boolValue=="true")
+						expression->boolValue="true";
+					else 
+						expression->boolValue="false";
+					//cout<<expression->operand1->variantReference->variantId.first<<" or "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+				}
 				return expression->expressionType = "boolean";
+			}
 			if (epType1 != "error" && epType1 != "boolean")
 				addSingleOperandExpressionTypeMismatchErrorInformation(expression->operand1, "boolean");
 			if (epType2 != "error" && epType2 != "boolean")
