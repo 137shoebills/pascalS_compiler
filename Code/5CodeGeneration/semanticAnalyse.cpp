@@ -41,7 +41,7 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi);								   //对自定义进行�
 void SemanticAnalyseVariant(_Variant *variant);									   //对变量定义进行语义分析
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition); //对子程序定义进行语义分析
 void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter);			   //对形式参数进行语义分析
-void SemanticAnalyseStatement(_Statement *statement);							   //对语句进行语义分析
+void SemanticAnalyseStatement(_Statement *statement,int flag);							   //对语句进行语义分析
 
 vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type); //对record类型进行语义分析
 
@@ -163,7 +163,7 @@ void SemanticAnalyseSubprogram(_SubProgram *subprogram)
 		SemanticAnalyseSubprogramDefinition(subprogram->subprogramDefinitionList[i]);
 		relocation();
 	}
-	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(subprogram->compound));
+	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(subprogram->compound),1);
 }
 
 //对常量定义进行语义分析
@@ -409,7 +409,7 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	}
 
 	//对compound进行语义分析(在这一步获取函数返回值的llValue)
-	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound));
+	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound),1);
 
 	layer--; //层数--
 
@@ -451,7 +451,7 @@ void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter)
 }
 
 //对语句进行语义分析
-void SemanticAnalyseStatement(_Statement *statement)
+void SemanticAnalyseStatement(_Statement *statement,int flag)
 {
 	if (statement == NULL)
 	{
@@ -462,7 +462,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 	{
 		_Compound *compound = reinterpret_cast<_Compound *>(statement); //对复合语句块中的每一条语句进行语义分析
 		for (int i = 0; i < compound->statementList.size(); i++)
-			SemanticAnalyseStatement(compound->statementList[i]);
+			SemanticAnalyseStatement(compound->statementList[i],1);
 	}
 	else if (statement->type == "repeat")
 	{
@@ -476,7 +476,9 @@ void SemanticAnalyseStatement(_Statement *statement)
 		else
 			repeatStatement->statementType = "void";
 		for (int i = 0; i < repeatStatement->_do.size(); ++i)
-			SemanticAnalyseStatement(repeatStatement->_do[i]); //对循环体语句进行语义分析
+			SemanticAnalyseStatement(repeatStatement->_do[i],0); //对循环体语句进行语义分析
+		if(flag == 1)
+			repeatStatement->codeGen();
 	}
 	else if (statement->type == "while")
 	{
@@ -489,7 +491,9 @@ void SemanticAnalyseStatement(_Statement *statement)
 		}
 		else
 			whileStatement->statementType = "void";
-		SemanticAnalyseStatement(whileStatement->_do); //对循环体语句进行语义分析
+		SemanticAnalyseStatement(whileStatement->_do,0); //对循环体语句进行语义分析
+		if(flag == 1)
+			whileStatement->codeGen();
 	}
 	else if (statement->type == "for")
 	{
@@ -528,7 +532,9 @@ void SemanticAnalyseStatement(_Statement *statement)
 			forStatement->statementType = "error";
 		}
 		//对循环体语句进行语义分析
-		SemanticAnalyseStatement(forStatement->_do);
+		SemanticAnalyseStatement(forStatement->_do,0);
+		if(flag == 1)
+			forStatement->codeGen();
 	}
 	else if (statement->type == "if")
 	{
@@ -541,9 +547,12 @@ void SemanticAnalyseStatement(_Statement *statement)
 		}
 		else
 			ifStatement->statementType = "void";
-		SemanticAnalyseStatement(ifStatement->then); //对then语句进行语义分析
+		SemanticAnalyseStatement(ifStatement->then,0); //对then语句进行语义分析
 		if (ifStatement->els != NULL)				 //对else语句进行语句分析
-			SemanticAnalyseStatement(ifStatement->els);
+			SemanticAnalyseStatement(ifStatement->els,0);
+		if (flag == 1)
+			ifStatement->codeGen();
+			
 	}
 	else if (statement->type == "assign")
 	{ //左值特判
