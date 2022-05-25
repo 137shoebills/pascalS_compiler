@@ -26,7 +26,8 @@ llvm::Type* TypeSystem::getllType(string type){
     else
     {
         //报错：未知类型
-        return LogErrorV("[getllType]  Unknown type: " + type);
+        LogErrorV("[getllType]  Unknown type: " + type);
+        return nullptr;
     }
 }
 
@@ -63,6 +64,7 @@ string TypeSystem::getRecordMemberType(string recName, string memName)
         if(members[i].first == memName)
             return members[i].second;
     }
+    return "error_type";
 }
 
 //新增数组变量对应的LLVM类型
@@ -79,6 +81,6 @@ string TypeSystem::getArrayMemberType(string arrName){
 }
 
 //获取数组上下界
-pair<int, int> getArrayRange(string arrName){
+pair<int, int> TypeSystem::getArrayRange(string arrName){
     return arrayRangeLists[arrName][0];        
 }
