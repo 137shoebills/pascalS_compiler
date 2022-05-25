@@ -2,10 +2,12 @@
 #define ASTNODES_H
 
 #include<llvm/IR/Value.h>
+#include<llvm/IR/Type.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <memory>
+
 
 using namespace std;
 class _Program;
@@ -102,9 +104,10 @@ public:
     ~_Type() {}
 
     //创建数组的LLVM类型
-    llvm::Type* _Type::InitArrayType(string arrTypeName, string type);  //arrTypeName:自定义类型名，type:数组元素类型
+    llvm::Type* InitArrayType(string arrTypeName, string type);  //arrTypeName:自定义类型名，type:数组元素类型
+    
     //创建record的LLVM类型
-    llvm::Type* _Type::InitRecordType(string recTypeName);  //recTypeName:自定义类型名
+    llvm::Type* InitRecordType(string recTypeName);  //recTypeName:自定义类型名
 };
 
 class _Variant //变量定义
@@ -134,7 +137,8 @@ public:
 public:
     _FunctionDefinition();
     ~_FunctionDefinition();
-    llvm::Value* codeGen(_SymbolRecord*);
+    //llvm::Value *codeGen(_SymbolRecord* funcRec);
+    llvm::Function* codeGen(llvm::Value* funcRetValue);
 };
 
 class _FormalParameter //形式参数
@@ -230,16 +234,19 @@ public:
 
     int isMinusShow; //是否为负
 
+    string boolValue;//bool类型记录值，值为“true”或false
+
     string operation;     //具体操作符
     string operationType; //操作符类型,"relop","mulop","addop","single"
     _Expression *operand1, *operand2;
 
     int lineNo; //行号, 用表达式中最先出现的操作数的行号表示
+
+    llvm::Value* llvalue;
 public:
     _Expression();
     ~_Expression();
     llvm::Value* codeGen();
-	llvm::Value* llvalue;
     //语义分析相关
 public:
     int totalIntValue;
