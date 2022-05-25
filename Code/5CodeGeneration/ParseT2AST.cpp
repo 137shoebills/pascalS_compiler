@@ -463,7 +463,7 @@ void setConst(Token *now,_Constant* &_constant){//pascal在定义常量时，并
         _constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
     else if(now->children[loc]->type=="BOOL_CONSTANT"){
-        _constant->type="bool";
+        _constant->type="boolean";
         if(now->children[loc]->value == "true")
             _constant->boolvalue=true;
         else
@@ -738,13 +738,13 @@ _Statement* getStatement(Token *now){
         return _ifStatement;
     }
     else if(now->children[0]->type=="CASE"){
-           _CaseStatement* _caseStatement = new _CaseStatement;
-           _caseStatement->type = "case";
-           _caseStatement->lineNo = now->children[0]->lineNo;
-           _caseStatement->caseid = getExpression(now->children[1]);
-           getCaseBody(now->children[3],_caseStatement);
-           return _caseStatement;
-       }
+        _CaseStatement* _caseStatement = new _CaseStatement;
+        _caseStatement->type = "case";
+        _caseStatement->lineNo = now->children[0]->lineNo;
+        _caseStatement->caseid = getExpression(now->children[1]);
+        getCaseBody(now->children[3],_caseStatement);
+        return _caseStatement;
+    }
     else if(now->children[0]->type=="FOR"){
         _ForStatement* _forStatement = new _ForStatement;
         _forStatement->lineNo = now->children[0]->lineNo;
@@ -1073,7 +1073,7 @@ _Expression* getFactor(Token *now){
     }
     else if (now->children[0]->type == "BOOL_CONSTANT"){
         _expression->type = "boolean";
-        _expression->totalIntValue= now->children[0]->value[0];
+        _expression->boolValue= now->children[0]->value[0];
         _expression->lineNo = now->children[0]->lineNo;
     }
     else{
@@ -1112,9 +1112,12 @@ void const2exp(_Constant * constant,_Expression *& _expression){
             _expression->operand1->type = "char";
             _expression->operand1->charVal = constant->charValue;
         }
-        else if(constant->type == "bool"){
+        else if(constant->type == "boolean"){
             _expression->operand1->type = "boolean";
-            _expression->operand1->totalIntValue = constant->boolvalue;
+            if(constant->boolvalue==true)
+                _expression->boolValue="true";
+            else
+                 _expression->boolValue="false";
         }
         else{
             //id
@@ -1138,9 +1141,9 @@ void const2exp(_Constant * constant,_Expression *& _expression){
             _expression->type = "char";
             _expression->charVal = constant->charValue;
         }
-        else if(constant->type == "bool"){
+        else if(constant->type == "boolean"){
             _expression->type = "boolean";
-            _expression->totalIntValue = constant->boolvalue;
+            _expression->boolValue = constant->boolvalue;
         }
         else{
             //id
