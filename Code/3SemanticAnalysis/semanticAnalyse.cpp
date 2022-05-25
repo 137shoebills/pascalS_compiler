@@ -620,6 +620,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 				// tmp[0] -= 'a' - 'A';
 				addGeneralErrorInformation("[" + tmp + " actual parameter missing!] <Line " + itos(procedureCall->procedureId.second) + "> procedure \"" + record->id + "\" must have at least one actual parameter.");
 				procedureCall->statementType = "error";
+				return;
 			}
 		}
 		if (record->id == "read")
