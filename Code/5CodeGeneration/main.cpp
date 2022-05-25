@@ -1,9 +1,12 @@
 #include "main.h"
-// #include "symbolTable.h"
 #include "ParseT2AST.cpp"
 #include "semanticAnalyse.cpp"
+#include "ObjGen.hpp"
 #include <fstream>
 #include <sstream>
+
+#define ASSEMBLY_FILE 1
+#define OBJECT_FILE 2
 
 extern FILE *yyin;
 extern Token *ParseTreeHead;
@@ -62,6 +65,19 @@ int main(int argc, char **argv)
     outputErrorInformation(semanticErrorInformation);
     cout << "\nSemantic Warnings:\n";
     outputErrorInformation(semanticWarningInformation);
+
+    char *output_file = argv[2];
+    string output_filename = output_file;
+    int outputType = 0;
+    if(output_filename[output_filename.size()-1] == 's')
+        outputType = ASSEMBLY_FILE;
+    else if(output_filename[output_filename.size()-1] == 'o')
+        outputType = OBJECT_FILE;
+    else
+        cout<<"Unsupported target file type: " + output_filename << endl;
+    if(outputType)
+        ObjCodeGen(context, output_filename, outputType);
+    
     return 0;
 }
 
@@ -93,7 +109,7 @@ void dfs(Token *root)
         }
         else
         {
-            cout << " \"" << root->children[i]->type < "\"";
+            cout << " \"" << root->children[i]->type << "\"";
         }
     }
     cout << "\n";
