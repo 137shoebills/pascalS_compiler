@@ -49,22 +49,12 @@ public:
     }
 
     void InitCodeGen();
-    //[refer]生成中间代码
-    //void generatecode(NBlock&);
-    void GenerateCode(_Program&);
 };
 
+//用于报错的函数：
 //unique_ptr<_Expression> LogError(const char *str)
-llvm::Value* LogError(const char *str)
-{
-    fprintf(stderr, "LogError: %s\n", str);
-    return nullptr;
-}
-
-llvm::Value * LogErrorV(string str)
-{
-    return LogError(str.c_str());
-}
+llvm::Value* LogError(const char *str);
+llvm::Value * LogErrorV(string str);
 
 //获取数组元素的指针
 llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc);
