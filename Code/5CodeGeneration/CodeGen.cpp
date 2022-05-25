@@ -274,7 +274,10 @@ llvm::Value* _Expression::codeGen(){
           ret = this->operand1->llvalue;
       }
       else if(this->type=="compound" && this->operation="not"){
-          ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), !(this->operand1->totalIntvalue), true);  
+		  if(this->operand1->boolValue == "true")
+          	ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 1, true);  
+		  else
+			  ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true); 
       }
       else if(this->type=="compound"&& this->operation="minus"){
 		  Value* temp;
@@ -318,7 +321,6 @@ llvm::Value* _Expression::codeGen(){
               else if(this->operation == "or")
                   ret = fp ? LogErrorV("Double type has no OR operation") : context.builder.CreateOr(L, R, "ortmp");
               else if(this->operation == "div"){
-		
 				  ret = fp ? LogErrorV("Double type has no DIV operation") : llvm::ConstantInt::get(llvm::Type::getInt32Ty(context.llvmContext), int(this->operand1->totalIntValue/this->operand2->totalIntValue), true);
               }
               else if(this->operation == "mod")
