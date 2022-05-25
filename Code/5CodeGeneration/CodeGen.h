@@ -2,6 +2,7 @@
 #define __CODEGEN_H__
 
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Type.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
@@ -25,17 +26,17 @@
 #define ISTYPE(value, id) (value->getType()->getTypeID() == id)
 
 using namespace std;
-using legacy::PassManager;
+//using legacy::PassManager;
 
+class CodeGenContext;
+
+extern CodeGenContext context;
 extern _SymbolTable *mainSymbolTable;
-extern _SymbolRecord* findSymbolRecord(_SymbolTable *currentSymbolTable, string id);
+extern _SymbolRecord* findSymbolRecord(string id);
 
-CodeGenContext context;
+extern string itos(int num); //将int转化为string
 
 class CodeGenContext {
-private:
-    vector<CodeGenBlock*> blockStack;
-
 public:
     llvm::LLVMContext llvmContext;
     llvm::IRBuilder<> builder;
@@ -51,15 +52,16 @@ public:
     //[refer]生成中间代码
     //void generatecode(NBlock&);
     void GenerateCode(_Program&);
-}
+};
 
-unique_ptr<_Expression> LogError(const char *str)
+//unique_ptr<_Expression> LogError(const char *str)
+llvm::Value* LogError(const char *str)
 {
     fprintf(stderr, "LogError: %s\n", str);
     return nullptr;
 }
 
-llvm::Value* LogErrorV(string str)
+llvm::Value * LogErrorV(string str)
 {
     return LogError(str.c_str());
 }
