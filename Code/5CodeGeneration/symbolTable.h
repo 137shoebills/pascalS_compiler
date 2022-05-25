@@ -8,7 +8,7 @@
 #include <vector>
 #include <map>
 #include <stack>
-#include "ASTnodes.h"	//包含llvm/IR/Value.h
+#include "ASTnodes.h"
 
 using namespace std;
 
@@ -37,6 +37,7 @@ public:
 	vector<_FormalParameter*> paras;	//function的形参列表 
 
 	llvm::Value* llValue = nullptr;		//LLVM类型值
+	llvm::Function* functionPtr = nullptr;	//函数指针
 	llvm::Value* funcRetValue = nullptr; 	//函数返回值
 
 	void setPara(string id, int lineNumber, string type);	//设置传值参数
