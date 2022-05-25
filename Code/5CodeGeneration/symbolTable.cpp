@@ -8,7 +8,7 @@ using namespace std;
 _SymbolTable *mainSymbolTable; //主符号表
 _SymbolTable *currentSymbolTable;
 
-_SymbolRecord* findSymbolRecord(_SymbolTable *currentSymbolTable, string id);
+_SymbolRecord* findSymbolRecord(string id);
 
 void _SymbolTable::addPara(string id, int lineNumber, string type)
 {
@@ -234,7 +234,7 @@ bool _SymbolRecord::checkArrayXthIndexRange(int X, int index)
 }
 
 //找出标识符在符号表中的位置
-_SymbolRecord* findSymbolRecord(_SymbolTable *currentSymbolTable, string id)
+_SymbolRecord* findSymbolRecord(string id)
 {
 	if (mainSymbolTable->idToLoc[id].size() > 0)
 	{
