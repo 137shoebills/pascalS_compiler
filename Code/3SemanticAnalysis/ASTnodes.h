@@ -214,6 +214,8 @@ public:
 
     int isMinusShow; //是否为负
 
+    string boolValue;//bool类型记录值，值为“true”或false
+
     string operation;     //具体操作符
     string operationType; //操作符类型,"relop","mulop","addop","single"
     _Expression *operand1, *operand2;
