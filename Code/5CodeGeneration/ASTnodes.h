@@ -239,6 +239,7 @@ public:
     _Expression();
     ~_Expression();
     llvm::Value* codeGen();
+	llvm::Value* llvalue;
     //语义分析相关
 public:
     int totalIntValue;

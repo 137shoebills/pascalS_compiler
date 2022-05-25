@@ -256,26 +256,34 @@ llvm::Value* _Expression::codeGen(){
           ret = this->functionCall->codeGen();
       }
       else if(this->type=="compound" && this->operation="bracket"){
-          ret = this->operand1->codeGen();
+          ret = this->operand1->llvalue;
       }
       else if(this->type=="compound" && this->operation="not"){
-          ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), !(this->operand1->llValue->getValue()), true);  
+          ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), !(this->operand1->totalIntvalue), true);  
       }
       else if(this->type==_expression->operation="minus"){
-          ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), -(this->operand1->llValue->getValue()), true);
+		  Value* temp;
+		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::DoubleTyID) {
+			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, 0.0, true);
+			  ret = context.builder.CreateFSub(temp, this->operand1->llvalue, "subtmp");
+		  }
+		  else{
+			  temp = llvm::ConstantInt::get(context.typeSystem.intTy, 0, true);
+			  ret = context.builder.CreateSub(temp, this->operand1->llvalue, "subtmp");
+		  }
       }
       else if(this->type="compound"){
           if(this->expressionType != "error"){
-              Value* L = this->operand1->codeGen();
-              Value* R = this->operand2->codeGen();
+              Value* L = this->operand1->llvalue;
+              Value* R = this->operand2->llvalue;
               bool fp = false;
 
-              if( (L->getType()->getTypeID() == Type::DoubleTyID) || (R->getType()->getTypeID() == Type::DoubleTyID) ){  // type upgrade
+              if( (L->getType()->getTypeID() == llvm::Type::DoubleTyID) || (R->getType()->getTypeID() == llvm::Type::DoubleTyID) ){  // type upgrade
                   fp = true;
-                  if( (R->getType()->getTypeID() != Type::DoubleTyID) ){
+                  if( (R->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
                       R = context.builder.CreateUIToFP(R, Type::getDoubleTy(context.llvmContext), "ftmp");
                   }
-                  if( (L->getType()->getTypeID() != Type::DoubleTyID) ){
+                  if( (L->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
                       L = context.builder.CreateUIToFP(L, Type::getDoubleTy(context.llvmContext), "ftmp");
                   }
               }
@@ -381,9 +389,7 @@ llvm::Value* _IfStatement::codeGen(){
       }
       //插入指令
       context.builder.SetInsertPoint(thenBB);
-      context.pushBlock(thenBB);
       this->then->codeGen();
-      context.popBlock();
       thenBB = context.builder.GetInsertBlock();
       if( thenBB->getTerminator() == nullptr ){
           context.builder.CreateBr(mergeBB);
@@ -391,9 +397,7 @@ llvm::Value* _IfStatement::codeGen(){
       if( this->els ){
           theFunction->getBasicBlockList().push_back(elsBB);
           context.builder.SetInsertPoint(elsBB);
-          context.pushBlock(thenBB);
           this->els->codeGen();
-          context.popBlock();
           context.builder.CreateBr(mergeBB);
       }
       theFunction->getBasicBlockList().push_back(mergeBB);
@@ -423,19 +427,17 @@ llvm::Value* _ForStatement::codeGen(){
 
       context.builder.SetInsertPoint(block);
 
-      context.pushBlock(block);
 
-      this->_do->codeGen(context);
+      this->_do->codeGen();
 
-      context.popBlock();
 
       // do increment
       if( this->increment ){
-          this->increment->codeGen(context);
+          this->increment->codeGen();
       }
 
       // execute the again or stop
-      condValue = this->condition->codeGen(context);
+      condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
       context.builder.CreateCondBr(condValue, block, after);
 
@@ -453,7 +455,7 @@ llvm::Value* _WhileStatement::codeGen(){
       llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
   	llvm::BasicBlock *block = BasicBlock::Create(context, "while_body", sum_fun);
   	llvm::BasicBlock *after = BasicBlock::Create(context, "while_end", sum_fun);
-      llvm::Value* condValue = this->condition->codeGen(context);
+      llvm::Value* condValue = this->condition->codeGen();
       if( !condValue )
           return nullptr;
 
@@ -461,11 +463,9 @@ llvm::Value* _WhileStatement::codeGen(){
       // fall to the block
       context.builder.CreateCondBr(condValue, block, after);
       context.builder.SetInsertPoint(block);
-      context.pushBlock(block);
-      this->_do->codeGen(context);
-      context.popBlock();
+      this->_do->codeGen();
       // execute the again or stop
-      condValue = this->condition->codeGen(context);
+      condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
       context.builder.CreateCondBr(condValue, block, after);
       // insert the after block
@@ -485,11 +485,9 @@ llvm::Value* _RepeatStatement::codeGen(){
       // fall to the block
       context->builder.CreateBr(block);
       context.builder.SetInsertPoint(block);
-      context.pushBlock(block);
-      this->_do->codeGen(context);
-      context.popBlock();
+      this->_do->codeGen();
       // execute the again or stop
-      condValue = this->condition->codeGen(context);
+      condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
       context.builder.CreateCondBr(condValue, block, after);
       // insert the after block
