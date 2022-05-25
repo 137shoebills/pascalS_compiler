@@ -1,31 +1,30 @@
 #include "CodeGen.h"
 #define ISTYPE(value, id) (value->getType()->getTypeID() == id)
 
-
-
-
-//static Value* CastToBoolean()...  //用于if-else语句
+CodeGenContext context;
 
 //初始化中间代码生成相关参数
 void CodeGenContext::InitCodeGen(){
     cout << "InitCodeGen" << endl;
     vector<llvm::Type*> SysArgs;
-	llvm::FunctionType* PrgmType = llvm::FunctionType:get(llvm::Type::getVoidTy(context.llvmContext),SysArgs,false);
-    llvm::Function* Program = llvm::Function::Create(PrgmType, GlobalValue::ExternalLinkage, "Program");
+	llvm::FunctionType* PrgmType = llvm::FunctionType::get(llvm::Type::getVoidTy(context.llvmContext),llvm::makeArrayRef(SysArgs),false);
+    llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "Program");
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context.llvmContext, "entry");
 }
 //逻辑表达式判断值
-static Value* CastToBoolean(CodeGenContext& context, Value* condValue){
+//static llvm::Value* CastToBoolean(CodeGenContext& context, llvm::Value* condValue){
+llvm::Value* CastToBoolean(CodeGenContext& context, llvm::Value* condValue){
 
     if( ISTYPE(condValue, llvm::Type::IntegerTyID) ){
-        condValue = context.builder.CreateIntCast(condValue, Type::getInt1Ty(context.llvmContext), true);
-        return context.builder.CreateICmpNE(condValue, ConstantInt::get(Type::getInt1Ty(context.llvmContext), 0, true));
+        condValue = context.builder.CreateIntCast(condValue, llvm::Type::getInt1Ty(context.llvmContext), true);
+        return context.builder.CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true));
     }else if( ISTYPE(condValue, llvm::Type::DoubleTyID) ){
-        return context.builder.CreateFCmpONE(condValue, ConstantFP::get(context.llvmContext, APFloat(0.0)));
+        return context.builder.CreateFCmpONE(condValue, llvm::ConstantFP::get(context.llvmContext, llvm::APFloat(0.0)));
     }else{
         return condValue;
     }
 }
+
 //各种AST节点的CodeGen()----------
 
 //主program
@@ -47,17 +46,17 @@ llvm::Value* _Constant::codeGen() {
     }
     else if(this->type == "real"){
         float value = is_minus ? (-this->realValue) : this->realValue;
-        ret = llvm::ConstantFP::get(context.typeSystem.realTy, value, true);
+        ret = llvm::ConstantFP::get(context.typeSystem.realTy, (double)this->realValue);
     }
     else if(this->type == "char"){
         ret = llvm::ConstantInt::get(context.typeSystem.charTy, this->charValue, true);
     }
     else if(this->type == "boolean"){
-        ret = llvm::ConstantInt::get(context.typeSystem.boolTy, this->boolValue, true);
+        ret = llvm::ConstantInt::get(context.typeSystem.boolTy, this->boolvalue, true);
     }
     else{
         //报错：未知的常量类型
-        ret = LogErrorV("[_Constant::codeGen] Unknown Constant_Type: " + this->type + ", line " + this->valueId.second);
+        ret = LogErrorV("[_Constant::codeGen] Unknown Constant_Type: " + this->type + ", line " + itos(this->valueId.second));
     }
 
     return ret;
@@ -86,13 +85,14 @@ llvm::Value* _Variant::codeGen() {
             _SymbolRecord* tmp = findSymbolRecord(record->type);
             if(!tmp){
                 //报错：未定义的数组类型
-                return LogErrorV("[_Variant::codeGen]  Undefined array type: " + record->type + ", line " + this->variantId.second);
+                return LogErrorV("[_Variant::codeGen]  Undefined array type: " + record->type + ", line " + itos(this->variantId.second));
             }
             string type = tmp->type;
             arrayType = this->type->InitArrayType(record->type, type);
         }
         //在栈上创建一个局部变量
-        addr = context.builder.CreateAlloca(arrayType, "arraytmp");
+        //addr = context.builder.CreateAlloca(arrayType, "arraytmp");
+        addr = context.builder.CreateAlloca(arrayType);
     }
 
     else if(this->type->type.first == "record")   //如果是record类型
@@ -105,7 +105,7 @@ llvm::Value* _Variant::codeGen() {
             recordType = this->type->InitRecordType(record->type);
         }
         //在栈上创建一个局部变量
-        addr = context.builder->CreateAlloca(recordType, nullptr);
+        addr = context.builder.CreateAlloca(recordType, nullptr);
     }
 
     else    //普通变量
@@ -123,7 +123,7 @@ void _TypeDef::codeGen(){
     //数组类型定义
     if(this->type->flag)
     {
-        llvm::Type* tmp = this->type->InitArrayType(this->typedefId.first, this->type->type.first);
+        auto tmp = this->type->InitArrayType(this->typedefId.first, this->type->type.first);
     }
     //record类型定义
     else if(this->type->type.first == "record")
@@ -133,14 +133,20 @@ void _TypeDef::codeGen(){
 }
 
 //函数/过程定义
-llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
+//llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) 
+llvm::Function* _FunctionDefinition::codeGen(llvm::Value* funcRetValue)
+{
     cout << "_FunctionDefinition::codeGen" << endl;
 
     vector<llvm::Type*> argTypes;
     string type_str;
     //遍历形参列表，获取每个形参对应的LLVM类型（只考虑基本类型）
-    for(auto it = formalParaList.begin(); it!=formalParaList.end(); it++){
-        type_str = it->type;
+    // for(auto it = formalParaList.begin(); it!=formalParaList.end(); it++){
+    //     type_str = it->type;
+    //     argTypes.push_back(context.typeSystem.getllType(type_str));
+    // }
+    for(int i=0; i!=formalParaList.size(); i++){
+        type_str = formalParaList[i]->type;
         argTypes.push_back(context.typeSystem.getllType(type_str));
     }
     
@@ -155,7 +161,8 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
     }
     retType = context.typeSystem.getllType(type_str); 
     if(!retType){
-        return LogErrorV("[_FunctionDefinition::codeGen]    Undefined function returnType: " + type_str);
+        LogErrorV("[_FunctionDefinition::codeGen]    Undefined function returnType: " + type_str);
+        return nullptr;
     }
 
     llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
@@ -168,42 +175,39 @@ llvm::Value* _FunctionDefinition::codeGen(_SymbolRecord* funcRec) {
     //函数形参相关
     auto formalArg = formalParaList.begin();  //函数定义中的形参列表
     for(auto &it: function->args()){
-        it.setName(formalArg->paraId.first);    //将形参的名字一一对应上
-        llvm::Value* argAlloc = formalArg->codeGen();   //获取形参的地址
+        it.setName((*formalArg)->paraId.first);    //将形参的名字一一对应上
+        llvm::Value* argAlloc = (*formalArg)->codeGen();   //获取形参的地址
         //将参数store到形参的地址中
         context.builder.CreateStore(&it, argAlloc, false);
         formalArg++;
     }
 
     if(this->type.first == ""){   //若为过程，设置一个无意义的返回值（integer值0）
-        funcRec->funcRetValue = llvm::ConstantInt::get(context.typeSystem.intTy, 0, true);
+        funcRetValue = llvm::ConstantInt::get(context.typeSystem.intTy, 0, true);
     }
 
     //函数返回值：在对assign_stmt的分析中遇到形如"funcName:="的赋值语句，特判
-    if(!funcRec->funcRetValue){   //在对函数体的分析中 未成功获取返回值
+    if(!funcRetValue){   //在对函数体的分析中 未成功获取返回值
         //报错：函数返回值未找到
-        return LogErrorV("[_FunctionDefinition::codeGen]    Function ReturnValue not found: " + funcRec->id);
+        LogErrorV("[_FunctionDefinition::codeGen]    Function ReturnValue not found: " + this->functionID.first);
+        return nullptr;
     }
     else{
-        context.builder.CreateRet(funcRec->funcRetValue);
+        context.builder.CreateRet(funcRetValue);
     }
 
     return function;    //返回Function::Create的返回值
 }
 
-//❓函数/过程的形参
+//函数/过程的形参(传值)
 //重用variant的codeGen
-llvm::Value* _FormalParameter::codeGen(int index) {
+llvm::Value* _FormalParameter::codeGen() {
     cout << "_FormalParameter::codeGen" << endl;
-
-    //形参AST
-    // int flag;                 // flag=0表示传值调用，flag=1表示引用调用
     
     _Variant *var = new _Variant;
     var->variantId = this->paraId;
     var->type->type = make_pair(this->type, this->paraId.second);
     var->type->flag = 0;
-
     return var->codeGen(); //返回形参的地址
 }
 
@@ -214,7 +218,7 @@ llvm::Value* _FunctionCall::codeGen(){
     _SymbolRecord* funcRec = findSymbolRecord(this->functionId.first);
     if(!funcRec){
         //报错：函数定义未找到
-        return LogErrorV("[_FunctionCall::codeGen] Function definition not found: " + this->functionId.first + ", line " + this->functionId.second);
+        return LogErrorV("[_FunctionCall::codeGen] Function definition not found: " + this->functionId.first + ", line " + itos(this->functionId.second));
     }
 
     vector<llvm::Value*> args;
@@ -228,7 +232,7 @@ llvm::Value* _FunctionCall::codeGen(){
         }
     }
 
-    llvm::Function* callee = funcRec->llValue;  //函数指针（Function::Create）
+    llvm::Function* callee = funcRec->functionPtr;  //函数指针（Function::Create）
     return context.builder.CreateCall(callee, args, "Calltmp");    //返回：函数返回值
 }
 
@@ -251,16 +255,16 @@ llvm::Value* _Expression::codeGen(){
       llvm::Value* ret;
       //常数（字面量）：返回对应的LLVM常量
       if(this->type == "integer"){
-          ret = llvm::ConstantInt::get(context.typeSystem.intTy, this->intValue, true);
+          ret = llvm::ConstantInt::get(context.typeSystem.intTy, this->intNum, true);
       }
       else if(this->type == "real"){
-          ret = llvm::ConstantFP::get(context.typeSystem.realTy, this->realValue, true);
+          ret = llvm::ConstantFP::get(context.typeSystem.realTy, (double)this->realNum);
       }
       else if(this->type == "char"){
-          ret = llvm::ConstantInt::get(context.typeSystem.charTy, this->charValue, true);
+          ret = llvm::ConstantInt::get(context.typeSystem.charTy, this->charVal, true);
       }
       else if(this->type == "boolean"){
-          ret = llvm::ConstantInt::get(context.typeSystem.boolTy, this->boolValue, true);
+          ret = llvm::ConstantInt::get(context.typeSystem.boolTy, this->boolValue == "true"? 1 : 0, true);
       }
       //变量：返回变量的值；const部分声明的常量：返回常量的值
       else if(this->type=="var"){
@@ -270,19 +274,19 @@ llvm::Value* _Expression::codeGen(){
       else if(this->type=="function"){
           ret = this->functionCall->codeGen();
       }
-      else if(this->type=="compound" && this->operation="bracket"){
+      else if(this->type=="compound" && this->operation=="bracket"){
           ret = this->operand1->llvalue;
       }
-      else if(this->type=="compound" && this->operation="not"){
-		  if(this->operand1->boolValue == "true")
-          	ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 1, true);  
-		  else
-			  ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true); 
+      else if(this->type=="compound" && this->operation=="not"){
+        if(this->operand1->boolValue == "true")
+            ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 1, true);
+        else
+            ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true); 
       }
-      else if(this->type=="compound"&& this->operation="minus"){
-		  Value* temp;
+        else if(this->type=="compound" && this->operation=="minus"){
+          llvm::Value* temp;
 		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::DoubleTyID) {
-			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, 0.0, true);
+			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, (double)0.0);
 			  ret = context.builder.CreateFSub(temp, this->operand1->llvalue, "subtmp");
 		  }
 		  else{
@@ -290,19 +294,19 @@ llvm::Value* _Expression::codeGen(){
 			  ret = context.builder.CreateSub(temp, this->operand1->llvalue, "subtmp");
 		  }
       }
-      else if(this->type="compound"){
+      else if(this->type=="compound"){
           if(this->expressionType != "error"){
-              Value* L = this->operand1->llvalue;
-              Value* R = this->operand2->llvalue;
+              llvm::Value* L = this->operand1->llvalue;
+              llvm::Value* R = this->operand2->llvalue;
               bool fp = false;
 
               if( (L->getType()->getTypeID() == llvm::Type::DoubleTyID) || (R->getType()->getTypeID() == llvm::Type::DoubleTyID) ){  // type upgrade
                   fp = true;
                   if( (R->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
-                      R = context.builder.CreateUIToFP(R, Type::getDoubleTy(context.llvmContext), "ftmp");
+                      R = context.builder.CreateUIToFP(R, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
                   }
                   if( (L->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
-                      L = context.builder.CreateUIToFP(L, Type::getDoubleTy(context.llvmContext), "ftmp");
+                      L = context.builder.CreateUIToFP(L, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
                   }
               }
               if( !L || !R ){
@@ -321,7 +325,7 @@ llvm::Value* _Expression::codeGen(){
               else if(this->operation == "or")
                   ret = fp ? LogErrorV("Double type has no OR operation") : context.builder.CreateOr(L, R, "ortmp");
               else if(this->operation == "div"){
-				  ret = fp ? LogErrorV("Double type has no DIV operation") : llvm::ConstantInt::get(llvm::Type::getInt32Ty(context.llvmContext), int(this->operand1->totalIntValue/this->operand2->totalIntValue), true);
+                  ret = fp ? LogErrorV("Double type has no DIV operation") : llvm::ConstantInt::get(llvm::Type::getInt32Ty(context.llvmContext), int(this->operand1->totalIntValue/this->operand2->totalIntValue), true);
               }
               else if(this->operation == "mod")
                   ret = fp ? LogErrorV("Double type has no Mod operation") : context.builder.CreateSRem(L, R, "modtmp");
@@ -342,9 +346,9 @@ llvm::Value* _Expression::codeGen(){
 
           }
       }
-	  else
-		  ret =  LogErrorV("Unknown expression type");
-      this->llValue == ret;
+      else
+        ret = LogErrorV("Unknown expression type");
+      this->llvalue == ret;
       return ret;
 }
 
@@ -398,9 +402,9 @@ llvm::Value* _IfStatement::codeGen(){
           return nullptr;
       condValue = CastToBoolean(context, condValue);
       llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();//得到if语句所属函数
-      llvm::BasicBlock *thenBB = BasicBlock::Create(context.llvmContext, "then", theFunction);
-      llvm::BasicBlock *elsBB = BasicBlock::Create(context.llvmContext, "else");//else部分
-      llvm::BasicBlock *mergeBB = BasicBlock::Create(context.llvmContext, "ifcont");
+      llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(context.llvmContext, "then", theFunction);
+      llvm::BasicBlock *elsBB = llvm::BasicBlock::Create(context.llvmContext, "else");//else部分
+      llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(context.llvmContext, "ifcont");
       if( this->els ){
         //condvalue为条件判断结果值。如果为true，就进入thenBB分支，如果为false，就进入elsBB分支。
           context.builder.CreateCondBr(condValue, thenBB, elsBB);
@@ -429,12 +433,12 @@ llvm::Value* _ForStatement::codeGen(){
     cout << "_ForStatement::codeGen" << endl;
 
       llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
-      llvm::BasicBlock *block = BasicBlock::Create(context.llvmContext, "forloop", theFunction);
-      llvm::BasicBlock *after = BasicBlock::Create(context.llvmContext, "forcont");
+      llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "forloop", theFunction);
+      llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "forcont");
 
       // execute the initial
       if( this->initial )
-          this->initial->codeGen(context);
+          this->initial->codeGen("integer", "integer");  //initial:_AssignStatement*
 
       llvm::Value* condValue = this->condition->codeGen();
       if( !condValue )
@@ -447,13 +451,11 @@ llvm::Value* _ForStatement::codeGen(){
 
       context.builder.SetInsertPoint(block);
 
-
       this->_do->codeGen();
-
 
       // do increment
       if( this->increment ){
-          this->increment->codeGen();
+          this->increment->codeGen("integer", "integer");
       }
 
       // execute the again or stop
@@ -471,10 +473,9 @@ llvm::Value* _ForStatement::codeGen(){
 llvm::Value* _WhileStatement::codeGen(){
     cout << "_WhileStatement::codeGen" << endl;
 
-      //应该和_ForStatement类似
       llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
-  	llvm::BasicBlock *block = BasicBlock::Create(context, "while_body", sum_fun);
-  	llvm::BasicBlock *after = BasicBlock::Create(context, "while_end", sum_fun);
+  	  llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "while_body", theFunction);
+  	  llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "while_end", theFunction);
       llvm::Value* condValue = this->condition->codeGen();
       if( !condValue )
           return nullptr;
@@ -490,30 +491,30 @@ llvm::Value* _WhileStatement::codeGen(){
       context.builder.CreateCondBr(condValue, block, after);
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
-      context.builder.SetInsertPoint(after)
+      context.builder.SetInsertPoint(after);
       return nullptr;
 }
 
 llvm::Value* _RepeatStatement::codeGen(){
     cout << "_RepeatStatement::codeGen" << endl;
 
-      //应该和_ForStatement类似
-      llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
-  	llvm::BasicBlock *block = llvm::BasicBlock::Create(context, "while_body", sum_fun);
-  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context, "while_end", sum_fun);
+    llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
+  	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "while_body", theFunction);
+  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "while_end", theFunction);
 
       // fall to the block
-      context->builder.CreateBr(block);
+      context.builder.CreateBr(block);
       context.builder.SetInsertPoint(block);
-	  for(int i = 0;i < this->_do.size();i++)
-	        this->_do[i]->codeGen();
+      for(int i = 0; i < this->_do.size(); i++)
+        this->_do[i]->codeGen();
+
       // execute the again or stop
-      condValue = this->condition->codeGen();
+      auto condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
       context.builder.CreateCondBr(condValue, block, after);
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
-      context.builder.SetInsertPoint(after)
+      context.builder.SetInsertPoint(after);
       return nullptr;
 }
 
@@ -528,7 +529,7 @@ llvm::Value* _VariantReference::codeGen(){
     llvm::Value* addr = varRef->llValue;    //获取普通变量的地址/数组、record的首地址
     if(!addr){
         //报错：未知的变量名
-        return LogErrorV("[_VariantReference::codeGen]  Unknown variant name: " + this->variantId.first + ", line " + this->variantId.second);
+        return LogErrorV("[_VariantReference::codeGen]  Unknown variant name: " + this->variantId.first + ", line " + itos(this->variantId.second));
     }
     if(varRef->flag == "constant"){ //在const部分声明的常量，llValue即为其值
         return addr;
@@ -557,6 +558,7 @@ llvm::Value* _VariantReference::codeGen(){
             return this->IdvpartList[0]->codeGen(this);
         }
     }
+    return nullptr;
 }
 
 //数组元素/record成员引用codeGen
@@ -572,6 +574,7 @@ llvm::Value* _Idvpart::codeGen(_VariantReference* varRef){
 
 //创建数组类型对应的LLVM类型
 llvm::Type* _Type::InitArrayType(string arrTypeName, string type)
+//llvm::ArrayType* _Type::InitArrayType(string arrTypeName, string type)
 {
     cout << "InitArrayType" << endl;
 
@@ -586,9 +589,10 @@ llvm::Type* _Type::InitArrayType(string arrTypeName, string type)
     }
     llvm::Type* llType = context.typeSystem.getllType(type);
     if(!llType){
-        return LogErrorV("[InitArrayType]   Unknown array type: " + type);
+        LogErrorV("[InitArrayType]   Unknown array type: " + type);
+        return nullptr;
     }
-    llvm::Type* arrayType = llvm::ArrayType::get(llType, arraySize);
+    auto arrayType = llvm::ArrayType::get(llType, arraySize);
     context.typeSystem.addArrayType(arrTypeName, arrayType, type, this->arrayRangeList);
 
     return arrayType;
@@ -599,7 +603,7 @@ llvm::Type* _Type::InitRecordType(string recTypeName)
 {
     cout << "InitRecordType" << endl;
 
-    llvm::Type* recordType = llvm::StructType::create(context.llvmContext, recTypeName);
+    llvm::StructType* recordType = llvm::StructType::create(context.llvmContext, recTypeName);
     context.typeSystem.addRecordType(recTypeName, recordType);
 
     vector<llvm::Type *> memberTypes;
@@ -608,11 +612,13 @@ llvm::Type* _Type::InitRecordType(string recTypeName)
         context.typeSystem.addRecordMember(recTypeName, (*it)->variantId.first, (*it)->type->type.first);
         llvm::Type* memType = context.typeSystem.getllType((*it)->type->type.first);
         if(!memType){
-            return LogErrorV("[InitRecordType]  Unknown record member type: " + (*it)->type->type.first);
+            LogErrorV("[InitRecordType]  Unknown record member type: " + (*it)->type->type.first);
+            return nullptr;
         }
         memberTypes.push_back(memType);
     }
     recordType->setBody(memberTypes);
+    //'class llvm::Type' has no member named 'setBody'?
 
     return recordType;
 }
@@ -637,8 +643,9 @@ llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc)
 llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId)
 {
     // CreateLoad
-    auto recPtr = context.builder.CreateLoad(addr, "recPtr");
-    recPtr->setAlignment(4); //按4字节对齐
+    //auto recPtr = context.builder.CreateLoad(addr, "recPtr");
+    //recPtr->setAlignment(4); //按4字节对齐
+    //❓cannot convert 'int' to 'llvm::MaybeAlign'
 
     //获取该成员在record中的位置
     long index = context.typeSystem.getRecordMemberIndex(varType, memberId);
@@ -653,7 +660,7 @@ llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId
     return ptr;
 }
 
-//计算N维数组下标（N>=1）
+//计算N维数组下标（N>=1，按C标准，从0开始）
 int calcArrayIndex(_SymbolRecord* record, vector<_Expression*> indices){
     vector<pair<int,int>> rangeList(record->arrayRangeList);
     int loc = 0;
@@ -686,7 +693,7 @@ llvm::Value* getItemPtr(_VariantReference* varRef)
         else{       //纯数组：a[1] 或 a[1][2][...][N]
             //多维纯数组，转化为一维数组处理
             //计算数组元素下标
-            int loc = calcArrayIndex(record, varRef->IdvpartList[0]->expressionList;);
+            int loc = calcArrayIndex(record, varRef->IdvpartList[0]->expressionList);
             ptr = getArrayItemPtr(record->type, record->llValue, loc);
             return ptr;
         }
