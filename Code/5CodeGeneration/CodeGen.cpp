@@ -17,10 +17,10 @@ void CodeGenContext::InitCodeGen(){
 //逻辑表达式判断值
 static Value* CastToBoolean(CodeGenContext& context, Value* condValue){
 
-    if( ISTYPE(condValue, Type::IntegerTyID) ){
+    if( ISTYPE(condValue, llvm::Type::IntegerTyID) ){
         condValue = context.builder.CreateIntCast(condValue, Type::getInt1Ty(context.llvmContext), true);
         return context.builder.CreateICmpNE(condValue, ConstantInt::get(Type::getInt1Ty(context.llvmContext), 0, true));
-    }else if( ISTYPE(condValue, Type::DoubleTyID) ){
+    }else if( ISTYPE(condValue, llvm::Type::DoubleTyID) ){
         return context.builder.CreateFCmpONE(condValue, ConstantFP::get(context.llvmContext, APFloat(0.0)));
     }else{
         return condValue;
@@ -505,7 +505,8 @@ llvm::Value* _RepeatStatement::codeGen(){
       // fall to the block
       context->builder.CreateBr(block);
       context.builder.SetInsertPoint(block);
-      this->_do->codeGen();
+	  for(int i = 0;i < this->_do.size();i++)
+	        this->_do[i]->codeGen();
       // execute the again or stop
       condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
