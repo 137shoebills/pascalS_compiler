@@ -208,6 +208,7 @@ void SemanticAnalyseConst(_Constant *constant)
 			}
 			constant->type = "real";
 			constant->realValue = z;
+			semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
 		}
 	}
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
