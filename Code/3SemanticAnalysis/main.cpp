@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     }
     char *filename = argv[1];
     predeal(filename);
-    
+
     FILE *fp = fopen(filename, "r");
     if (!fp)
     {
@@ -93,7 +93,7 @@ void dfs(Token *root)
         }
         else
         {
-            cout << " \"" << root->children[i]->type < "\"";
+            cout << " \"" << root->children[i]->type << "\"";
         }
     }
     cout << "\n";

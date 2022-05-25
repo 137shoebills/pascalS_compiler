@@ -29,8 +29,8 @@ extern int str2int(string str);
 vector<string> semanticErrorInformation;   //存储错误信息的列表
 vector<string> semanticWarningInformation; //存储警告信息的列表
 
-int isLibName(string id);	//检查是否与库函数、主程序同名
-bool isReDef(string id, int& loc);	//检查是否重定义
+int isLibName(string id);		   //检查是否与库函数、主程序同名
+bool isReDef(string id, int &loc); //检查是否重定义
 void SemanticAnalyse(_Program *ASTRoot);
 void createSymbolTableAndInit(); //创建主符号表并初始化
 
@@ -121,7 +121,7 @@ void SemanticAnalyseProgram(_Program *program)
 	for (int i = 0; i < program->paraList.size(); i++)
 	{
 		int nameError = isLibName(program->paraList[i].first);
-		if(nameError < 0)
+		if (nameError < 0)
 			addDuplicateDefinitionErrorInformation(program->paraList[i].first, nameError, "", "", program->paraList[i].second);
 		mainSymbolTable->addVoidPara(program->paraList[i].first, program->paraList[i].second);
 	}
@@ -177,9 +177,9 @@ void SemanticAnalyseConst(_Constant *constant)
 	std::pair<string, int> CID = constant->constId;
 	int nameError = isLibName(CID.first);
 	int loc;
-	if(nameError < 0)
+	if (nameError < 0)
 		addDuplicateDefinitionErrorInformation(CID.first, nameError, "", "", CID.second);
-	else if (isReDef(CID.first,loc))
+	else if (isReDef(CID.first, loc))
 		addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, CID.second);
 
 	if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
@@ -229,9 +229,9 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 	std::pair<string, int> TID = typedefi->typedefId;
 	int nameError = isLibName(TID.first);
 	int loc;
-	if(nameError < 0)
+	if (nameError < 0)
 		addDuplicateDefinitionErrorInformation(TID.first, nameError, "", "", TID.second);
-	else if (isReDef(TID.first,loc))
+	else if (isReDef(TID.first, loc))
 		addDuplicateDefinitionErrorInformation(TID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, TID.second);
 
 	if (typedefi->type->type.first == "record") //如果此时是record
@@ -265,9 +265,9 @@ vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pai
 		pair<string, int> aVID = recordList[i]->variantId;
 		int nameError = isLibName(aVID.first);
 		int loc;
-		if(nameError < 0)
+		if (nameError < 0)
 			addDuplicateDefinitionErrorInformation(aVID.first, nameError, "", "", aVID.second);
-		else if (isReDef(aVID.first,loc))
+		else if (isReDef(aVID.first, loc))
 			addDuplicateDefinitionErrorInformation(aVID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, aVID.second);
 
 		if (recordList[i]->type->type.first == "record")
@@ -316,9 +316,9 @@ void SemanticAnalyseVariant(_Variant *variant)
 	std::pair<string, int> VID = variant->variantId;
 	int nameError = isLibName(VID.first);
 	int loc;
-	if(nameError < 0)
+	if (nameError < 0)
 		addDuplicateDefinitionErrorInformation(VID.first, nameError, "", "", VID.second);
-	else if (isReDef(VID.first,loc))
+	else if (isReDef(VID.first, loc))
 		addDuplicateDefinitionErrorInformation(VID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, VID.second);
 
 	string type = variant->type->type.first;
@@ -330,15 +330,16 @@ void SemanticAnalyseVariant(_Variant *variant)
 	}
 	else if (variant->type->flag) //判断是否为数组
 	{
-		mainSymbolTable->addArray(VID.first+"_", VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
-		mainSymbolTable->addVar(VID.first, VID.second,VID.first+"_");
+		mainSymbolTable->addArray(VID.first + "_", VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");
 	}
-	 //非标准类型时进行类型检查
+	//非标准类型时进行类型检查
 	else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
 	{
-		_SymbolRecord *recordSource = findSymbolRecord(type);	
-		if(recordSource==NULL){
-			addUndefinedErrorInformation(type,variant->variantId.second);
+		_SymbolRecord *recordSource = findSymbolRecord(type);
+		if (recordSource == NULL)
+		{
+			addUndefinedErrorInformation(type, variant->variantId.second);
 		}
 		mainSymbolTable->addVar(VID.first, VID.second, type);
 	}
@@ -731,9 +732,24 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 		SemanticAnalyseExpression(functionCall->actualParaList[i]);
 		string decType = mainSymbolTable->recordList[decID + i + 1]->type;
 		string expType = functionCall->actualParaList[i]->expressionType;
-		if (expType != decType && !(expType == "integer" && decType == "real"))
+		string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
+		if (flag == "var parameter")
 		{
-			addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			if (expType != decType)
+				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			if (!(functionCall->actualParaList[i]->type == "var" && (functionCall->actualParaList[i]->variantReference->kind == "var" || functionCall->actualParaList[i]->variantReference->kind == "array")))
+			{
+				//引用参数对应的实参只能是变量、参数或者数组元素 不能为常数、复杂表达式等
+				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(functionCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
+				continue;
+			}
+		}
+		else
+		{
+			if (expType != decType && !(expType == "integer" && decType == "real"))
+			{
+				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			}
 		}
 	}
 	return functionCall->returnType;
@@ -1189,9 +1205,9 @@ void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, str
 	string errorInformation = "[Duplicate defined error!] <Line " + itos(curLineNumber) + "> ";
 	if (preLineNumber >= 0)
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a " + preFlag + " at line " + itos(preLineNumber) + ".";
-	else if(preLineNumber == -1)
+	else if (preLineNumber == -1)
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a lib program.";
-	else 
+	else
 		errorInformation += "\"" + preId + "\"" + " has the same name as the main program.";
 
 	semanticErrorInformation.push_back(errorInformation);
@@ -1366,17 +1382,17 @@ int isLibName(string id)
 {
 	if (lib.count(id)) //检查是否与库函数同名
 		return -1;
-	else if(id == mainSymbolTable->recordList[0]->id)	//检查是否与主程序同名
+	else if (id == mainSymbolTable->recordList[0]->id) //检查是否与主程序同名
 		return -2;
 	return 0;
 }
 
-bool isReDef(string id,int& loc)
+bool isReDef(string id, int &loc)
 {
 	if (mainSymbolTable->idToLoc[id].size() > 0) //如果此常量已经出现过
 	{
-		loc = mainSymbolTable->idToLoc[id].top(); //获取最近一次出现的位置
-		if (mainSymbolTable->indexTable.back() < loc)		 //如果和当前变量在同一个作用域
+		loc = mainSymbolTable->idToLoc[id].top();	  //获取最近一次出现的位置
+		if (mainSymbolTable->indexTable.back() < loc) //如果和当前变量在同一个作用域
 			return 1;
 	}
 	return 0;
