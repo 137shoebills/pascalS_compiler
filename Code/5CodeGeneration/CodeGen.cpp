@@ -1,4 +1,8 @@
 #include "CodeGen.h"
+#define ISTYPE(value, id) (value->getType()->getTypeID() == id)
+
+
+
 
 //static Value* CastToBoolean()...  //用于if-else语句
 
@@ -10,7 +14,18 @@ void CodeGenContext::InitCodeGen(){
     llvm::Function* Program = llvm::Function::Create(PrgmType, GlobalValue::ExternalLinkage, "Program");
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context.llvmContext, "entry");
 }
+//逻辑表达式判断值
+static Value* CastToBoolean(CodeGenContext& context, Value* condValue){
 
+    if( ISTYPE(condValue, Type::IntegerTyID) ){
+        condValue = context.builder.CreateIntCast(condValue, Type::getInt1Ty(context.llvmContext), true);
+        return context.builder.CreateICmpNE(condValue, ConstantInt::get(Type::getInt1Ty(context.llvmContext), 0, true));
+    }else if( ISTYPE(condValue, Type::DoubleTyID) ){
+        return context.builder.CreateFCmpONE(condValue, ConstantFP::get(context.llvmContext, APFloat(0.0)));
+    }else{
+        return condValue;
+    }
+}
 //各种AST节点的CodeGen()----------
 
 //主program
@@ -261,7 +276,7 @@ llvm::Value* _Expression::codeGen(){
       else if(this->type=="compound" && this->operation="not"){
           ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), !(this->operand1->totalIntvalue), true);  
       }
-      else if(this->type==_expression->operation="minus"){
+      else if(this->type=="compound"&& this->operation="minus"){
 		  Value* temp;
 		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::DoubleTyID) {
 			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, 0.0, true);
@@ -303,7 +318,8 @@ llvm::Value* _Expression::codeGen(){
               else if(this->operation == "or")
                   ret = fp ? LogErrorV("Double type has no OR operation") : context.builder.CreateOr(L, R, "ortmp");
               else if(this->operation == "div"){
-                  ret = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context.llvmContext), int(L->getValue()/R->getValue()), true);
+		
+				  ret = fp ? LogErrorV("Double type has no DIV operation") : llvm::ConstantInt::get(llvm::Type::getInt32Ty(context.llvmContext), int(this->operand1->totalIntValue/this->operand2->totalIntValue), true);
               }
               else if(this->operation == "mod")
                   ret = fp ? LogErrorV("Double type has no Mod operation") : context.builder.CreateSRem(L, R, "modtmp");
@@ -324,6 +340,8 @@ llvm::Value* _Expression::codeGen(){
 
           }
       }
+	  else
+		  ret =  LogErrorV("Unknown expression type");
       this->llValue == ret;
       return ret;
 }
