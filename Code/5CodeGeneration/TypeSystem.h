@@ -1,7 +1,7 @@
 #ifndef __TYPESYSTEM_H__
 #define __TYPESYSTEM_H__
 
-#include <llvm/IR/Type.h>
+//#include <llvm/IR/Type.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
@@ -44,7 +44,7 @@ public:
      //新增record对应的LLVM类型（处理record声明时）
     void addRecordType(string name, llvm::StructType* type);
     //新增record成员（处理record声明时）
-    void addRecordMember(string recName, int lineNo, string memName, string memType);
+    void addRecordMember(string recName, string memName, string memType);
     //获取record中成员所在的位置（第几个）（处理record成员/record成员赋值时）
     long getRecordMemberIndex(string recName, string memName);
     //获取record成员类型名
@@ -57,6 +57,6 @@ public:
     string getArrayMemberType(string arrName);
     //获取数组上下界
     pair<int, int> getArrayRange(string arrName);
-}
+};
 
 #endif
