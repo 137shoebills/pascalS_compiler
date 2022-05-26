@@ -208,7 +208,7 @@ void SemanticAnalyseConst(_Constant *constant)
 			}
 			constant->type = "real";
 			constant->realValue = z;
-			semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
+			semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
 		}
 	}
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
@@ -585,7 +585,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			//只支持整型到实型的隐式转换
 			if (leftType == "real" && rightType == "integer")
 			{
-				semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable.\n");
+				semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable.\n");
 			}
 			else
 			{
@@ -673,7 +673,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 					//传值参数支持integer到real的隐式类型转换
 					if (actualType == "integer" && formalType == "real")
 					{
-						semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(procedureCall->lineNo) + "> The " + itos(i + 1) + "th actual parameter of procedure call is integer while the corresponding formal parameter is real.\n");
+						semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(procedureCall->lineNo) + "> The " + itos(i + 1) + "th actual parameter of procedure call is integer while the corresponding formal parameter is real.\n");
 					}
 					else
 					{
@@ -751,6 +751,10 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 			{
 				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
 			}
+			else if (expType == "integer" && decType == "real")
+			{
+				semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
+			}
 		}
 	}
 	return functionCall->returnType;
@@ -790,10 +794,11 @@ string SemanticAnalyseExpression(_Expression *expression)
 				expression->totalIntValue = -expression->totalIntValue;
 			expression->totalIntValueValid = true;
 		}
-		if(variantReferenceType=="boolean"&&expression->variantReference->kind=="constant"){
+		if (variantReferenceType == "boolean" && expression->variantReference->kind == "constant")
+		{
 			_SymbolRecord *record = findSymbolRecord(expression->variantReference->variantId.first);
-			expression->boolValue=record->value;
-			//cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+			expression->boolValue = record->value;
+			// cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 		}
 		return expression->expressionType = variantReferenceType;
 	}
@@ -815,8 +820,9 @@ string SemanticAnalyseExpression(_Expression *expression)
 		return expression->expressionType = "char";
 
 	//表达式类型为布尔类型boolean
-	else if (expression->type == "boolean"){
-		//cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+	else if (expression->type == "boolean")
+	{
+		// cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 		return expression->expressionType = "boolean";
 	}
 
@@ -852,13 +858,15 @@ string SemanticAnalyseExpression(_Expression *expression)
 		{
 			string type = SemanticAnalyseExpression(expression->operand1);
 			//类型兼容
-			if (type == "boolean"){
-				if(expression->operand1->boolValue=="false")
-					expression->boolValue="true";
-				else{
-					expression->boolValue="false";
+			if (type == "boolean")
+			{
+				if (expression->operand1->boolValue == "false")
+					expression->boolValue = "true";
+				else
+				{
+					expression->boolValue = "false";
 				}
-				//cout<<"not "<<expression->operand1->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+				// cout<<"not "<<expression->operand1->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				return expression->expressionType = "boolean";
 			}
 			//类型错误或类型不兼容
@@ -899,10 +907,11 @@ string SemanticAnalyseExpression(_Expression *expression)
 				expression->totalIntValue = expression->operand1->totalIntValue;
 				expression->totalIntValueValid = true;
 			}
-			//bool类型记录值
-			if(expression->expressionType=="boolean"){
-				expression->boolValue=expression->operand1->boolValue;
-				//cout<<"("<<expression->operand1->variantReference->variantId.first<<") : "<<expression->boolValue<<endl;
+			// bool类型记录值
+			if (expression->expressionType == "boolean")
+			{
+				expression->boolValue = expression->operand1->boolValue;
+				// cout<<"("<<expression->operand1->variantReference->variantId.first<<") : "<<expression->boolValue<<endl;
 			}
 			return expression->expressionType;
 		}
@@ -975,21 +984,24 @@ string SemanticAnalyseExpression(_Expression *expression)
 		{
 			string epType1 = SemanticAnalyseExpression(expression->operand1);
 			string epType2 = SemanticAnalyseExpression(expression->operand2);
-			//bool值记录结果
-			if (epType1 == "boolean" && epType2 == "boolean"){
-				if(expression->operation=="and"){
-					if(expression->operand1->boolValue=="true"&&expression->operand2->boolValue=="true")
-						expression->boolValue="true";
-					else 
-						expression->boolValue="false";
-					//cout<<expression->operand1->variantReference->variantId.first<<" and "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+			// bool值记录结果
+			if (epType1 == "boolean" && epType2 == "boolean")
+			{
+				if (expression->operation == "and")
+				{
+					if (expression->operand1->boolValue == "true" && expression->operand2->boolValue == "true")
+						expression->boolValue = "true";
+					else
+						expression->boolValue = "false";
+					// cout<<expression->operand1->variantReference->variantId.first<<" and "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				}
-				else{
-					if(expression->operand1->boolValue=="true"||expression->operand2->boolValue=="true")
-						expression->boolValue="true";
-					else 
-						expression->boolValue="false";
-					//cout<<expression->operand1->variantReference->variantId.first<<" or "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
+				else
+				{
+					if (expression->operand1->boolValue == "true" || expression->operand2->boolValue == "true")
+						expression->boolValue = "true";
+					else
+						expression->boolValue = "false";
+					// cout<<expression->operand1->variantReference->variantId.first<<" or "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				}
 				return expression->expressionType = "boolean";
 			}
