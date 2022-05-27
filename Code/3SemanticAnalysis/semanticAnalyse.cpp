@@ -505,6 +505,11 @@ void SemanticAnalyseStatement(_Statement *statement)
 			addGeneralErrorInformation("[Constant as l-value error!] <Line" + itos(assignStatement->variantReference->variantId.second) + "> Costant \"" + assignStatement->variantReference->variantId.first + "\" can't be referenced as l-value.");
 			return;
 		}
+		else if (mainSymbolTable->custom[assignStatement->variantReference->variantId.first].size() > 0)
+		{	//左值为自定义类型名
+			addGeneralErrorInformation("[Type name as l-value error!] <Line" + itos(assignStatement->variantReference->variantId.second) + "> Type name \"" + assignStatement->variantReference->variantId.first + "\" can't be referenced as l-value.");
+			return;
+		}
 		//对右值表达式进行类型检查,获得rightType
 		string rightType = SemanticAnalyseExpression(assignStatement->expression);
 		if (assignStatement->variantReference->kind == "function return reference")
