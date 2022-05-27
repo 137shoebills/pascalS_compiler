@@ -3,7 +3,7 @@
 /*
 普通语法分析树到抽象语法树的转换
 */
-
+#include "ParseT2AST.h"
 
 void printstatement(_Statement *statement){
     if(statement != NULL){
