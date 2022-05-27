@@ -164,7 +164,7 @@ public:
 public:
     _Statement() {}
     ~_Statement() {}
-    llvm::Value* codeGen();
+    //llvm::Value* codeGen();
 };
 
 class _Compound : public _Statement
