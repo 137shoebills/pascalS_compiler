@@ -1,3 +1,6 @@
+#ifndef __PARSET2AST_H__
+#define __PARSET2AST_H__
+
 #include "main.h"
 #include "ASTnodes.h"
 
@@ -57,3 +60,5 @@ void printidvpart(vector<_Idvpart*> idvpartlist);
 void printExp(_Expression* expression);
 void printfuncall(_FunctionCall* functionCall);
 void printstatement(_Statement *statement);
+
+#endif
