@@ -26,7 +26,7 @@ yacc.hpp: yacc.cpp
 lex.cpp: lex.l yacc.hpp
 	flex -o $@ $<
 
-ParseT2AST.cpp: main.h ASTnodes.h
+ParseT2AST.cpp: ParseT2AST.h
 
 ASTnodes.cpp: ASTnodes.h
 
@@ -36,12 +36,12 @@ CodeGen.cpp: CodeGen.h
 
 symbolTable.cpp: symbolTable.h
 
-semanticAnalyse.cpp: CodeGen.h ASTnodes.h symbolTable.h
+semanticAnalyse.cpp: semanticAnalyse.h CodeGen.h
 
 ObjGen.cpp: ObjGen.h
 
 #main.cpp: ObjGen.h semanticAnalyse.cpp ParseT2AST.cpp
-main.cpp: ObjGen.h
+main.cpp: ObjGen.h semanticAnalyse.h ParseT2AST.h
 
 %.o: %.cpp
 	g++ -c $(CPPFLAGS) -o $@ $<
