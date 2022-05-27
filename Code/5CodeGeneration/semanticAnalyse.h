@@ -11,6 +11,8 @@
 #include "ASTnodes.h"
 //#include "main.h"
 
+extern vector<string> semanticErrorInformation;   //存储错误信息的列表
+extern vector<string> semanticWarningInformation; //存储警告信息的列表
 
 int isLibName(string id);		   //检查是否与库函数、主程序同名
 bool isReDef(string id, int &loc); //检查是否重定义
@@ -24,7 +26,7 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi);								   //对自定义进行�
 void SemanticAnalyseVariant(_Variant *variant);									   //对变量定义进行语义分析
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition); //对子程序定义进行语义分析
 void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter);			   //对形式参数进行语义分析
-void SemanticAnalyseStatement(_Statement *statement);							   //对语句进行语义分析
+void SemanticAnalyseStatement(_Statement *statement, int flag);							   //对语句进行语义分析
 
 vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type); //对record类型进行语义分析
 
