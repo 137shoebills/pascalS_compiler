@@ -23,6 +23,11 @@ llvm::Type* TypeSystem::getllType(string type){
     // record类型
     else if (this->recordTypes.find(type) != this->recordTypes.end())
         return this->recordTypes[type];
+    //类型名是type部分起的别名
+    else if(mainSymbolTable->custom.find(type) != mainSymbolTable->custom.end()){
+        int loc = mainSymbolTable->custom[type].top();
+        return this->getllType(mainSymbolTable->recordList[loc]->type);
+    }
     else
     {
         //报错：未知类型
@@ -39,16 +44,18 @@ void TypeSystem::addRecordType(string name, llvm::StructType* type){
 
 //新增record成员
 void TypeSystem::addRecordMember(string recName, string memName, string memType){
+    cout << "addRecordMember: " << recName + "."+ memName + ", type: " + memType << endl;
     recordMembers[recName].push_back(make_pair(memName, memType));
 }
 
 
 //获取record中成员所在的位置
 long TypeSystem::getRecordMemberIndex(string recName, string memName){
+    cout<<"getRecordMemberIndex: "<< recName + "." + memName<<endl;
     auto& members = recordMembers[recName];
     for(auto it=members.begin(); it!=members.end(); it++)
     {
-        if(it->second == memName)
+        if(it->first == memName)
             return distance(members.begin(), it);
     }
     //报错：未知的record成员
