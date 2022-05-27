@@ -26,7 +26,7 @@ public:
 	string id;		//表示标识符名称或者程序函数过程名
 	int lineNumber; //定义位置的行号
 	string type;	//如果是变量/常量，则表示变量/常量类型；
-	//如果是数组，则表示数组元素的类型；
+	//如果是数组，则表示数组类型名；
 	//如果是函数，则表示函数返回值类型，类型本身只能为基本类型,"integer","real","char","boolean"
 	string value;	  //如果是常量，则表示常量取值
 	bool isMinusShow; //常量前是否带负号
