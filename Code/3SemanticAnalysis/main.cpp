@@ -9,6 +9,8 @@ extern FILE *yyin;
 extern Token *ParseTreeHead;
 extern vector<string> lexicalErrorInformation; //存放词法分析错误
 extern vector<string> syntaxErrorInformation;  //存放语法错误信息
+extern vector<string> semanticErrorInformation; //存储错误信息的列表
+extern vector<string> semanticWarningInformation;//存储警告信息的列表
 
 string itos(int num)
 {
