@@ -4,5 +4,5 @@ type a=integer;b=real;
 var s:a; z:b;
 begin
     s:=1;
-    b:=0.01
+    z:=0.01
 end.
