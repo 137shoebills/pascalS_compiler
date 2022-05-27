@@ -1,25 +1,62 @@
 #include "CodeGen.h"
+#include "ObjGen.h" //test
+
 #define ISTYPE(value, id) (value->getType()->getTypeID() == id)
 
 CodeGenContext context;
 
 //初始化中间代码生成相关参数
 void CodeGenContext::InitCodeGen(){
+
     cout << "InitCodeGen" << endl;
+
+    //初始化llvm，设置目标机
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+    //获取目标三元组并设置
+    auto targetTriple = llvm::sys::getDefaultTargetTriple();
+    context.Module->setTargetTriple(targetTriple);
+
+    //获取目标机数据类型并设置
+    string TargetError;
+    auto target = llvm::TargetRegistry::lookupTarget(targetTriple, TargetError);
+    if(!target){
+        llvm::errs()<<TargetError;
+        return;
+    }
+    auto CPU = "generic";
+    auto features = "";
+
+    llvm::TargetOptions options;
+    auto relocationModel = llvm::Reloc::Model::PIC_;
+    auto theTargetMachine = target->createTargetMachine(targetTriple, CPU, features, options, relocationModel);
+    context.Module->setDataLayout(theTargetMachine->createDataLayout());
+    context.Module->setTargetTriple(targetTriple);
+
+    //创建program
     vector<llvm::Type*> SysArgs;
 	llvm::FunctionType* PrgmType = llvm::FunctionType::get(llvm::Type::getVoidTy(context.llvmContext),llvm::makeArrayRef(SysArgs),false);
-    llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "Program");
-    llvm::BasicBlock* block = llvm::BasicBlock::Create(context.llvmContext, "entry");
+    llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "Program",context.Module.get());
+    llvm::BasicBlock* entryBlock = llvm::BasicBlock::Create(context.llvmContext, "entry", Program);
+
+    context.builder = make_unique<llvm::IRBuilder<>>(entryBlock);
+    //如果没有这句会在CreateAlloca的时候报段错误
+
+    cout<<"end of InitCodeGen"<<endl;
 }
 //逻辑表达式判断值
 //static llvm::Value* CastToBoolean(CodeGenContext& context, llvm::Value* condValue){
 llvm::Value* CastToBoolean(CodeGenContext& context, llvm::Value* condValue){
 
     if( ISTYPE(condValue, llvm::Type::IntegerTyID) ){
-        condValue = context.builder.CreateIntCast(condValue, llvm::Type::getInt1Ty(context.llvmContext), true);
-        return context.builder.CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true));
+        condValue = context.builder->CreateIntCast(condValue, llvm::Type::getInt1Ty(context.llvmContext), true);
+        return context.builder->CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true));
     }else if( ISTYPE(condValue, llvm::Type::DoubleTyID) ){
-        return context.builder.CreateFCmpONE(condValue, llvm::ConstantFP::get(context.llvmContext, llvm::APFloat(0.0)));
+        return context.builder->CreateFCmpONE(condValue, llvm::ConstantFP::get(context.llvmContext, llvm::APFloat(0.0)));
     }else{
         return condValue;
     }
@@ -59,6 +96,7 @@ llvm::Value* _Constant::codeGen() {
         ret = LogErrorV("[_Constant::codeGen] Unknown Constant_Type: " + this->type + ", line " + itos(this->valueId.second));
     }
 
+    cout << "end of _Constant::codeGen" << endl;
     return ret;
 }
 
@@ -66,10 +104,12 @@ llvm::Value* _Constant::codeGen() {
 //返回：局部变量地址（CreateAlloca的返回值）
 llvm::Value* _Variant::codeGen() {
     cout << "_Variant::codeGen" << endl;
-
+    
     _SymbolRecord* record = findSymbolRecord(this->variantId.first);
     llvm::Value* addr = nullptr;    //待获取：局部变量地址
     llvm::Type* varType = context.typeSystem.getllType(record->type);   //变量的llvm类型
+    if(!varType) {cout<<"getllType failed: "<< record->type<<endl;}
+    else cout<<"varType str: "<<record->type<<endl;
     //record->type: 普通变量的这个字段记录了基本类型
     //              数组变量和record变量的这个字段都记录了自定义类型名
 
@@ -91,8 +131,8 @@ llvm::Value* _Variant::codeGen() {
             arrayType = this->type->InitArrayType(record->type, type);
         }
         //在栈上创建一个局部变量
-        //addr = context.builder.CreateAlloca(arrayType, "arraytmp");
-        addr = context.builder.CreateAlloca(arrayType);
+        //addr = context.builder->CreateAlloca(arrayType, "arraytmp");
+        addr = context.builder->CreateAlloca(arrayType);
     }
 
     else if(this->type->type.first == "record")   //如果是record类型
@@ -105,14 +145,18 @@ llvm::Value* _Variant::codeGen() {
             recordType = this->type->InitRecordType(record->type);
         }
         //在栈上创建一个局部变量
-        addr = context.builder.CreateAlloca(recordType, nullptr);
+        addr = context.builder->CreateAlloca(recordType, nullptr);
     }
 
     else    //普通变量
     {
-        addr = context.builder.CreateAlloca(varType);  //在栈上分配空间
+        addr = context.builder->CreateAlloca(varType,nullptr);  //在栈上分配空间
     }
 
+    if(!addr){
+        cout<<"[_Variant::codeGen]  alloca addr failed"<<endl;
+    }
+    cout << "end of _Variant::codeGen" << endl;
     return addr;
 }
 
@@ -166,11 +210,11 @@ llvm::Function* _FunctionDefinition::codeGen(llvm::Value* funcRetValue)
     }
 
     llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
-    llvm::Function* function = llvm::Function::Create(funcType, llvm::GlobalValue::ExternalLinkage, functionID.first, context.module.get());
+    llvm::Function* function = llvm::Function::Create(funcType, llvm::GlobalValue::ExternalLinkage, functionID.first, context.Module.get());
 
     //函数基本块相关
     llvm::BasicBlock* funcBlock = llvm::BasicBlock::Create(context.llvmContext, "", function, nullptr);
-    context.builder.SetInsertPoint(funcBlock);
+    context.builder->SetInsertPoint(funcBlock);
 
     //函数形参相关
     auto formalArg = formalParaList.begin();  //函数定义中的形参列表
@@ -178,7 +222,7 @@ llvm::Function* _FunctionDefinition::codeGen(llvm::Value* funcRetValue)
         it.setName((*formalArg)->paraId.first);    //将形参的名字一一对应上
         llvm::Value* argAlloc = (*formalArg)->codeGen();   //获取形参的地址
         //将参数store到形参的地址中
-        context.builder.CreateStore(&it, argAlloc, false);
+        context.builder->CreateStore(&it, argAlloc, false);
         formalArg++;
     }
 
@@ -193,7 +237,7 @@ llvm::Function* _FunctionDefinition::codeGen(llvm::Value* funcRetValue)
         return nullptr;
     }
     else{
-        context.builder.CreateRet(funcRetValue);
+        context.builder->CreateRet(funcRetValue);
     }
 
     return function;    //返回Function::Create的返回值
@@ -233,7 +277,7 @@ llvm::Value* _FunctionCall::codeGen(){
     }
 
     llvm::Function* callee = funcRec->functionPtr;  //函数指针（Function::Create）
-    return context.builder.CreateCall(callee, args, "Calltmp");    //返回：函数返回值
+    return context.builder->CreateCall(callee, args, "Calltmp");    //返回：函数返回值
 }
 
 //过程调用
@@ -287,11 +331,11 @@ llvm::Value* _Expression::codeGen(){
           llvm::Value* temp;
 		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::DoubleTyID) {
 			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, (double)0.0);
-			  ret = context.builder.CreateFSub(temp, this->operand1->llvalue, "subtmp");
+			  ret = context.builder->CreateFSub(temp, this->operand1->llvalue, "subtmp");
 		  }
 		  else{
 			  temp = llvm::ConstantInt::get(context.typeSystem.intTy, 0, true);
-			  ret = context.builder.CreateSub(temp, this->operand1->llvalue, "subtmp");
+			  ret = context.builder->CreateSub(temp, this->operand1->llvalue, "subtmp");
 		  }
       }
       else if(this->type=="compound"){
@@ -303,44 +347,44 @@ llvm::Value* _Expression::codeGen(){
               if( (L->getType()->getTypeID() == llvm::Type::DoubleTyID) || (R->getType()->getTypeID() == llvm::Type::DoubleTyID) ){  // type upgrade
                   fp = true;
                   if( (R->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
-                      R = context.builder.CreateUIToFP(R, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
+                      R = context.builder->CreateUIToFP(R, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
                   }
                   if( (L->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
-                      L = context.builder.CreateUIToFP(L, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
+                      L = context.builder->CreateUIToFP(L, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
                   }
               }
               if( !L || !R ){
               return nullptr;
               }
               if(this->operation == "+")
-                  ret = fp ? context.builder.CreateFAdd(L, R, "addftmp") : context.builder.CreateAdd(L, R, "addtmp");
+                  ret = fp ? context.builder->CreateFAdd(L, R, "addftmp") : context.builder->CreateAdd(L, R, "addtmp");
               else if(this->operation == "-")
-                  ret = fp ? context.builder.CreateFSub(L, R, "subftmp") : context.builder.CreateSub(L, R, "subtmp");
+                  ret = fp ? context.builder->CreateFSub(L, R, "subftmp") : context.builder->CreateSub(L, R, "subtmp");
               else if(this->operation == "*")
-                  ret = fp ? context.builder.CreateFMul(L, R, "mulftmp") : context.builder.CreateMul(L, R, "multmp");
+                  ret = fp ? context.builder->CreateFMul(L, R, "mulftmp") : context.builder->CreateMul(L, R, "multmp");
               else if(this->operation == "/")
-                  ret = fp ? context.builder.CreateFDiv(L, R, "divftmp") : context.builder.CreateSDiv(L, R, "divtmp");
+                  ret = fp ? context.builder->CreateFDiv(L, R, "divftmp") : context.builder->CreateSDiv(L, R, "divtmp");
               else if(this->operation == "and")
-                  ret = fp ? LogErrorV("Double type has no AND operation") : context.builder.CreateAnd(L, R, "andtmp");
+                  ret = fp ? LogErrorV("Double type has no AND operation") : context.builder->CreateAnd(L, R, "andtmp");
               else if(this->operation == "or")
-                  ret = fp ? LogErrorV("Double type has no OR operation") : context.builder.CreateOr(L, R, "ortmp");
+                  ret = fp ? LogErrorV("Double type has no OR operation") : context.builder->CreateOr(L, R, "ortmp");
               else if(this->operation == "div"){
                   ret = fp ? LogErrorV("Double type has no DIV operation") : llvm::ConstantInt::get(llvm::Type::getInt32Ty(context.llvmContext), int(this->operand1->totalIntValue/this->operand2->totalIntValue), true);
               }
               else if(this->operation == "mod")
-                  ret = fp ? LogErrorV("Double type has no Mod operation") : context.builder.CreateSRem(L, R, "modtmp");
+                  ret = fp ? LogErrorV("Double type has no Mod operation") : context.builder->CreateSRem(L, R, "modtmp");
               else if(this->operation == ">=")
-                  ret = fp ? context.builder.CreateFCmpOGE(L, R, "cmpftmp") : context.builder.CreateICmpSGE(L, R, "cmptmp");
+                  ret = fp ? context.builder->CreateFCmpOGE(L, R, "cmpftmp") : context.builder->CreateICmpSGE(L, R, "cmptmp");
               else if(this->operation == ">")
-                  ret = fp ? context.builder.CreateFCmpOGT(L, R, "cmpftmp") : context.builder.CreateICmpSGT(L, R, "cmptmp");
+                  ret = fp ? context.builder->CreateFCmpOGT(L, R, "cmpftmp") : context.builder->CreateICmpSGT(L, R, "cmptmp");
               else if(this->operation == "<=")
-                  ret = fp ? context.builder.CreateFCmpOLE(L, R, "cmpftmp") : context.builder.CreateICmpSLE(L, R, "cmptmp");    
+                  ret = fp ? context.builder->CreateFCmpOLE(L, R, "cmpftmp") : context.builder->CreateICmpSLE(L, R, "cmptmp");    
               else if(this->operation == "<")
-                  ret = fp ? context.builder.CreateFCmpOLT(L, R, "cmpftmp") : context.builder.CreateICmpSLT(L, R, "cmptmp");
+                  ret = fp ? context.builder->CreateFCmpOLT(L, R, "cmpftmp") : context.builder->CreateICmpSLT(L, R, "cmptmp");
               else if(this->operation == "<>")
-                  ret = fp ? context.builder.CreateFCmpONE(L, R, "cmpftmp") : context.builder.CreateICmpNE(L, R, "cmptmp");
+                  ret = fp ? context.builder->CreateFCmpONE(L, R, "cmpftmp") : context.builder->CreateICmpNE(L, R, "cmptmp");
               else if(this->operation == "=")
-                  ret = fp ? context.builder.CreateFCmpOEQ(L, R, "cmpftmp") : context.builder.CreateICmpEQ(L, R, "cmptmp");
+                  ret = fp ? context.builder->CreateFCmpOEQ(L, R, "cmpftmp") : context.builder->CreateICmpEQ(L, R, "cmptmp");
               else
                   ret = LogErrorV("Unknown binary operator");
 
@@ -359,18 +403,24 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
     //获取左值（LLVM Value*）
     //左值类型：普通变量，数组元素，record成员，函数名
     _SymbolRecord* leftVar = findSymbolRecord(variantReference->variantId.first);
+    if(leftVar){ cout<< "assign_leftVal: " << leftVar->id<<endl; }
     //若左值为数组元素/record成员，leftVar对应的只是数组/record变量，并不具体到成员本身
     llvm::Value* lValue = leftVar->llValue; //左值变量地址（在变量声明时即获得）
+    if(!lValue){
+        return LogErrorV("[_AssignStatement::codeGen]   Cannot get addr of leftValue");
+    }
     
     //获取右值（LLVM Value*）
     //右值类型：常量，普通变量，数组元素，record成员，函数调用（返回值）
     llvm::Value* rValue = this->expression->codeGen();
+    //if(!rValue) {cout<<"assign: rightValue codeGen failed"<<endl; return nullptr;}
     llvm::Value* rightValue = rValue;
     
     //若右值到左值存在合法转换，则将右值转换为左值的类型
     if(leftType == "real" && rightType == "integer")
     {
-        auto realValue = context.builder.CreateSIToFP(rightValue, context.typeSystem.realTy);
+        cout<<"CreateSIToFP"<<endl;
+        auto realValue = context.builder->CreateSIToFP(rightValue, context.typeSystem.realTy);
         rightValue = realValue;
     }
 
@@ -381,14 +431,14 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
         if(!ptr){
             return LogErrorV("[_AssignStatement::codeGen]   Cannot get array item ptr, VarName: " + this->variantReference->variantId.first);
         }
-        context.builder.CreateStore(rValue, ptr);
+        context.builder->CreateStore(rightValue, ptr);
     }
     //else if(leftVar->flag == "function"){   //左值为函数名（函数返回语句）
     else if(this->isReturnStatement){
         leftVar->funcRetValue = rightValue;     //设置函数的返回值
     }
     else{    //普通变量
-        context.builder.CreateStore(rightValue, lValue);
+        context.builder->CreateStore(rightValue, lValue);
     }
 
     return lValue;
@@ -401,38 +451,38 @@ llvm::Value* _IfStatement::codeGen(){
       if( !condValue )
           return nullptr;
       condValue = CastToBoolean(context, condValue);
-      llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();//得到if语句所属函数
+      llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();//得到if语句所属函数
       llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(context.llvmContext, "then", theFunction);
       llvm::BasicBlock *elsBB = llvm::BasicBlock::Create(context.llvmContext, "else");//else部分
       llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(context.llvmContext, "ifcont");
       if( this->els ){
         //condvalue为条件判断结果值。如果为true，就进入thenBB分支，如果为false，就进入elsBB分支。
-          context.builder.CreateCondBr(condValue, thenBB, elsBB);
+          context.builder->CreateCondBr(condValue, thenBB, elsBB);
       } else{
-          context.builder.CreateCondBr(condValue, thenBB, mergeBB);
+          context.builder->CreateCondBr(condValue, thenBB, mergeBB);
       }
       //插入指令
-      context.builder.SetInsertPoint(thenBB);
-      this->then->codeGen();
-      thenBB = context.builder.GetInsertBlock();
+      context.builder->SetInsertPoint(thenBB);
+      //this->then->codeGen();  //❓因为报错，暂时注释掉
+      thenBB = context.builder->GetInsertBlock();
       if( thenBB->getTerminator() == nullptr ){
-          context.builder.CreateBr(mergeBB);
+          context.builder->CreateBr(mergeBB);
       }
       if( this->els ){
           theFunction->getBasicBlockList().push_back(elsBB);
-          context.builder.SetInsertPoint(elsBB);
-          this->els->codeGen();
-          context.builder.CreateBr(mergeBB);
+          context.builder->SetInsertPoint(elsBB);
+          //this->els->codeGen();   //❓因为报错，暂时注释掉
+          context.builder->CreateBr(mergeBB);
       }
       theFunction->getBasicBlockList().push_back(mergeBB);
-      context.builder.SetInsertPoint(mergeBB);
+      context.builder->SetInsertPoint(mergeBB);
       return nullptr;
 }
 
 llvm::Value* _ForStatement::codeGen(){
     cout << "_ForStatement::codeGen" << endl;
 
-      llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
+      llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
       llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "forloop", theFunction);
       llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "forcont");
 
@@ -447,11 +497,11 @@ llvm::Value* _ForStatement::codeGen(){
       condValue = CastToBoolean(context, condValue);
 
       // fall to the block
-      context.builder.CreateCondBr(condValue, block, after);
+      context.builder->CreateCondBr(condValue, block, after);
 
-      context.builder.SetInsertPoint(block);
+      context.builder->SetInsertPoint(block);
 
-      this->_do->codeGen();
+      //this->_do->codeGen();   //❓因为报错，暂时注释掉
 
       // do increment
       if( this->increment ){
@@ -461,11 +511,11 @@ llvm::Value* _ForStatement::codeGen(){
       // execute the again or stop
       condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
-      context.builder.CreateCondBr(condValue, block, after);
+      context.builder->CreateCondBr(condValue, block, after);
 
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
-      context.builder.SetInsertPoint(after);
+      context.builder->SetInsertPoint(after);
 
       return nullptr;
 }
@@ -473,7 +523,7 @@ llvm::Value* _ForStatement::codeGen(){
 llvm::Value* _WhileStatement::codeGen(){
     cout << "_WhileStatement::codeGen" << endl;
 
-      llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
+      llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
   	  llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "while_body", theFunction);
   	  llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "while_end", theFunction);
       llvm::Value* condValue = this->condition->codeGen();
@@ -482,39 +532,39 @@ llvm::Value* _WhileStatement::codeGen(){
 
       condValue = CastToBoolean(context, condValue);
       // fall to the block
-      context.builder.CreateCondBr(condValue, block, after);
-      context.builder.SetInsertPoint(block);
-      this->_do->codeGen();
+      context.builder->CreateCondBr(condValue, block, after);
+      context.builder->SetInsertPoint(block);
+      //this->_do->codeGen();   //❓因为报错，暂时注释掉
       // execute the again or stop
       condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
-      context.builder.CreateCondBr(condValue, block, after);
+      context.builder->CreateCondBr(condValue, block, after);
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
-      context.builder.SetInsertPoint(after);
+      context.builder->SetInsertPoint(after);
       return nullptr;
 }
 
 llvm::Value* _RepeatStatement::codeGen(){
     cout << "_RepeatStatement::codeGen" << endl;
 
-    llvm::Function* theFunction = context.builder.GetInsertBlock()->getParent();
+    llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
   	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "while_body", theFunction);
   	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "while_end", theFunction);
 
       // fall to the block
-      context.builder.CreateBr(block);
-      context.builder.SetInsertPoint(block);
-      for(int i = 0; i < this->_do.size(); i++)
-        this->_do[i]->codeGen();
+      context.builder->CreateBr(block);
+      context.builder->SetInsertPoint(block);
+    //   for(int i = 0; i < this->_do.size(); i++)
+    //     this->_do[i]->codeGen(); //❓因为报错，暂时注释掉
 
       // execute the again or stop
       auto condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
-      context.builder.CreateCondBr(condValue, block, after);
+      context.builder->CreateCondBr(condValue, block, after);
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
-      context.builder.SetInsertPoint(after);
+      context.builder->SetInsertPoint(after);
       return nullptr;
 }
 
@@ -539,18 +589,18 @@ llvm::Value* _VariantReference::codeGen(){
         //普通变量
         if (varRef->flag == "normal variant")
         {
-            return context.builder.CreateLoad(addr, false, "");
+            return context.builder->CreateLoad(addr, false, "");
         }
         //函数参数只支持基本类型
         //传值参数
         else if (varRef->flag == "value parameter")
         {
-            //return context.builder.CreateLoad(addr, false, "");
+            //return context.builder->CreateLoad(addr, false, "");
         }
         //引用参数
         else if (varRef->flag == "var parameter")
         {
-            // return context.builder.CreateLoad(addr, false, "");
+            // return context.builder->CreateLoad(addr, false, "");
         }
     }
     else{   //数组元素和record成员
@@ -569,7 +619,7 @@ llvm::Value* _Idvpart::codeGen(_VariantReference* varRef){
     if(!ptr){
         return LogErrorV("[_Idvpart::codeGen]   Cannot get item ptr, varName: " + varRef->variantId.first);
     }
-    return context.builder.CreateLoad(ptr);
+    return context.builder->CreateLoad(ptr);
 }
 
 //创建数组类型对应的LLVM类型
@@ -618,7 +668,7 @@ llvm::Type* _Type::InitRecordType(string recTypeName)
         memberTypes.push_back(memType);
     }
     recordType->setBody(memberTypes);
-    //'class llvm::Type' has no member named 'setBody'?
+    
 
     return recordType;
 }
@@ -626,6 +676,7 @@ llvm::Type* _Type::InitRecordType(string recTypeName)
 //获取数组元素的指针
 llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc)
 {
+    cout<<"getArrayItemPtr"<<endl;
     //获取数组对应的LLVM Type
     auto arrayType = context.typeSystem.getllType(varType);
     if(!arrayType){
@@ -634,7 +685,8 @@ llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc)
     //获取数组元素地址
     auto index_0 = llvm::ConstantInt::get(context.typeSystem.intTy, 0);      //基地址
     auto index_1 = llvm::ConstantInt::get(context.typeSystem.intTy, loc);    //偏移量
-    auto ptr = context.builder.CreateGEP(arrayType, addr, {index_0, index_1});
+    llvm::Value* ptr = nullptr;
+    ptr = context.builder->CreateGEP(arrayType, addr, {index_0, index_1});
 
     return ptr;
 }
@@ -642,8 +694,9 @@ llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc)
 //获取record成员的指针
 llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId)
 {
+    cout<<"getRecordItemPtr"<<endl;
     // CreateLoad
-    //auto recPtr = context.builder.CreateLoad(addr, "recPtr");
+    //auto recPtr = context.builder->CreateLoad(addr, "recPtr");
     //recPtr->setAlignment(4); //按4字节对齐
     //❓cannot convert 'int' to 'llvm::MaybeAlign'
 
@@ -652,29 +705,48 @@ llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId
     if(index == -1){
         return LogErrorV("[getRecordItemPtr]    Unknown record member: " + varType + "." + memberId);
     }
+    cout<<"record member " << varType + "." + memberId<< " 's index is: "<< index<<"\n\n";
+
     vector<llvm::Value*> indices;
     indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, 0));               //基地址
     indices.push_back(llvm::ConstantInt::get(context.typeSystem.intTy, (uint64_t)index)); //偏移量
-    auto ptr = context.builder.CreateInBoundsGEP(addr, indices);
+    auto ptr = context.builder->CreateInBoundsGEP(addr, indices);
 
     return ptr;
 }
 
 //计算N维数组下标（N>=1，按C标准，从0开始）
 int calcArrayIndex(_SymbolRecord* record, vector<_Expression*> indices){
-    vector<pair<int,int>> rangeList(record->arrayRangeList);
+    cout<<"calcArrayIndex"<<endl;
+
+    //vector<pair<int,int>> rangeList(record->arrayRangeList);
+    //变量的record只记录了数组类型名，首先需要查表得到数组定义
+    _SymbolRecord* arrRec = findSymbolRecord(record->type);
+    vector<pair<int,int>> rangeList(arrRec->arrayRangeList);
+    if(rangeList.size() == 0){
+        cout<<"[calcArrayIndex] get arrayRangeList failed"<<endl;
+    }
+
+    cout<<"rangeList:"<<endl;
+    for(int i=0; i<rangeList.size(); i++)
+        cout<<rangeList[i].first<<" "<<rangeList[i].second<<endl;
+
+
     int loc = 0;
     int lower_size = 1;
+
     for(int i=indices.size()-1; i>=0; i--){
         loc += lower_size * (indices[i]->intNum - rangeList[i].first);
         lower_size *= rangeList[i].second - rangeList[i].first + 1;
     }
+    cout<<"array item index(from 0): "<<loc<<"\n\n";
     return loc;
 }
 
 //获取数组元素/record成员的指针
 llvm::Value* getItemPtr(_VariantReference* varRef)
 {
+    cout<<"getItemPtr"<<endl;
     llvm::Value* ptr = nullptr;     //待获取的指针
     //获取符号表记录
     _SymbolRecord* record = findSymbolRecord(varRef->variantId.first);
@@ -683,8 +755,13 @@ llvm::Value* getItemPtr(_VariantReference* varRef)
 
     //获取嵌套层数
     int layer = varRef->IdvpartList.size();
+    cout<<"array/record layer = "<<layer<<endl;
+
+    //N维纯数组：把所有下标转存到IdvpartList[0]里
+    bool isMultiArray = checkMultipleArray(varRef);
+    cout<<"isMultiArray: "<<isMultiArray<<endl;
     
-    if(layer == 1){ //直接以当前变量varRef的地址作为基地址
+    if(layer == 1 || isMultiArray){ //直接以当前变量varRef的地址作为基地址
         int flag = varRef->IdvpartList[0]->flag;
         if(flag == 1){  //record成员（a.b）
             ptr = getRecordItemPtr(record->type, record->llValue, varRef->IdvpartList[0]->IdvpartId.first);
@@ -706,12 +783,18 @@ llvm::Value* getItemPtr(_VariantReference* varRef)
 
     for(int i=0; i < layer; i++){
         flag = varRef->IdvpartList[i]->flag;
+        cout<<"cur_varType = "<<cur_varType<<", flag = " << flag << endl;
+
         if(flag == 0){   //本层为数组下标
             //获取当前层下标表示
             int lower = context.typeSystem.getArrayRange(cur_varType).first;    //当前层数组下界
             int loc = varRef->IdvpartList[i]->expressionList[0]->intNum - lower;
+            cout<<"cur_layer_index(from 0) : "<<loc<<endl;
             //计算下一层的基地址
             cur_base = getArrayItemPtr(cur_varType, cur_base, loc);
+            if(!cur_base){
+                cout<<"[getItemPtr] getArrayItemPtr failed"<<endl;
+            }
             //下一层的类型即为当前层数组元素的类型
             cur_varType = context.typeSystem.getArrayMemberType(cur_varType);
         }
@@ -727,6 +810,42 @@ llvm::Value* getItemPtr(_VariantReference* varRef)
     
     ptr = cur_base;
     return ptr;
+}
+
+//多维数组预处理
+bool checkMultipleArray(_VariantReference* varRef)
+{
+    cout<<"checkMultipleArray"<<endl;
+
+    int index;
+    vector<_Expression*> indices;
+    for(auto it=varRef->IdvpartList.begin();it != varRef->IdvpartList.end(); it++){
+        if((*it)->flag)    //出现record类型，不是纯数组，直接返回
+            return false;
+        index = (*it)->expressionList[0]->intNum;
+        _Expression* expr = new _Expression;
+        expr->intNum = index;
+        indices.push_back(expr);
+        cout<<"push_back index: "<<index<<endl;
+    }
+    //确认是多维纯数组，将数组下标集中到varRef->IdvpartList[0]中
+    varRef->IdvpartList[0]->expressionList.clear();
+    varRef->IdvpartList[0]->expressionList.insert(
+        varRef->IdvpartList[0]->expressionList.end(), indices.begin(), indices.end()
+    );
+
+    cout<<"indices:\n";
+    for(int i=0; i<indices.size();i++){
+        cout<<indices[i]->intNum<<" ";
+    }
+    cout<<"\n\n";
+    cout<<"varRef idvpart exprList:\n";
+    for(int i=0; i<varRef->IdvpartList[0]->expressionList.size();i++){
+        cout<<varRef->IdvpartList[0]->expressionList[i]->intNum<<" ";
+    }
+    cout<<"\n\n";
+
+    return true;
 }
 
 //unique_ptr<_Expression> LogError(const char *str)
