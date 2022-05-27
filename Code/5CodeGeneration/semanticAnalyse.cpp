@@ -1,18 +1,8 @@
-#ifndef __SEMANTICANALYSE_CPP__
-#define __SEMANTICANALYSE_CPP__
-
 /*
 语义分析实现代码
 */
-#include <string>
-#include <vector>
-#include <iostream>
 
-#include <sstream>
-#include <set>
-#include "symbolTable.h"
-#include "ASTnodes.h"
-//#include "main.h"
+#include "semanticAnalyse.h"
 #include "CodeGen.h"
 
 using namespace std;
@@ -22,73 +12,10 @@ int layer = 0; //标记程序的嵌套层数
 set<string> lib; //存放库函数名
 extern _SymbolTable *mainSymbolTable;
 extern CodeGenContext context;				
-																		//主符号表
 extern _SymbolRecord* findSymbolRecord(string id); //从符号表中找出id对应的记录
-// extern void inputFunctionCall(_FunctionCall *functionCallNode, string &functionCall, int mode = 0);									//获取函数调用
-// extern int inputExpression(_Expression *expressionNode, string &expression, int mode = 0, bool isReferedActualPara = false);		//获取表达式
-// extern void inputVariantRef(_VariantReference *variantRefNode, string &variantRef, int mode = 0, bool isReferedActualPara = false); //获取变量引用
 extern int str2int(string str);
-// extern void returnExistedCheckFunctionDefinition(_FunctionDefinition *functionDefinitionNode);
-
 vector<string> semanticErrorInformation;   //存储错误信息的列表
 vector<string> semanticWarningInformation; //存储警告信息的列表
-
-int isLibName(string id);	//检查是否与库函数、主程序同名
-bool isReDef(string id, int& loc);	//检查是否重定义
-void SemanticAnalyse(_Program *ASTRoot);
-void createSymbolTableAndInit(); //创建主符号表并初始化
-
-void SemanticAnalyseSubprogram(_SubProgram *subprogram);						   //对分程序进行语义分析
-void SemanticAnalyseProgram(_Program *program);									   //对程序进行语义分析
-void SemanticAnalyseConst(_Constant *constant);									   //对常量定义进行语义分析
-void SemanticAnalyseTypedef(_TypeDef *typedefi);								   //对自定义进行语义分析
-void SemanticAnalyseVariant(_Variant *variant);									   //对变量定义进行语义分析
-void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition); //对子程序定义进行语义分析
-void SemanticAnalyseFormalParameter(_FormalParameter *formalParameter);			   //对形式参数进行语义分析
-void SemanticAnalyseStatement(_Statement *statement, int flag);							   //对语句进行语义分析
-
-vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type); //对record类型进行语义分析
-
-string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
-string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
-string SemanticAnalyseExpression(_Expression *expression);					 //对表达式进行语义分析
-
-void relocation(); //重定位
-
-string itos(int num); //将int转化为string
-
-//添加重定义错误信息
-void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, string preFlag, string preType, int curLineNumber); //获得重复定义的语义错误信息
-// 添加未定义错误信息
-void addUndefinedErrorInformation(string id, int curLineNumber);
-// 添加标识符类型错误信息
-void addUsageTypeErrorInformation(string curId, int curLineNumber, string curType, string usage, string correctType);
-//添加个数不匹配错误信息
-void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, int correctNumber, string usage);
-// 添加标识符种类错误信息
-void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag, int preLineNumber, string preFlag);
-//添加表达式类型错误信息
-void addExpressionTypeErrorInformation(_Expression *exp, string curType, string correctType, string description);
-// 添加赋值语句左值和右值类型不匹配错误信息
-void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReference, _Expression *rightExpression);
-//添加数组下标越界错误信息
-void addArrayRangeOutOfBoundErrorInformation(_Expression *expression, string arrayId, int X, pair<int, int> range);
-// //添加数组下界比上界大的错误信息
-// void addArrayRangeUpSideDownErrorInformation(string curId, int curLineNumber, int X, int lowBound, int highBound);
-//添加运算符两边的操作数类型不一致的错误信息
-void addOperandExpressionsTypeMismatchErrorInformation(_Expression *exp1, _Expression *exp2);
-//添加某个操作数类型错误的信息
-void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression *exp, string correctType);
-// 添加read的实参错误信息
-void addactualParameterOfReadErrorInformation(int curLineNumber, string procedureId, int X, _Expression *exp);
-//添加除0错误信息
-void addDivideZeroErrorInformation(string operation, _Expression *exp);
-// 添加read读取boolean类型变量错误的信息
-// void addReadBooleanErrorInformation(_Expression *exp, int X);
-//添加变量引用错误信息
-void addVariantReferenceErrorInformation(int line, string info);
-//将错误信息直接添加到错误信息的列表中
-void addGeneralErrorInformation(string errorInformation);
 
 void SemanticAnalyse(_Program *ASTRoot)
 {
@@ -212,7 +139,7 @@ void SemanticAnalyseConst(_Constant *constant)
 			}
 			constant->type = "real";
 			constant->realValue = z;
-			semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
+			semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
 		}
 	}
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
@@ -390,6 +317,14 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 
 	int loc = mainSymbolTable->recordList.size() - 1;
 
+	//为什么在这里判断原因：因为返回后要做重定位操作，需要把此时的函数先在符号表里存下来，否则返回后重定位会超前做上一层的
+	if(layer > 5)
+	{
+		addGeneralErrorInformation("[too much layers!] in \"" + functionDefinition->functionID.first + "\" at line " + itos(functionDefinition->functionID.second));
+		layer--;
+		return;		
+	}
+
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
 	for (int i = 0; i < functionDefinition->formalParaList.size(); i++)
 		SemanticAnalyseFormalParameter(functionDefinition->formalParaList[i]);
@@ -403,18 +338,17 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	for (int i = 0; i < functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
 
-	if (layer <= 5)
-	{
+	if(functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5){
 		for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
-			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);
-	}
-	else
-	{
-		addGeneralErrorInformation("too much layers in" + functionDefinition->functionID.first + itos(functionDefinition->functionID.second));
+		{
+			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
+			relocation();		
+		}
+	
 	}
 
 	//对compound进行语义分析(在这一步获取函数返回值的llValue)
-	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound),1);
+	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound));
 
 	layer--; //层数--
 
@@ -592,7 +526,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			//只支持整型到实型的隐式转换
 			if (leftType == "real" && rightType == "integer")
 			{
-				semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable.\n");
+				semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(assignStatement->lineNo) + "> Assign a integer varible to a real variable.\n");
 			}
 			else
 			{
@@ -685,7 +619,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 					//传值参数支持integer到real的隐式类型转换
 					if (actualType == "integer" && formalType == "real")
 					{
-						semanticWarningInformation.push_back("[Implicit type conversion waring!] <Line" + itos(procedureCall->lineNo) + "> The " + itos(i + 1) + "th actual parameter of procedure call is integer while the corresponding formal parameter is real.\n");
+						semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(procedureCall->lineNo) + "> The " + itos(i + 1) + "th actual parameter of procedure call is integer while the corresponding formal parameter is real.\n");
 					}
 					else
 					{
@@ -765,6 +699,10 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 			if (expType != decType && !(expType == "integer" && decType == "real"))
 			{
 				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			}
+			else if (expType == "integer" && decType == "real")
+			{
+				semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
 			}
 		}
 	}
@@ -1443,5 +1381,3 @@ bool isReDef(string id,int& loc)
 	}
 	return 0;
 }
-
-#endif
