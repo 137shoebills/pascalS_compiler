@@ -115,7 +115,7 @@ void SemanticAnalyseConst(_Constant *constant)
 
 	if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
 	{
-		long long maxint = 2147483647;
+		long long maxint = 32767;
 		long long res = 0;
 		int len = int(constant->strOfVal.length());
 		bool ff = 0;
@@ -139,7 +139,7 @@ void SemanticAnalyseConst(_Constant *constant)
 			}
 			constant->type = "real";
 			constant->realValue = z;
-			semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
+			semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(CID.second) + "> The integer constant \"" + CID.first + "\" is out of range.Automatically converted to real!\n");
 		}
 	}
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
