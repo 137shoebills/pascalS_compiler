@@ -1,7 +1,6 @@
 #include "main.h"
-// #include "symbolTable.h"
-#include "ParseT2AST.cpp"
-#include "semanticAnalyse.cpp"
+#include "ParseT2AST.h"
+#include "semanticAnalyse.h"
 #include <fstream>
 #include <sstream>
 
