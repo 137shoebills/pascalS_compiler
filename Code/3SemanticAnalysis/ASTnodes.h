@@ -1,10 +1,13 @@
 #ifndef ASTNODES_H
 #define ASTNODES_H
 
+// #include<llvm/IR/Value.h>
+// #include<llvm/IR/Type.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <memory>
+
 
 using namespace std;
 class _Program;
@@ -29,6 +32,7 @@ class _ProcedureCall;
 class _Idvpart;
 class _CaseStatement;
 class _Branch;
+
 class _Program //程序(相当于program_head)
 {
 public:
@@ -71,6 +75,7 @@ public:
 public:
     _Constant() {}
     ~_Constant() {}
+    //llvm::Value* codeGen();
 };
 
 class _TypeDef //变量定义
@@ -82,17 +87,7 @@ public:
     _TypeDef();
     _TypeDef(pair<string, int> _typeDefId, _Type *_type);
     ~_TypeDef();
-};
-
-class _Variant //变量定义
-{
-public:
-    pair<string, int> variantId; //变量标识符ID及行号
-    _Type *type;                 //变量类型
-public:
-    _Variant();
-    _Variant(pair<string, int> _variantId, _Type *_type);
-    ~_Variant();
+    void codeGen();
 };
 
 class _Type //类型
@@ -107,6 +102,24 @@ public:
     _Type();
     _Type(pair<string, int> _type, int _flag, vector<pair<int, int> > _arrayRangeList);
     ~_Type() {}
+
+    //创建数组的LLVM类型
+    //llvm::Type* InitArrayType(string arrTypeName, string type);  //arrTypeName:自定义类型名，type:数组元素类型
+    
+    //创建record的LLVM类型
+    //llvm::Type* InitRecordType(string recTypeName);  //recTypeName:自定义类型名
+};
+
+class _Variant //变量定义
+{
+public:
+    pair<string, int> variantId; //变量标识符ID及行号
+    _Type *type;                 //变量类型
+public:
+    _Variant();
+    _Variant(pair<string, int> _variantId, _Type *_type);
+    ~_Variant();
+    //llvm::Value* codeGen();
 };
 
 class _FunctionDefinition
@@ -124,6 +137,8 @@ public:
 public:
     _FunctionDefinition();
     ~_FunctionDefinition();
+    ////llvm::Value *codeGen(_SymbolRecord* funcRec);
+    //llvm::Function* codeGen(//llvm::Value* funcRetValue);
 };
 
 class _FormalParameter //形式参数
@@ -136,6 +151,7 @@ public:
     _FormalParameter();
     _FormalParameter(pair<string, int> _paraId, string _type, int _flag);
     ~_FormalParameter() {}
+    //llvm::Value* codeGen();
 };
 
 class _Statement
@@ -148,6 +164,7 @@ public:
 public:
     _Statement() {}
     ~_Statement() {}
+    //llvm::Value* codeGen();
 };
 
 class _Compound : public _Statement
@@ -169,6 +186,7 @@ public:
 public:
     _AssignStatement();
     ~_AssignStatement();
+    //llvm::Value* codeGen(string leftType, string rightType);
 };
 
 class _ProcedureCall : public _Statement
@@ -180,6 +198,7 @@ public:
 public:
     _ProcedureCall();
     ~_ProcedureCall();
+    void codeGen();
 };
 
 class _FunctionCall
@@ -191,6 +210,7 @@ public:
 public:
     _FunctionCall();
     ~_FunctionCall();
+    //llvm::Value* codeGen();
 };
 
 class _Expression
@@ -221,9 +241,12 @@ public:
     _Expression *operand1, *operand2;
 
     int lineNo; //行号, 用表达式中最先出现的操作数的行号表示
+
+    //llvm::Value* llvalue;
 public:
     _Expression();
     ~_Expression();
+    //llvm::Value* codeGen();
     //语义分析相关
 public:
     int totalIntValue;
@@ -237,11 +260,12 @@ public:
     pair<string, int> variantId; //变量或常量标识符和行号
     //如果这个变量是结构体或数组：
     vector<_Idvpart *> IdvpartList; //结构体.属性或数组元素
-                                    //        int flag;
-                                    //        string str;
+    //IdvpartList:考虑多层访问  a.b.c; a[b].c
+
 public:
     _VariantReference();
     ~_VariantReference();
+    //llvm::Value* codeGen();
 
 public:
     int locFlag;        //-1表示左值，1表示右值，0表示什么都不是 左值特判
@@ -258,6 +282,7 @@ public:
 public:
     _Idvpart();
     ~_Idvpart();
+    //llvm::Value* codeGen(_VariantReference* varRef);
 };
 
 class _IfStatement : public _Statement
@@ -270,6 +295,7 @@ public:
 public:
     _IfStatement();
     ~_IfStatement();
+    //llvm::Value* codeGen();
 };
 class _CaseStatement : public _Statement
 {
@@ -303,7 +329,9 @@ public:
     _AssignStatement *initial;//初始化
     _ForStatement();
     ~_ForStatement();
+    //llvm::Value* codeGen();
 };
+
 
 class _RepeatStatement : public _Statement
 {
@@ -314,6 +342,7 @@ public:
 public:
     _RepeatStatement();
     ~_RepeatStatement();
+    //llvm::Value* codeGen();
 };
 
 class _WhileStatement : public _Statement
@@ -325,5 +354,6 @@ public:
 public:
     _WhileStatement();
     ~_WhileStatement();
+    //llvm::Value* codeGen();
 };
 #endif

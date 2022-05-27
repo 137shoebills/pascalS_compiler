@@ -135,7 +135,6 @@ _Branch::~_Branch(){
     for(int i = 0;i < condition.size();i++)
         DEL(condition[i])
         }
-
 _AssignStatement::_AssignStatement(){
     isReturnStatement = false;
     variantReference=NULL;

@@ -51,7 +51,6 @@ public:
 	// void setSubProgram(string id, int lineNumber,int amount, string returnType);
 	void setVoidPara(string id, int lineNumber);	//当前符号表所在的程序 中的参数
 	void setRecords(string id, int lineNumber, vector<_SymbolRecord *> records);
-	void setCustom(string id, int lineNumber, string type); //增加自定义类型
 
 	bool checkArrayXthIndexRange(int X, int index); //检查第X维下标是否越界，true表示越界，false表示未越界
 	string findXthFormalParaType(int X); //找到第X个形式参数的类型
@@ -85,7 +84,6 @@ public:
 	void addVoidPara(string id, int lineNumber);															   //表示主程序的参数
 	void addRecords(string id, int lineNumber, vector<_SymbolRecord *> records);							   //增加record类型
 	void addProgram(string id, int lineNumber, int amount, string returnType);
-	void addCustom(string id, int lineNumber, string type); //增加自定义类型
 	// void addSubProgram(string id, int lineNumber,int amount, string returnType);
 
 
