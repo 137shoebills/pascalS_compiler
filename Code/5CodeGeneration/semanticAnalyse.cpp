@@ -21,6 +21,7 @@ void SemanticAnalyse(_Program *ASTRoot)
 {
 	createSymbolTableAndInit();
 	context.InitCodeGen();	 //初始化中间代码生成相关参数
+	//cout<<"out of InitCodeGen"<<endl;
 	SemanticAnalyseProgram(ASTRoot);
 }
 
@@ -67,12 +68,12 @@ void SemanticAnalyseProgram(_Program *program)
 
 	SemanticAnalyseSubprogram(program->subProgram);
 
-	cout << "code generation success" << endl;
-
+	cout<<"------------------LLVM IR-------------------"<<endl;
 	//llvm::PassManager pm;
 	llvm::legacy::PassManager pm;
 	pm.add(llvm::createPrintModulePass(llvm::outs()));
-	pm.run(*(context.module));
+	pm.run(*(context.Module));
+	cout<<"--------------------------------------------"<<endl;
 }
 
 //对子program进行语义分析
@@ -115,7 +116,7 @@ void SemanticAnalyseConst(_Constant *constant)
 
 	if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
 	{
-		long long maxint = 2147483647;
+		long long maxint = 32767;
 		long long res = 0;
 		int len = int(constant->strOfVal.length());
 		bool ff = 0;
@@ -281,6 +282,7 @@ void SemanticAnalyseVariant(_Variant *variant)
 
 	//codeGen
 	llvm::Value* value = variant->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
+	if(!value)	cout<<"null var addr!"<<endl;
 	loc = mainSymbolTable->idToLoc[VID.first].top();
 	mainSymbolTable->recordList[loc]->llValue = value;
 }
@@ -348,7 +350,7 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	}
 
 	//对compound进行语义分析(在这一步获取函数返回值的llValue)
-	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound));
+	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound),1);
 
 	layer--; //层数--
 
@@ -505,6 +507,11 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			addGeneralErrorInformation("[Constant as l-value error!] <Line" + itos(assignStatement->variantReference->variantId.second) + "> Costant \"" + assignStatement->variantReference->variantId.first + "\" can't be referenced as l-value.");
 			return;
 		}
+		else if (mainSymbolTable->custom[assignStatement->variantReference->variantId.first].size() > 0)
+		{	//左值为自定义类型名
+			addGeneralErrorInformation("[Type name as l-value error!] <Line" + itos(assignStatement->variantReference->variantId.second) + "> Type name \"" + assignStatement->variantReference->variantId.first + "\" can't be referenced as l-value.");
+			return;
+		}
 		//对右值表达式进行类型检查,获得rightType
 		string rightType = SemanticAnalyseExpression(assignStatement->expression);
 		if (assignStatement->variantReference->kind == "function return reference")
@@ -517,7 +524,10 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				assignStatement->statementType = "error";
 			}
 			assignStatement->isReturnStatement = true;
-			assignStatement->codeGen(leftType, rightType);
+			
+			if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error")
+				assignStatement->codeGen(leftType, rightType);
+
 			return;
 		}
 		//左值和右值类型不同时
@@ -536,8 +546,10 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 
 		//codeGen
-		_SymbolRecord* leftVar = findSymbolRecord(assignStatement->variantReference->variantId.first);
-		leftVar->llValue = assignStatement->codeGen(leftType, rightType);	//返回左值的llValue
+		if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error"){
+			_SymbolRecord* leftVar = findSymbolRecord(assignStatement->variantReference->variantId.first);
+			leftVar->llValue = assignStatement->codeGen(leftType, rightType);	//返回左值的llValue
+		}
 	}
 
 	else if (statement->type == "procedure") //过程调用
