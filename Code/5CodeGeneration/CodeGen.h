@@ -39,13 +39,14 @@ extern string itos(int num); //将int转化为string
 class CodeGenContext {
 public:
     llvm::LLVMContext llvmContext;
-    llvm::IRBuilder<> builder;
-    unique_ptr<llvm::Module> module;
-
+    //llvm::IRBuilder<> builder;
+    unique_ptr<llvm::IRBuilder<>> builder;
+    unique_ptr<llvm::Module> Module;
     TypeSystem typeSystem;    //自定义类型系统
 
-    CodeGenContext(): builder(llvmContext), typeSystem(llvmContext) {
-        module = unique_ptr<llvm::Module>(new llvm::Module("main", this->llvmContext));
+    //CodeGenContext(): builder(llvmContext), typeSystem(llvmContext) {
+    CodeGenContext(): typeSystem(llvmContext) {
+        Module = unique_ptr<llvm::Module>(new llvm::Module("Program", this->llvmContext));
     }
 
     void InitCodeGen();
@@ -67,5 +68,8 @@ llvm::Value* getItemPtr(_VariantReference* varRef);
 
 //计算N维数组下标（N>=1）   (按C标准，从0开始)
 int calcArrayIndex(_SymbolRecord* record, vector<_Expression*> indices);
+
+//多维数组预处理
+bool checkMultipleArray(_VariantReference* varRef);
 
 #endif
