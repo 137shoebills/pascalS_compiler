@@ -71,6 +71,7 @@ string TypeSystem::getRecordMemberType(string recName, string memName)
         if(members[i].first == memName)
             return members[i].second;
     }
+    LogErrorV("[getRecordMemberType]    Unknown record member: " + recName + "." + memName);
     return "error_type";
 }
 
