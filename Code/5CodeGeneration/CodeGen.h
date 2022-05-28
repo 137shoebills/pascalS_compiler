@@ -67,7 +67,7 @@ llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId
 llvm::Value* getItemPtr(_VariantReference* varRef);
 
 //计算N维数组下标（N>=1）   (按C标准，从0开始)
-int calcArrayIndex(_SymbolRecord* record, vector<_Expression*> indices);
+int calcArrayIndex(string arrTypeName, vector<_Expression*> indices);
 
 //多维数组预处理
 bool checkMultipleArray(_VariantReference* varRef);
