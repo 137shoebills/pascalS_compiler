@@ -1,6 +1,6 @@
 #include "CodeGen.h"
 #include "ObjGen.h" //test
-
+#include "semanticAnalyse.h"
 #define ISTYPE(value, id) (value->getType()->getTypeID() == id)
 
 CodeGenContext context;
@@ -414,8 +414,17 @@ llvm::Value* _Statement::codeGen(){
         ifStatement->codeGen();
     }
 	else if (this->type == "assign"){
-        _AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(this);
-        //!!!!!!!assigncodegen
+		_AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(this);
+		string leftType = SemanticAnalyseVariantReference(assignStatement->variantReference);
+		string rightType = SemanticAnalyseExpression(assignStatement->expression);
+		if (assignStatement->variantReference->kind == "function return reference"){
+			if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error")
+				assignStatement->codeGen(leftType, rightType);
+		}
+		if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error"){
+			_SymbolRecord* leftVar = findSymbolRecord(assignStatement->variantReference->variantId.first);
+			leftVar->llValue = assignStatement->codeGen(leftType, rightType);	//返回左值的llValue
+		}
     }
     else if (this->type == "procedure"){
 		_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(this);

@@ -418,7 +418,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			repeatStatement->statementType = "void";
 		for (int i = 0; i < repeatStatement->_do.size(); ++i)
 			SemanticAnalyseStatement(repeatStatement->_do[i],0); //对循环体语句进行语义分析
-		if(flag == 1)
+		if(flag == 1 && repeatStatement->statementType != "error")
 			repeatStatement->codeGen();
 	}
 	else if (statement->type == "while")
@@ -433,7 +433,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		else
 			whileStatement->statementType = "void";
 		SemanticAnalyseStatement(whileStatement->_do,0); //对循环体语句进行语义分析
-		if(flag == 1)
+		if(flag == 1 && whileStatement->statementType != "error")
 			whileStatement->codeGen();
 	}
 	else if (statement->type == "for")
@@ -474,7 +474,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 		//对循环体语句进行语义分析
 		SemanticAnalyseStatement(forStatement->_do,0);
-		if(flag == 1)
+		if(flag == 1 && forStatement->statementType != "error")
 			forStatement->codeGen();
 	}
 	else if (statement->type == "if")
@@ -491,7 +491,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		SemanticAnalyseStatement(ifStatement->then,0); //对then语句进行语义分析
 		if (ifStatement->els != NULL)				 //对else语句进行语句分析
 			SemanticAnalyseStatement(ifStatement->els,0);
-		if(flag == 1)
+		if(flag == 1 && ifStatement->statementType != "error")
 			ifStatement->codeGen();
 	}
 	else if (statement->type == "assign")
