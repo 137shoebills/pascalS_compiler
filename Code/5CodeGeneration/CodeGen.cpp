@@ -395,7 +395,37 @@ llvm::Value* _Expression::codeGen(){
       this->llvalue == ret;
       return ret;
 }
-
+//语句codegen
+llvm::Value* _Statement::codeGen(){
+    if(this->type == "repeat"){
+        _RepeatStatement *repeatStatement = reinterpret_cast<_RepeatStatement *>(this);
+        repeatStatement->codeGen();
+    }
+    else if(this->type =="while"){
+        _WhileStatement *whileStatement = reinterpret_cast<_WhileStatement *>(this);
+        whileStatement->codeGen();
+    }
+    else if (this->type == "for"){
+        _ForStatement *forStatement = reinterpret_cast<_ForStatement *>(this);
+        forStatement->codeGen();
+    }
+    else if (this->type == "if"){
+        _IfStatement *ifStatement = reinterpret_cast<_IfStatement *>(this);
+        ifStatement->codeGen();
+    }
+	else if (this->type == "assign"){
+        _AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(this);
+        //!!!!!!!assigncodegen
+    }
+    else if (this->type == "procedure"){
+		_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(this);
+        procedureCall->codeGen();
+    }
+    else{
+        cout<<"statement codegen unknown type";
+    }
+    return nullptr;
+}
 //赋值语句codeGen
 llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
     cout << "_AssignStatement::codeGen" << endl;
