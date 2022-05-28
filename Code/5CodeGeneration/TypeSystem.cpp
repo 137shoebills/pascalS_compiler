@@ -85,10 +85,20 @@ void TypeSystem::addArrayType(string typeName, llvm::ArrayType* ArrayType, strin
 
 //获取数组元素类型名
 string TypeSystem::getArrayMemberType(string arrName){
-    return arrayMemberTypes[arrName];
+    _SymbolRecord* record = findSymbolRecord(arrName);
+    if(!record){
+        LogErrorV("[getArrayMemberType] Cannot find symbol record: " + arrName);
+        return "";
+    }
+    if(this->isBasicType(record->type))   //数组元素类型为基本类型->没有下层嵌套了，直接返回原数组类型
+        return arrName;
+    return arrayMemberTypes[arrName];   //否则返回下层的数组类型名
 }
 
-//获取数组上下界
-pair<int, int> TypeSystem::getArrayRange(string arrName){
-    return arrayRangeLists[arrName][0];        
+//判断是否为基本类型
+bool TypeSystem::isBasicType(string type)
+{
+    if(type == "integer" || type == "real" || type == "char" || type == "boolean")
+        return true;
+    return false;
 }
