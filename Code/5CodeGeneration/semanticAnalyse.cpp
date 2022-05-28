@@ -348,14 +348,21 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 		}
 	
 	}
+	
+	//[test]codeGen
+	//先获得函数指针
+	record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
 
-	//对compound进行语义分析(在这一步获取函数返回值的llValue)
+	//对compound进行语义分析(在这一步获取函数返回值funcRetValue)
 	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound),1);
 
 	layer--; //层数--
 
-	//codeGen
-	record->functionPtr = functionDefinition->codeGen(record->funcRetValue);	//返回函数指针（Function::Create的返回值）
+	// //codeGen
+	// record->functionPtr = functionDefinition->codeGen(record->funcRetValue);	//返回函数指针（Function::Create的返回值）
+	
+	//CreateRet
+	functionDefinition->CreateFuncRet(record->funcRetValue);
 }
 
 //对形式参数进行语义分析，形式参数一定是基本类型
@@ -418,7 +425,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			repeatStatement->statementType = "void";
 		for (int i = 0; i < repeatStatement->_do.size(); ++i)
 			SemanticAnalyseStatement(repeatStatement->_do[i],0); //对循环体语句进行语义分析
-		if(flag == 1 && repeatStatement->statementType != "error")
+		if(flag == 1)
 			repeatStatement->codeGen();
 	}
 	else if (statement->type == "while")
@@ -589,6 +596,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			{
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
 				// checked
+				// if (procedureCall->actualParaList[i]->type != "var" ||procedureCall->actualParaList[i]->variantReference->kind != "var")
+				// 	addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNo, record->id, i + 1, procedureCall->actualParaList[i]);
+				// checked
 				if (!(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
 					addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNo, record->id, i + 1, procedureCall->actualParaList[i]);
 				if (actualType == "error")
@@ -730,6 +740,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 		return "error";
 	}
 
+	//cout<<"expression->type:"<<expression->type<<endl;
 	//表达式类型为变量 <ok>
 	if (expression->type == "var")
 	{
@@ -758,6 +769,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 			expression->boolValue=record->value;
 			//cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 		}
+		//cout<<"variantReferenceType : "<<variantReferenceType<<endl;
 		return expression->expressionType = variantReferenceType;
 	}
 
@@ -988,6 +1000,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 
 	_SymbolRecord *record = findSymbolRecord(variantReference->variantId.first);
 
+	//cout<<"record->type of "<<variantReference->variantId.first<<" : "<<record->type<<endl;
 	//未定义
 	if (record == NULL)
 	{
@@ -1043,15 +1056,22 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			//若存在别名记录则进行替换
 			if (recordSource != NULL)
 			{
+				//数组、结构体变量不作替换
+				if(recordSource->flag=="array"||recordSource->flag=="records"){
+					variantReference->kind=recordSource->flag;
+					return variantReference->variantType = record->type;
+				}
 				return variantReference->variantType = recordSource->type;
 			}
+
+
 		}
 		return variantReference->variantType = record->type;
 	}
 
 	//数组元素
 	else if(record->flag =="array"){
-		variantReference->kind = "array";
+		variantReference->kind = "var";
 
 		//引用时的下标维数和符号表所存不一致
 		if (variantReference->IdvpartList.size() != record->amount)
@@ -1097,7 +1117,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 		for (int i = 0; i < record->records.size(); i++)
 		{
 			if (record->records[i]->id == variantReference->IdvpartList[0]->IdvpartId.first)
-			{				
+			{			
+				variantReference->kind="var";	
 				return variantReference->variantType = record->records[i]->type;
 			}
 		}
@@ -1110,6 +1131,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	//结构体.属性、数组元素作类型检查与替换(即处理结构中含数组、数组中含结构体的嵌套)
 	else if (record->flag == "normal variant")
 	{	
+		variantReference->kind="var";
 		string curType = record->type;
 
 		for (int n = 0; n < variantReference->IdvpartList.size(); n++)
@@ -1162,6 +1184,9 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			if (curType == "error")
 				return variantReference->variantType = "error";
 		}
+		if(!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
+			variantReference->kind=curType;
+
 		return variantReference->variantType = curType;
 	}
 
