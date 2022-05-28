@@ -185,10 +185,6 @@ llvm::Function* _FunctionDefinition::codeGen(llvm::Value* funcRetValue)
     vector<llvm::Type*> argTypes;
     string type_str;
     //遍历形参列表，获取每个形参对应的LLVM类型（只考虑基本类型）
-    // for(auto it = formalParaList.begin(); it!=formalParaList.end(); it++){
-    //     type_str = it->type;
-    //     argTypes.push_back(context.typeSystem.getllType(type_str));
-    // }
     for(int i=0; i!=formalParaList.size(); i++){
         type_str = formalParaList[i]->type;
         argTypes.push_back(context.typeSystem.getllType(type_str));
@@ -612,7 +608,6 @@ llvm::Value* _RepeatStatement::codeGen(){
 //功能：取出变量的值，并返回寄存器的地址(CreateLoad的返回值)
 llvm::Value* _VariantReference::codeGen(){
     cout << "_VariantReference::codeGen" << endl;
-    //[refer]   等价于NIdentifier
 
     _SymbolRecord* varRef = findSymbolRecord(this->variantId.first);
     llvm::Value* addr = varRef->llValue;    //获取普通变量的地址/数组、record的首地址
@@ -634,12 +629,7 @@ llvm::Value* _VariantReference::codeGen(){
         //传值参数
         else if (varRef->flag == "value parameter")
         {
-            //return context.builder->CreateLoad(addr, false, "");
-        }
-        //引用参数
-        else if (varRef->flag == "var parameter")
-        {
-            // return context.builder->CreateLoad(addr, false, "");
+            return context.builder->CreateLoad(addr, false, "");
         }
     }
     else{   //数组元素和record成员
@@ -755,12 +745,12 @@ llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId
 }
 
 //计算N维数组下标（N>=1，按C标准，从0开始）
-int calcArrayIndex(_SymbolRecord* record, vector<_Expression*> indices){
+int calcArrayIndex(string arrTypeName, vector<_Expression*> indices){
     cout<<"calcArrayIndex"<<endl;
 
     //vector<pair<int,int>> rangeList(record->arrayRangeList);
     //变量的record只记录了数组类型名，首先需要查表得到数组定义
-    _SymbolRecord* arrRec = findSymbolRecord(record->type);
+    _SymbolRecord* arrRec = findSymbolRecord(arrTypeName);
     vector<pair<int,int>> rangeList(arrRec->arrayRangeList);
     if(rangeList.size() == 0){
         cout<<"[calcArrayIndex] get arrayRangeList failed"<<endl;
@@ -809,7 +799,7 @@ llvm::Value* getItemPtr(_VariantReference* varRef)
         else{       //纯数组：a[1] 或 a[1][2][...][N]
             //多维纯数组，转化为一维数组处理
             //计算数组元素下标
-            int loc = calcArrayIndex(record, varRef->IdvpartList[0]->expressionList);
+            int loc = calcArrayIndex(record->type, varRef->IdvpartList[0]->expressionList);
             ptr = getArrayItemPtr(record->type, record->llValue, loc);
             return ptr;
         }
