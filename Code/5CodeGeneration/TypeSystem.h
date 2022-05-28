@@ -18,6 +18,7 @@ using NameType = pair<string, string>;  //record成员，pair<id,type>
 //extern vector<string> semanticErrorInformation;   //存储错误信息的列表
 extern _SymbolTable* mainSymbolTable;
 extern llvm::Value* LogErrorV(string str);
+extern _SymbolRecord* findSymbolRecord(string);
 
 class TypeSystem{
 private:
@@ -26,7 +27,7 @@ private:
     map<string, llvm::StructType*> recordTypes;     //record类型的名称对应的LLVM Type
 
     map<string, string> arrayMemberTypes;           //数组元素类型列表
-    map<string, vector<pair<int, int>> > arrayRangeLists;  //数组上下界列表
+    map<string, vector<pair<int, int>> > arrayRangeLists; //数组上下界列表
     map<string, llvm::ArrayType*> arrayTypes;       //数组变量对应的LLVM Type
 
 public:
@@ -57,8 +58,9 @@ public:
         vector<pair<int,int>> ArrayRangeList);
     //获取数组元素类型名
     string getArrayMemberType(string arrName);
-    //获取数组上下界
-    pair<int, int> getArrayRange(string arrName);
+
+    //判断是否为基本类型
+    bool isBasicType(string type);
 };
 
 #endif
