@@ -100,6 +100,11 @@ public:
 
 public:
     _Type();
+    _Type(string type, int lineNo, int flag){
+        cout<<"_Type constructor"<<endl;
+        this->type = make_pair(type, lineNo);
+        this->flag = flag;
+    }
     _Type(pair<string, int> _type, int _flag, vector<pair<int, int> > _arrayRangeList);
     ~_Type() {}
 
@@ -117,6 +122,11 @@ public:
     _Type *type;                 //变量类型
 public:
     _Variant();
+    _Variant(pair<string, int> paraId, string type, int flag){
+        cout<<"_Variant constructor"<<endl;
+        this->variantId = paraId;
+        this->type = new _Type(type, paraId.second, flag);
+    }
     _Variant(pair<string, int> _variantId, _Type *_type);
     ~_Variant();
     llvm::Value* codeGen();
@@ -137,8 +147,9 @@ public:
 public:
     _FunctionDefinition();
     ~_FunctionDefinition();
-    //llvm::Value *codeGen(_SymbolRecord* funcRec);
-    llvm::Function* codeGen(llvm::Value* funcRetValue);
+    llvm::Function* codeGen();
+    //llvm::Function* codeGen(llvm::Value* funcRetValue);
+    void CreateFuncRet(llvm::Value* funcRetValue);
 };
 
 class _FormalParameter //形式参数
