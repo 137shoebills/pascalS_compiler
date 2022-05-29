@@ -9,6 +9,7 @@ void ObjCodeGen(CodeGenContext& context, string& filename, int outputType) {
     llvm::InitializeAllTargetMCs();
     llvm::InitializeAllAsmParsers();
     llvm::InitializeAllAsmPrinters();
+    
 
     //获取目标三元组并设置
     auto targetTriple = llvm::sys::getDefaultTargetTriple();
@@ -32,7 +33,7 @@ void ObjCodeGen(CodeGenContext& context, string& filename, int outputType) {
 
     //将目标代码输出到文件
     error_code ErrCode;
-    llvm::raw_fd_ostream dest(filename, ErrCode, llvm::sys::fs::OF_None);
+    llvm::raw_fd_ostream dest(filename.c_str(), ErrCode, llvm::sys::fs::OF_None);
 
     llvm::CodeGenFileType type;
     if(outputType == ASSEMBLY_FILE){    //生成汇编文件
@@ -43,18 +44,19 @@ void ObjCodeGen(CodeGenContext& context, string& filename, int outputType) {
         type = llvm::CGFT_ObjectFile;
         //llvm::LLVMTargetMachine::CodeGenFileType type = llvm::LLVMTargetMachine::CGFT_ObjectFile;
     }
-
     llvm::legacy::PassManager pass;
-    if(theTargetMachine->addPassesToEmitFile(pass, dest, nullptr, type)){
+    if(theTargetMachine->addPassesToEmitFile(pass, dest, &dest, type)){
         llvm::errs() << "theTargetMachine can't emit a file of this type";
         return;
     }
-    //cout<<"here"<<endl;
+    cout<<"here"<<endl;
 
     //SemanticAnalyseProgram最后的PM:成功输出到终端
     // llvm::legacy::PassManager pm;
 	// pm.add(llvm::createPrintModulePass(llvm::outs()));
 	// pm.run(*(context.Module));
+    //pass.run(*context.Module.get());
+
 
     pass.run(*(context.Module));
     cout<<"here2"<<endl;
