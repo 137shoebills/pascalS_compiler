@@ -528,7 +528,7 @@ llvm::Value* _IfStatement::codeGen(){
       }
       //插入指令
       context.builder->SetInsertPoint(thenBB);
-      //this->then->codeGen();  //❓因为报错，暂时注释掉
+      this->then->codeGen();  //❓因为报错，暂时注释掉
       thenBB = context.builder->GetInsertBlock();
       if( thenBB->getTerminator() == nullptr ){
           context.builder->CreateBr(mergeBB);
@@ -536,7 +536,7 @@ llvm::Value* _IfStatement::codeGen(){
       if( this->els ){
           theFunction->getBasicBlockList().push_back(elsBB);
           context.builder->SetInsertPoint(elsBB);
-          //this->els->codeGen();   //❓因为报错，暂时注释掉
+          this->els->codeGen();   //❓因为报错，暂时注释掉
           context.builder->CreateBr(mergeBB);
       }
       theFunction->getBasicBlockList().push_back(mergeBB);
@@ -566,7 +566,7 @@ llvm::Value* _ForStatement::codeGen(){
 
       context.builder->SetInsertPoint(block);
 
-      //this->_do->codeGen();   //❓因为报错，暂时注释掉
+      this->_do->codeGen();   //❓因为报错，暂时注释掉
 
       // do increment
       if( this->increment ){
@@ -599,7 +599,7 @@ llvm::Value* _WhileStatement::codeGen(){
       // fall to the block
       context.builder->CreateCondBr(condValue, block, after);
       context.builder->SetInsertPoint(block);
-      //this->_do->codeGen();   //❓因为报错，暂时注释掉
+      this->_do->codeGen();   //❓因为报错，暂时注释掉
       // execute the again or stop
       condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
@@ -620,8 +620,8 @@ llvm::Value* _RepeatStatement::codeGen(){
       // fall to the block
       context.builder->CreateBr(block);
       context.builder->SetInsertPoint(block);
-    //   for(int i = 0; i < this->_do.size(); i++)
-    //     this->_do[i]->codeGen(); //❓因为报错，暂时注释掉
+      for(int i = 0; i < this->_do.size(); i++)
+        this->_do[i]->codeGen(); //❓因为报错，暂时注释掉
 
       // execute the again or stop
       auto condValue = this->condition->codeGen();
