@@ -612,25 +612,31 @@ llvm::Value* _WhileStatement::codeGen(){
 
 llvm::Value* _RepeatStatement::codeGen(){
     cout << "_RepeatStatement::codeGen" << endl;
-
+    for(int i = 0; i < this->_do.size(); i++)
+        this->_do[i]->codeGen(); //❓因为报错，暂时注释掉
     llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
-  	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "while_body", theFunction);
-  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "while_end", theFunction);
+  	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "repeat_body", theFunction);
+  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "repeat_end", theFunction);
 
+    llvm::Value* condValue = this->condition->codeGen();
+      if( !condValue )
+          return nullptr;
+
+      condValue = CastToBoolean(context, condValue);
       // fall to the block
-      context.builder->CreateBr(block);
+      context.builder->CreateCondBr(condValue, after, block);
       context.builder->SetInsertPoint(block);
       for(int i = 0; i < this->_do.size(); i++)
-        this->_do[i]->codeGen(); //❓因为报错，暂时注释掉
-
+        this->_do[i]->codeGen(); 
       // execute the again or stop
-      auto condValue = this->condition->codeGen();
+      condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
-      context.builder->CreateCondBr(condValue, block, after);
+      context.builder->CreateCondBr(condValue, after, block);
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
       context.builder->SetInsertPoint(after);
       return nullptr;
+      
 }
 
 //变量引用codeGen
