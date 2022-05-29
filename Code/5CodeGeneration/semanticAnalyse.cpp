@@ -68,6 +68,8 @@ void SemanticAnalyseProgram(_Program *program)
 
 	SemanticAnalyseSubprogram(program->subProgram);
 
+	context.builder->CreateRet(nullptr);
+
 	cout<<"------------------LLVM IR-------------------"<<endl;
 	//llvm::PassManager pm;
 	llvm::legacy::PassManager pm;
