@@ -693,7 +693,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	}
 
 	std::pair<string, int> FCID = functionCall->functionId;
-	if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
+	if (mainSymbolTable->idToLoc[FCID.first].size() == 0) //找不到函数声明
 	{
 		addUndefinedErrorInformation(FCID.first, FCID.second);
 		return "error";
