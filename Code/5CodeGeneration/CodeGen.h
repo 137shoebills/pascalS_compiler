@@ -62,7 +62,8 @@ public:
 
     //CodeGenContext(): builder(llvmContext), typeSystem(llvmContext) {
     CodeGenContext(): typeSystem(llvmContext) {
-        Module = make_unique<llvm::Module>("Program", this->llvmContext);
+        //Module = make_unique<llvm::Module>("Program", this->llvmContext);
+        Module = make_unique<llvm::Module>("main", this->llvmContext);
         //builder = make_unique<llvm::IRBuilder<>>(llvmContext);
     }
 
