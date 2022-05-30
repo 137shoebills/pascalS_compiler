@@ -565,7 +565,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 
 		//codeGen
-		if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error"){
+		if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1){
 			_SymbolRecord* leftVar = findSymbolRecord(assignStatement->variantReference->variantId.first);
 			leftVar->llValue = assignStatement->codeGen(leftType, rightType);	//返回左值的llValue
 		}
@@ -744,7 +744,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 }
 
 //对表达式进行语义分析
-string SemanticAnalyseExpression(_Expression *expression)
+string SemanticAnalyseExpression(_Expression *&expression)
 {
 	if (expression == NULL)
 	{
@@ -782,6 +782,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 			//cout<<expression->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 		}
 		//cout<<"variantReferenceType : "<<variantReferenceType<<endl;
+		expression->llvalue = expression->codeGen();
 		return expression->expressionType = variantReferenceType;
 	}
 
@@ -790,25 +791,31 @@ string SemanticAnalyseExpression(_Expression *expression)
 	{
 		expression->totalIntValue = expression->intNum;
 		expression->totalIntValueValid = true;
+		expression->llvalue = expression->codeGen();
 		return expression->expressionType = "integer";
 	}
 
 	//表达式类型为real <ok>
-	else if (expression->type == "real")
-		return expression->expressionType = "real";
+	else if (expression->type == "real"){
+		expression->llvalue = expression->codeGen();
+		return expression->expressionType = "real";}
 
 	//表达式类型为char <ok>
-	else if (expression->type == "char")
-		return expression->expressionType = "char";
+	else if (expression->type == "char"){
+	expression->llvalue = expression->codeGen();
+		return expression->expressionType = "char";}
 
 	//表达式类型为布尔类型boolean
-	else if (expression->type == "boolean")
-		return expression->expressionType = "boolean";
+	else if (expression->type == "boolean"){
+		expression->llvalue = expression->codeGen();
+		return expression->expressionType = "boolean";}
 
 	//表达式类型为函数调用 <ok>
 	else if (expression->type == "function") //获得函数调用的返回值类型
+{
+		expression->llvalue = expression->codeGen();
 		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall);
-
+}
 	//含有运算符的表达式
 	else if (expression->type == "compound")
 	{
@@ -819,8 +826,9 @@ string SemanticAnalyseExpression(_Expression *expression)
 			string epType1 = SemanticAnalyseExpression(expression->operand1);
 			string epType2 = SemanticAnalyseExpression(expression->operand2);
 			//类型兼容
-			if ((epType1 == epType2 && epType1 != "error") || (epType1 == "integer" && epType2 == "real") || (epType1 == "real" && epType2 == "integer"))
-				return expression->expressionType = "boolean";
+			if ((epType1 == epType2 && epType1 != "error") || (epType1 == "integer" && epType2 == "real") || (epType1 == "real" && epType2 == "integer")){
+				expression->llvalue = expression->codeGen()	;
+				return expression->expressionType = "boolean";}
 			//类型错误或类型不兼容
 			else
 			{
@@ -841,6 +849,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 				else{
 					expression->boolValue="false";
 				}
+				expression->llvalue = expression->codeGen();
 				//cout<<"not "<<expression->operand1->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				return expression->expressionType = "boolean";
 			}
@@ -862,8 +871,9 @@ string SemanticAnalyseExpression(_Expression *expression)
 				expression->totalIntValue = -expression->operand1->totalIntValue;
 				expression->totalIntValueValid = true;
 			}
-			if (epType == "integer" || epType == "real")
-				return expression->expressionType = epType;
+			if (epType == "integer" || epType == "real"){
+				expression->llvalue = expression->codeGen();
+				return expression->expressionType = epType;}
 			else
 			{
 				if (epType != "error" && epType != "integer" && epType != "real")
@@ -887,6 +897,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 				expression->boolValue=expression->operand1->boolValue;
 				//cout<<"("<<expression->operand1->variantReference->variantId.first<<") : "<<expression->boolValue<<endl;
 			}
+			expression->llvalue = expression->codeGen();
 			return expression->expressionType;
 		}
 
@@ -914,6 +925,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 			//类型处理
 			if ((epType1 == "integer" || epType1 == "real") && (epType2 == "integer" || epType2 == "real"))
 			{
+				expression->llvalue = expression->codeGen();
 				if (epType1 == "integer" && epType2 == "integer")
 					return expression->expressionType = "integer";
 				return expression->expressionType = "real";
@@ -944,6 +956,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 						expression->totalIntValue = expression->operand1->totalIntValue % expression->operand2->totalIntValue;
 					expression->totalIntValueValid = true;
 				}
+				expression->llvalue = expression->codeGen();
 				return expression->expressionType = "integer";
 			}
 			if (epType1 != "error" && epType1 != "integer")
@@ -974,6 +987,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 						expression->boolValue="false";
 					//cout<<expression->operand1->variantReference->variantId.first<<" or "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				}
+				expression->llvalue = expression->codeGen();
 				return expression->expressionType = "boolean";
 			}
 			if (epType1 != "error" && epType1 != "boolean")

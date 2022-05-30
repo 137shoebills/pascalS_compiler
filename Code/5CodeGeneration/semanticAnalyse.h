@@ -32,7 +32,7 @@ vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pai
 
 string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
-string SemanticAnalyseExpression(_Expression *expression);					 //对表达式进行语义分析
+string SemanticAnalyseExpression(_Expression *&expression);					 //对表达式进行语义分析
 
 void relocation(); //重定位
 
