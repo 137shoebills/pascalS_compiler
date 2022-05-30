@@ -280,7 +280,8 @@ void SemanticAnalyseVariant(_Variant *variant)
 		mainSymbolTable->addVar(VID.first, VID.second,VID.first+"_");
 	}
 	 //非标准类型时进行类型检查
-	else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
+	//else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
+	else if(!context.typeSystem.isBasicType(type))
 	{
 		_SymbolRecord *recordSource = findSymbolRecord(type);	
 		if(recordSource==NULL){
@@ -702,7 +703,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 }
 
 //对函数调用进行语义分析
-string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
+string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 {
 	//cout<<"SemanticAnalyseFunctionCall: "<<functionCall->functionId.first<<endl;
 	if (functionCall == NULL)
@@ -713,55 +714,89 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 
 	std::pair<string, int> FCID = functionCall->functionId;
 	//if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
-	if (mainSymbolTable->idToLoc[FCID.first].size() == 0) //找不到函数声明
-	{
+	//[hmz]
+	//if (mainSymbolTable->idToLoc[FCID.first].size() == 0) //找不到函数声明
+	//[pl]
+	_SymbolRecord *record = findSymbolRecord(FCID.first);
+	if (record == NULL)
+	{ //未定义
 		cout<<"[SemanticAnalyseFunctionCall]	function undefined in this scope: "<<FCID.first<<endl;
 		addUndefinedErrorInformation(FCID.first, FCID.second);
 		return "error";
 	}
 	
-	int decID = mainSymbolTable->idToLoc[FCID.first].top();
-	functionCall->returnType = mainSymbolTable->recordList[decID]->type;
-
-	int decParaSize = mainSymbolTable->recordList[decID]->amount;
-	if (decParaSize != functionCall->actualParaList.size()) //参数表数目不对
-	{
-		addNumberErrorInformation(FCID.first, FCID.second, functionCall->actualParaList.size(), decParaSize, "function");
+	//int decID = mainSymbolTable->idToLoc[FCID.first].top();
+	//functionCall->returnType = mainSymbolTable->recordList[decID]->type;
+	if (record->flag != "function")
+	{ //标识符对应的记录不是function
+		addPreFlagErrorInformation(FCID.first, FCID.second, "function", record->lineNumber, record->flag);
+		return "error";
 	}
 
+	//int decParaSize = mainSymbolTable->recordList[decID]->amount;
+	//if (decParaSize != functionCall->actualParaList.size()) //参数表数目不对
+	int decParaSize = record->amount;						//形参个数
 	int ParaSize = functionCall->actualParaList.size();
-	if(ParaSize > decParaSize)
-		ParaSize = decParaSize;
+	if (decParaSize != ParaSize) //参数表数目不对
+	{
+		addNumberErrorInformation(FCID.first, FCID.second, functionCall->actualParaList.size(), decParaSize, "function");
+		return "error";
+	}
+
+	//int ParaSize = functionCall->actualParaList.size();
+	//if(ParaSize > decParaSize)
+	//	ParaSize = decParaSize;
 	for (int i = 0; i < ParaSize; ++i) //判断每个参数的类型
 	{
-		SemanticAnalyseExpression(functionCall->actualParaList[i]);
-		string decType = mainSymbolTable->recordList[decID + i + 1]->type;
-		string expType = functionCall->actualParaList[i]->expressionType;
-		string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
-		if (flag == "var parameter")
-		{
-			if (expType != decType)
-				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+		//SemanticAnalyseExpression(functionCall->actualParaList[i]);
+		//string decType = mainSymbolTable->recordList[decID + i + 1]->type;
+		//string expType = functionCall->actualParaList[i]->expressionType;
+		//string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
+		//if (flag == "var parameter")
+		//{
+		//	if (expType != decType)
+		//		addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+		string actualType = SemanticAnalyseExpression(functionCall->actualParaList[i]);
+		string formalType = record->findXthFormalParaType(i);
+		bool isRefered = record->isXthFormalParaRefered(i); //检查是否是传引用参数
+		if (isRefered)
+		{ //引用参数对应的实参不能是复杂表达式或者常量
 			if (!(functionCall->actualParaList[i]->type == "var" && (functionCall->actualParaList[i]->variantReference->kind == "var" || functionCall->actualParaList[i]->variantReference->kind == "array")))
 			{
-				//引用参数对应的实参只能是变量、参数或者数组元素 不能为常数、复杂表达式等
 				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(functionCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
-				continue;
+				return "error";
+			}
+			else if (actualType != formalType)
+			{
+				addExpressionTypeErrorInformation(functionCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of function call of \"" + FCID.first + "\"");
+				return "error";
 			}
 		}
 		else
 		{
-			if (expType != decType && !(expType == "integer" && decType == "real"))
+			//if (expType != decType && !(expType == "integer" && decType == "real"))
+			//{
+			//	addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+			//}
+			//else if (expType == "integer" && decType == "real")
+			if (actualType != formalType) //如果类型不一致
 			{
-				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
-			}
-			else if (expType == "integer" && decType == "real")
-			{
-				semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
+				//semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
+				//传值参数支持integer到real的隐式类型转换
+				if (actualType == "integer" && formalType == "real")
+				{
+					semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(line) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
+				}
+				else
+				{
+					addExpressionTypeErrorInformation(functionCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of function call of \"" + FCID.first + "\"");
+					return "error";
+				}
 			}
 		}
 	}
-	return functionCall->returnType;
+	//return functionCall->returnType;
+	return record->type;
 }
 
 //对表达式进行语义分析
@@ -836,7 +871,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 	else if (expression->type == "function") //获得函数调用的返回值类型
 	{
 		expression->llvalue = expression->codeGen();
-		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall);
+		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
 	}
 
 	//含有运算符的表达式
@@ -1185,7 +1220,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 		for (int n = 0; n < variantReference->IdvpartList.size(); n++)
 		{
 
-			if (curType == "integer" || curType == "real" || curType == "char" || curType == "boolean")
+			//if (curType == "integer" || curType == "real" || curType == "char" || curType == "boolean")
+			if(context.typeSystem.isBasicType(curType))
 			{
 				addVariantReferenceErrorInformation(variantReference->variantId.second, "illegal array element access or illegal record attribute access");
 				return variantReference->variantType = "error";
@@ -1232,7 +1268,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			if (curType == "error")
 				return variantReference->variantType = "error";
 		}
-		if(!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
+		//if(!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
+		if(!context.typeSystem.isBasicType(curType))
 			variantReference->kind=curType;
 
 		return variantReference->variantType = curType;
