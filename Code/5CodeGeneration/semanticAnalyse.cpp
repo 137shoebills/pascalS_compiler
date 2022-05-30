@@ -21,7 +21,6 @@ void SemanticAnalyse(_Program *ASTRoot)
 {
 	createSymbolTableAndInit();
 	context.InitCodeGen();	 //初始化中间代码生成相关参数
-	//cout<<"out of InitCodeGen"<<endl;
 	SemanticAnalyseProgram(ASTRoot);
 }
 
@@ -69,7 +68,7 @@ void SemanticAnalyseProgram(_Program *program)
 	SemanticAnalyseSubprogram(program->subProgram);
 
 	context.builder->CreateRet(nullptr);
-
+	
 	cout<<"------------------LLVM IR-------------------"<<endl;
 	//llvm::PassManager pm;
 	llvm::legacy::PassManager pm;
@@ -86,17 +85,25 @@ void SemanticAnalyseSubprogram(_SubProgram *subprogram)
 		cout << "[SemanticAnalyseSubprogram] pointer of _Subprogram is null" << endl;
 		return;
 	}
-	for (int i = 0; i < subprogram->constList.size(); i++)
-		SemanticAnalyseConst(subprogram->constList[i]);
-	for (int i = 0; i < subprogram->typedefList.size(); i++)
-		SemanticAnalyseTypedef(subprogram->typedefList[i]);
-	for (int i = 0; i < subprogram->variantList.size(); i++)
-		SemanticAnalyseVariant(subprogram->variantList[i]);
+
+	//test
 	for (int i = 0; i < subprogram->subprogramDefinitionList.size(); i++)
 	{
 		SemanticAnalyseSubprogramDefinition(subprogram->subprogramDefinitionList[i]);
 		relocation();
 	}
+	
+	for (int i = 0; i < subprogram->constList.size(); i++)
+		SemanticAnalyseConst(subprogram->constList[i]);
+	for (int i = 0; i < subprogram->typedefList.size(); i++)
+		SemanticAnalyseTypedef(subprogram->typedefList[i]);
+	
+	//创建主函数
+	subprogram->codeGen();
+
+	for (int i = 0; i < subprogram->variantList.size(); i++)
+		SemanticAnalyseVariant(subprogram->variantList[i]);
+
 	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(subprogram->compound),1);
 }
 
@@ -299,7 +306,7 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 		return;
 	}
 
-	_SymbolRecord *record = findSymbolRecord(functionDefinition->functionID.first);
+	_SymbolRecord* record = findSymbolRecord(functionDefinition->functionID.first);
 	if (record != NULL) //重定义检查 所有function、procedure不得同名 不得与任何标识符同名
 	{
 		addDuplicateDefinitionErrorInformation(record->id, record->lineNumber, record->flag, record->type, functionDefinition->functionID.second);
@@ -332,12 +339,19 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
 	for (int i = 0; i < functionDefinition->formalParaList.size(); i++)
 		SemanticAnalyseFormalParameter(functionDefinition->formalParaList[i]);
+
 	//对常量定义进行语义分析
 	for (int i = 0; i < functionDefinition->constList.size(); i++)
 		SemanticAnalyseConst(functionDefinition->constList[i]);
 	//对自定义类型进行语义分析
 	for (int i = 0; i < functionDefinition->typedefList.size(); i++)
 		SemanticAnalyseTypedef(functionDefinition->typedefList[i]);
+	
+	//test
+	//先获得函数指针
+	record = findSymbolRecord(functionDefinition->functionID.first);
+	record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
+
 	//对变量定义进行语义分析
 	for (int i = 0; i < functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
@@ -351,18 +365,14 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	
 	}
 	
-	//[test]codeGen
-	//先获得函数指针
-	record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
-
+	// //先获得函数指针
+	// record = findSymbolRecord(functionDefinition->functionID.first);
+	// record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
+	
 	//对compound进行语义分析(在这一步获取函数返回值funcRetValue)
 	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound),1);
 
 	layer--; //层数--
-
-	// //codeGen
-	// record->functionPtr = functionDefinition->codeGen(record->funcRetValue);	//返回函数指针（Function::Create的返回值）
-	
 	//CreateRet
 	functionDefinition->CreateFuncRet(record->funcRetValue);
 }
