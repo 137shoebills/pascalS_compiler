@@ -320,11 +320,11 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	int loc = mainSymbolTable->recordList.size() - 1;
 
 	//为什么在这里判断原因：因为返回后要做重定位操作，需要把此时的函数先在符号表里存下来，否则返回后重定位会超前做上一层的
-	if(layer > 5)
+	if (layer > 5)
 	{
 		addGeneralErrorInformation("[too much layers!] in \"" + functionDefinition->functionID.first + "\" at line " + itos(functionDefinition->functionID.second));
 		layer--;
-		return;		
+		return;
 	}
 
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
@@ -340,13 +340,13 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	for (int i = 0; i < functionDefinition->variantList.size(); i++)
 		SemanticAnalyseVariant(functionDefinition->variantList[i]);
 
-	if(functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5){
+	if (functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5)
+	{
 		for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
 		{
-			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
-			relocation();		
+			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);
+			relocation();
 		}
-	
 	}
 
 	//对compound进行语义分析(在这一步获取函数返回值的llValue)
@@ -506,7 +506,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			return;
 		}
 		else if (mainSymbolTable->custom[assignStatement->variantReference->variantId.first].size() > 0)
-		{	//左值为自定义类型名
+		{ //左值为自定义类型名
 			addGeneralErrorInformation("[Type name as l-value error!] <Line" + itos(assignStatement->variantReference->variantId.second) + "> Type name \"" + assignStatement->variantReference->variantId.first + "\" can't be referenced as l-value.");
 			return;
 		}
@@ -576,7 +576,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 			{
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
 				// checked
-				if (procedureCall->actualParaList[i]->type != "var"||procedureCall->actualParaList[i]->variantReference->kind!="var")
+				if (procedureCall->actualParaList[i]->type != "var" || procedureCall->actualParaList[i]->variantReference->kind != "var")
 					addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNo, record->id, i + 1, procedureCall->actualParaList[i]);
 				if (actualType == "error")
 					procedureCall->statementType = "error";
@@ -646,7 +646,7 @@ void SemanticAnalyseStatement(_Statement *statement)
 }
 
 //对函数调用进行语义分析
-string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
+string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 {
 	if (functionCall == NULL)
 	{
@@ -655,54 +655,63 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	}
 
 	std::pair<string, int> FCID = functionCall->functionId;
-	if (mainSymbolTable->idToLoc[FCID.first].size() == 0 ) //找不到函数声明
-	{
+	_SymbolRecord *record = findSymbolRecord(FCID.first);
+	if (record == NULL)
+	{ //未定义
 		addUndefinedErrorInformation(FCID.first, FCID.second);
 		return "error";
 	}
 
-	int decID = mainSymbolTable->idToLoc[FCID.first].top();
-	functionCall->returnType = mainSymbolTable->recordList[decID]->type;
-
-	int decParaSize = mainSymbolTable->recordList[decID]->amount;
-	if (decParaSize != functionCall->actualParaList.size()) //参数表数目不对
-	{
-		addNumberErrorInformation(FCID.first, FCID.second, functionCall->actualParaList.size(), decParaSize, "function");
+	if (record->flag != "function")
+	{ //标识符对应的记录不是function
+		addPreFlagErrorInformation(FCID.first, FCID.second, "function", record->lineNumber, record->flag);
+		return "error";
 	}
 
+	int decParaSize = record->amount;						//形参个数
 	int ParaSize = functionCall->actualParaList.size();
-	if (ParaSize > decParaSize)
-		ParaSize = decParaSize;
+	if (decParaSize != ParaSize) //参数表数目不对
+	{
+		addNumberErrorInformation(FCID.first, FCID.second, functionCall->actualParaList.size(), decParaSize, "function");
+		return "error";
+	}
+
 	for (int i = 0; i < ParaSize; ++i) //判断每个参数的类型
 	{
-		SemanticAnalyseExpression(functionCall->actualParaList[i]);
-		string decType = mainSymbolTable->recordList[decID + i + 1]->type;
-		string expType = functionCall->actualParaList[i]->expressionType;
-		string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
-		if (flag == "var parameter")
-		{
-			if (expType != decType)
-				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+		string actualType = SemanticAnalyseExpression(functionCall->actualParaList[i]);
+		string formalType = record->findXthFormalParaType(i);
+		bool isRefered = record->isXthFormalParaRefered(i); //检查是否是传引用参数
+		if (isRefered)
+		{ //引用参数对应的实参不能是复杂表达式或者常量
 			if (!(functionCall->actualParaList[i]->type == "var" && (functionCall->actualParaList[i]->variantReference->kind == "var" || functionCall->actualParaList[i]->variantReference->kind == "array")))
 			{
-				//引用参数对应的实参只能是变量、参数或者数组元素 不能为常数、复杂表达式等
 				addGeneralErrorInformation("[Referenced actual parameter error!] <Line " + itos(functionCall->actualParaList[i]->lineNo) + "> The " + itos(i + 1) + "th actual parameter expression should be a normal variable、value parameter、referenced parameter or array element.");
-				continue;
+				return "error";
+			}
+			else if (actualType != formalType)
+			{
+				addExpressionTypeErrorInformation(functionCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of function call of \"" + FCID.first + "\"");
+				return "error";
 			}
 		}
 		else
 		{
-			if (expType != decType && !(expType == "integer" && decType == "real"))
+			if (actualType != formalType) //如果类型不一致
 			{
-				addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
-			}
-			else if (expType == "integer" && decType == "real")
-			{
-				semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
+				//传值参数支持integer到real的隐式类型转换
+				if (actualType == "integer" && formalType == "real")
+				{
+					semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(line) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
+				}
+				else
+				{
+					addExpressionTypeErrorInformation(functionCall->actualParaList[i], actualType, formalType, itos(i + 1) + "th actual parameter of function call of \"" + FCID.first + "\"");
+					return "error";
+				}
 			}
 		}
 	}
-	return functionCall->returnType;
+	return record->type;
 	//❓codeGen
 	// llvm::Value* value = functionCall->codeGen();
 }
@@ -715,7 +724,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 		cout << "[SemanticAnalyseExpression] pointer of _Expression is null" << endl;
 		return "error";
 	}
-	cout<<"expression->type:"<<expression->type<<endl;
+	cout << "expression->type:" << expression->type << endl;
 	//表达式类型为变量 <ok>
 	if (expression->type == "var")
 	{
@@ -739,7 +748,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 				expression->totalIntValue = -expression->totalIntValue;
 			expression->totalIntValueValid = true;
 		}
-		if(variantReferenceType=="boolean" && expression->variantReference->kind=="constant")
+		if (variantReferenceType == "boolean" && expression->variantReference->kind == "constant")
 		{
 			_SymbolRecord *record = findSymbolRecord(expression->variantReference->variantId.first);
 			expression->boolValue = record->value;
@@ -773,8 +782,8 @@ string SemanticAnalyseExpression(_Expression *expression)
 	}
 
 	//表达式类型为函数调用 <ok>
-	else if (expression->type == "function") //获得函数调用的返回值类型	
-		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall);
+	else if (expression->type == "function") //获得函数调用的返回值类型
+		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
 
 	//含有运算符的表达式
 	else if (expression->type == "compound")
@@ -806,11 +815,11 @@ string SemanticAnalyseExpression(_Expression *expression)
 			//类型兼容
 			if (type == "boolean")
 			{
-				if(expression->operand1->boolValue=="false")
-					expression->boolValue="true";
+				if (expression->operand1->boolValue == "false")
+					expression->boolValue = "true";
 				else
 				{
-					expression->boolValue="false";
+					expression->boolValue = "false";
 				}
 				//cout<<"not "<<expression->operand1->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				return expression->expressionType = "boolean";
@@ -854,9 +863,9 @@ string SemanticAnalyseExpression(_Expression *expression)
 				expression->totalIntValueValid = true;
 			}
 			//bool类型记录值
-			if(expression->expressionType=="boolean")
+			if (expression->expressionType == "boolean")
 			{
-				expression->boolValue=expression->operand1->boolValue;
+				expression->boolValue = expression->operand1->boolValue;
 				//cout<<"("<<expression->operand1->variantReference->variantId.first<<") : "<<expression->boolValue<<endl;
 			}
 			return expression->expressionType;
@@ -933,20 +942,20 @@ string SemanticAnalyseExpression(_Expression *expression)
 			//bool值记录结果
 			if (epType1 == "boolean" && epType2 == "boolean")
 			{
-				if(expression->operation=="and")
+				if (expression->operation == "and")
 				{
-					if(expression->operand1->boolValue=="true"&&expression->operand2->boolValue=="true")
-						expression->boolValue="true";
-					else 
-						expression->boolValue="false";
+					if (expression->operand1->boolValue == "true" && expression->operand2->boolValue == "true")
+						expression->boolValue = "true";
+					else
+						expression->boolValue = "false";
 					//cout<<expression->operand1->variantReference->variantId.first<<" and "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				}
 				else
 				{
-					if(expression->operand1->boolValue=="true"||expression->operand2->boolValue=="true")
-						expression->boolValue="true";
-					else 
-						expression->boolValue="false";
+					if (expression->operand1->boolValue == "true" || expression->operand2->boolValue == "true")
+						expression->boolValue = "true";
+					else
+						expression->boolValue = "false";
 					//cout<<expression->operand1->variantReference->variantId.first<<" or "<<expression->operand2->variantReference->variantId.first<<": "<<expression->boolValue<<endl;
 				}
 				return expression->expressionType = "boolean";
@@ -1046,14 +1055,13 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			if (recordSource != NULL)
 			{
 				//数组、结构体变量不作替换
-				if(recordSource->flag=="array"||recordSource->flag=="records"){
-					variantReference->kind=recordSource->flag;
+				if (recordSource->flag == "array" || recordSource->flag == "records")
+				{
+					variantReference->kind = recordSource->flag;
 					return variantReference->variantType = record->type;
 				}
 				return variantReference->variantType = recordSource->type;
 			}
-			
-			
 		}
 		return variantReference->variantType = record->type;
 	}
@@ -1108,7 +1116,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 		{
 			if (record->records[i]->id == variantReference->IdvpartList[0]->IdvpartId.first)
 			{
-				variantReference->kind="var";
+				variantReference->kind = "var";
 				return variantReference->variantType = record->records[i]->type;
 			}
 		}
@@ -1121,7 +1129,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	//结构体.属性、数组元素作类型检查与替换(即处理结构中含数组、数组中含结构体的嵌套)
 	else if (record->flag == "normal variant")
 	{
-		variantReference->kind="var";
+		variantReference->kind = "var";
 		string curType = record->type;
 
 		for (int n = 0; n < variantReference->IdvpartList.size(); n++)
@@ -1174,8 +1182,8 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			if (curType == "error")
 				return variantReference->variantType = "error";
 		}
-		if(!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
-			variantReference->kind=curType;
+		if (!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
+			variantReference->kind = curType;
 
 		return variantReference->variantType = curType;
 	}
