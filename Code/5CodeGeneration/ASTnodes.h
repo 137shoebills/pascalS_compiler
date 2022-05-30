@@ -56,6 +56,7 @@ public:
 public:
     _SubProgram();
     ~_SubProgram();
+    llvm::Value* codeGen();
 };
 
 class _Constant //常量定义
