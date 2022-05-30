@@ -62,7 +62,7 @@ llvm::Value* _SubProgram::codeGen()
     cout<<"_SubProgram::codeGen"<<endl;
     //创建program
 	llvm::FunctionType* PrgmType = llvm::FunctionType::get(llvm::Type::getVoidTy(context.llvmContext),false);
-    llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "Program",context.Module.get());
+    llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "main",context.Module.get());
     llvm::BasicBlock* entryBlock = llvm::BasicBlock::Create(context.llvmContext, "", Program);
     //context.builder = make_unique<llvm::IRBuilder<>>(entryBlock);
     if(!context.builder){
@@ -185,6 +185,54 @@ void _TypeDef::codeGen(){
     }
 }
 
+//write的codeGen
+llvm::Value* GenSysWrite(vector<llvm::Value*> &args_list, bool new_line) {
+    llvm::Function *llvm_printf = nullptr;
+    if (llvm_printf == nullptr) {
+        //register printf
+        vector<llvm::Type *> arg_types = {llvm::Type::getInt8PtrTy(context.llvmContext)};
+        llvm::FunctionType *func_type = llvm::FunctionType::get(
+            llvm::Type::getInt32Ty(context.llvmContext),
+            arg_types,
+            true
+        );
+        llvm::Function *func = llvm::Function::Create(
+            func_type,
+            llvm::Function::ExternalLinkage,
+            "printf",
+            &*(context.Module)
+        );
+        func->setCallingConv(llvm::CallingConv::C);
+        llvm_printf = func;
+    }
+    std::string format;
+    std::vector<llvm::Value *> printf_args;
+    printf_args.emplace_back(nullptr);
+    for (auto arg: args_list) {
+        auto *tp = arg->getType();
+        if (tp->isIntegerTy()) {
+            format += "%d";
+            printf_args.emplace_back(arg);
+        }
+        else if (tp->isFloatingPointTy()) {
+            format += "%f";
+            printf_args.emplace_back(arg);
+        }
+        else if (tp->isStructTy()) {
+            format += "%c";
+            printf_args.emplace_back(arg);
+        } else {
+            cerr << "[write] Unsupported type" << std::endl;
+            return nullptr;
+        }
+    }
+    if (new_line) {
+        format += "\n";
+    }
+    printf_args[0] = context.builder->CreateGlobalStringPtr(format, "printf_format");
+    return context.builder->CreateCall(llvm_printf, printf_args, "call_printf");
+}
+
 //函数/过程定义
 llvm::Function* _FunctionDefinition::codeGen() 
 {
@@ -296,6 +344,11 @@ llvm::Value* _FunctionCall::codeGen(){
             //报错：参数解析失败
             return LogErrorV("[_FunctionCall::codeGen]  Para codeGen failed: " + (*it)->variantReference->variantId.first);
         }
+    }
+
+    if(this->functionId.first == "write")
+    {
+        return GenSysWrite(args,1);
     }
 
     llvm::Function* callee = funcRec->functionPtr;  //函数指针（Function::Create）
