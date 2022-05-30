@@ -62,6 +62,7 @@ llvm::Value* _SubProgram::codeGen()
     cout<<"_SubProgram::codeGen"<<endl;
     //创建program
 	llvm::FunctionType* PrgmType = llvm::FunctionType::get(llvm::Type::getVoidTy(context.llvmContext),false);
+    //llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "Program",context.Module.get());
     llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "main",context.Module.get());
     llvm::BasicBlock* entryBlock = llvm::BasicBlock::Create(context.llvmContext, "", Program);
     //context.builder = make_unique<llvm::IRBuilder<>>(entryBlock);
@@ -350,7 +351,7 @@ llvm::Value* _FunctionCall::codeGen(){
     {
         return GenSysWrite(args,1);
     }
-
+    
     llvm::Function* callee = funcRec->functionPtr;  //函数指针（Function::Create）
     return context.builder->CreateCall(callee, args, "Calltmp");    //返回：函数返回值
 }
@@ -359,7 +360,7 @@ llvm::Value* _FunctionCall::codeGen(){
 void _ProcedureCall::codeGen(){
     cout << "_ProcedureCall::codeGen" << endl;
 
-    //重用functionCall的codeGen
+    //复用functionCall的codeGen
     _FunctionCall* procedure = new _FunctionCall;
     procedure->functionId = this->procedureId;
     procedure->actualParaList = this->actualParaList;
