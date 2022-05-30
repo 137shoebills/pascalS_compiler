@@ -31,7 +31,8 @@ void SemanticAnalyseStatement(_Statement *statement, int flag);							   //对�
 vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type); //对record类型进行语义分析
 
 string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
-string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
+//string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
+string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line);			 //对函数调用进行语义分析
 string SemanticAnalyseExpression(_Expression *&expression);					 //对表达式进行语义分析
 
 void relocation(); //重定位
