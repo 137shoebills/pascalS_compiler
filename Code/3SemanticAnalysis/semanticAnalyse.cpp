@@ -655,7 +655,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall)
 	}
 
 	std::pair<string, int> FCID = functionCall->functionId;
-	if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
+	if (mainSymbolTable->idToLoc[FCID.first].size() == 0 ) //找不到函数声明
 	{
 		addUndefinedErrorInformation(FCID.first, FCID.second);
 		return "error";
@@ -715,7 +715,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 		cout << "[SemanticAnalyseExpression] pointer of _Expression is null" << endl;
 		return "error";
 	}
-	//cout<<"expression->type:"<<expression->type<<endl;
+	cout<<"expression->type:"<<expression->type<<endl;
 	//表达式类型为变量 <ok>
 	if (expression->type == "var")
 	{
@@ -773,7 +773,7 @@ string SemanticAnalyseExpression(_Expression *expression)
 	}
 
 	//表达式类型为函数调用 <ok>
-	else if (expression->type == "function") //获得函数调用的返回值类型
+	else if (expression->type == "function") //获得函数调用的返回值类型	
 		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall);
 
 	//含有运算符的表达式
