@@ -6,13 +6,14 @@
 #include "CodeGen.h"
 
 using namespace std;
-extern bool have_error;
+extern bool codeGen_error;
 int layer = 0; //标记程序的嵌套层数
 int expflag = 1;
+
 set<string> lib; //存放库函数名
 extern _SymbolTable *mainSymbolTable;
-extern CodeGenContext context;
-extern _SymbolRecord *findSymbolRecord(string id); //从符号表中找出id对应的记录
+extern CodeGenContext context;				
+extern _SymbolRecord* findSymbolRecord(string id); //从符号表中找出id对应的记录
 extern int str2int(string str);
 vector<string> semanticErrorInformation;   //存储错误信息的列表
 vector<string> semanticWarningInformation; //存储警告信息的列表
@@ -20,7 +21,7 @@ vector<string> semanticWarningInformation; //存储警告信息的列表
 void SemanticAnalyse(_Program *ASTRoot)
 {
 	createSymbolTableAndInit();
-	context.InitCodeGen(); //初始化中间代码生成相关参数
+	context.InitCodeGen();
 	SemanticAnalyseProgram(ASTRoot);
 }
 
@@ -52,7 +53,7 @@ void SemanticAnalyseProgram(_Program *program)
 	for (int i = 0; i < program->paraList.size(); i++)
 	{
 		int nameError = isLibName(program->paraList[i].first);
-		if (nameError < 0)
+		if(nameError < 0)
 			addDuplicateDefinitionErrorInformation(program->paraList[i].first, nameError, "", "", program->paraList[i].second);
 		mainSymbolTable->addVoidPara(program->paraList[i].first, program->paraList[i].second);
 	}
@@ -68,19 +69,18 @@ void SemanticAnalyseProgram(_Program *program)
 	SemanticAnalyseSubprogram(program->subProgram);
 
 	context.builder->CreateRet(nullptr);
-
-	if (have_error || semanticErrorInformation.size() > 0)
-	{ //若语义分析或codeGen出错，不打印ir
-		cout << "\n\ncodeGen: have_error!\n\n";
+	
+	if(codeGen_error || semanticErrorInformation.size() > 0){	//若语义分析或codeGen出错，不打印ir
+		cout<<"\n\ncodeGen_error!\n\n";
 		return;
 	}
 
-	cout << "------------------LLVM IR-------------------" << endl;
-	// llvm::PassManager pm;
+	cout<<"------------------LLVM IR-------------------"<<endl;
+	//llvm::PassManager pm;
 	llvm::legacy::PassManager pm;
 	pm.add(llvm::createPrintModulePass(llvm::outs()));
 	pm.run(*(context.Module));
-	cout << "--------------------------------------------" << endl;
+	cout<<"--------------------------------------------"<<endl;
 }
 
 //对子program进行语义分析
@@ -92,25 +92,25 @@ void SemanticAnalyseSubprogram(_SubProgram *subprogram)
 		return;
 	}
 
-	// test
+	//test
 	for (int i = 0; i < subprogram->subprogramDefinitionList.size(); i++)
 	{
 		SemanticAnalyseSubprogramDefinition(subprogram->subprogramDefinitionList[i]);
 		relocation();
 	}
-
+	
 	for (int i = 0; i < subprogram->constList.size(); i++)
 		SemanticAnalyseConst(subprogram->constList[i]);
 	for (int i = 0; i < subprogram->typedefList.size(); i++)
 		SemanticAnalyseTypedef(subprogram->typedefList[i]);
-
+	
 	//创建主函数
 	subprogram->codeGen();
 
 	for (int i = 0; i < subprogram->variantList.size(); i++)
 		SemanticAnalyseVariant(subprogram->variantList[i]);
 
-	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(subprogram->compound), 1);
+	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(subprogram->compound),1);
 }
 
 //对常量定义进行语义分析
@@ -124,9 +124,9 @@ void SemanticAnalyseConst(_Constant *constant)
 	std::pair<string, int> CID = constant->constId;
 	int nameError = isLibName(CID.first);
 	int loc;
-	if (nameError < 0)
+	if(nameError < 0)
 		addDuplicateDefinitionErrorInformation(CID.first, nameError, "", "", CID.second);
-	else if (isReDef(CID.first, loc))
+	else if (isReDef(CID.first,loc))
 		addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, CID.second);
 
 	if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
@@ -159,10 +159,10 @@ void SemanticAnalyseConst(_Constant *constant)
 		}
 	}
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
-
-	// codeGen
-	llvm::Value *value = constant->codeGen(); //返回常量对应的LLVM Value*
-	mainSymbolTable->recordList[mainSymbolTable->recordList.size() - 1]->llValue = value;
+	
+	//codeGen
+	llvm::Value* value = constant->codeGen();	//返回常量对应的LLVM Value*
+	mainSymbolTable->recordList[mainSymbolTable->recordList.size()-1]->llValue = value;
 }
 
 //对自定义类型进行语义分析
@@ -176,9 +176,9 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 	std::pair<string, int> TID = typedefi->typedefId;
 	int nameError = isLibName(TID.first);
 	int loc;
-	if (nameError < 0)
+	if(nameError < 0)
 		addDuplicateDefinitionErrorInformation(TID.first, nameError, "", "", TID.second);
-	else if (isReDef(TID.first, loc))
+	else if (isReDef(TID.first,loc))
 		addDuplicateDefinitionErrorInformation(TID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, TID.second);
 
 	if (typedefi->type->type.first == "record") //如果此时是record
@@ -195,7 +195,7 @@ void SemanticAnalyseTypedef(_TypeDef *typedefi)
 		mainSymbolTable->custom[TID.first].push(int(mainSymbolTable->recordList.size() - 1));
 	}
 
-	typedefi->codeGen(); //创建数组/record的LLVM Type
+	typedefi->codeGen();	//创建数组/record的LLVM Type
 }
 
 //对record类型进行语义分析
@@ -214,9 +214,9 @@ vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pai
 		pair<string, int> aVID = recordList[i]->variantId;
 		int nameError = isLibName(aVID.first);
 		int loc;
-		if (nameError < 0)
+		if(nameError < 0)
 			addDuplicateDefinitionErrorInformation(aVID.first, nameError, "", "", aVID.second);
-		else if (isReDef(aVID.first, loc))
+		else if (isReDef(aVID.first,loc))
 			addDuplicateDefinitionErrorInformation(aVID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, aVID.second);
 
 		if (recordList[i]->type->type.first == "record")
@@ -239,6 +239,7 @@ vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pai
 
 	if (type == 0) //表示此时不是type中定义新类型，而是声明语句
 	{
+		//cout<<"define new record type in var:"<<VID.first+"_"<<"\n\n";
 		mainSymbolTable->addRecords(VID.first + "_", VID.second, records); // id名后加_下划线表示record类型名
 		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");
 	}
@@ -264,9 +265,9 @@ void SemanticAnalyseVariant(_Variant *variant)
 	std::pair<string, int> VID = variant->variantId;
 	int nameError = isLibName(VID.first);
 	int loc;
-	if (nameError < 0)
+	if(nameError < 0)
 		addDuplicateDefinitionErrorInformation(VID.first, nameError, "", "", VID.second);
-	else if (isReDef(VID.first, loc))
+	else if (isReDef(VID.first,loc))
 		addDuplicateDefinitionErrorInformation(VID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, VID.second);
 
 	string type = variant->type->type.first;
@@ -277,17 +278,16 @@ void SemanticAnalyseVariant(_Variant *variant)
 	}
 	else if (variant->type->flag) //判断是否为数组
 	{
-		mainSymbolTable->addArray(VID.first + "_", VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
-		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");
+		mainSymbolTable->addArray(VID.first+"_", VID.second, variant->type->type.first, variant->type->arrayRangeList.size(), variant->type->arrayRangeList);
+		mainSymbolTable->addVar(VID.first, VID.second,VID.first+"_");
 	}
-	//非标准类型时进行类型检查
-	// else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
-	else if (!context.typeSystem.isBasicType(type))
+	 //非标准类型时进行类型检查
+	//else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
+	else if(!context.typeSystem.isBasicType(type))
 	{
-		_SymbolRecord *recordSource = findSymbolRecord(type);
-		if (recordSource == NULL)
-		{
-			addUndefinedErrorInformation(type, variant->variantId.second);
+		_SymbolRecord *recordSource = findSymbolRecord(type);	
+		if(recordSource==NULL){
+			addUndefinedErrorInformation(type,variant->variantId.second);
 		}
 		mainSymbolTable->addVar(VID.first, VID.second, type);
 	}
@@ -296,8 +296,8 @@ void SemanticAnalyseVariant(_Variant *variant)
 		mainSymbolTable->addVar(VID.first, VID.second, type);
 	}
 
-	// codeGen
-	llvm::Value *value = variant->codeGen(); //返回局部变量地址（CreateAlloca的返回值）
+	//codeGen
+	llvm::Value* value = variant->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
 
 	loc = mainSymbolTable->idToLoc[VID.first].top();
 	mainSymbolTable->recordList[loc]->llValue = value;
@@ -307,8 +307,8 @@ void SemanticAnalyseVariant(_Variant *variant)
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition)
 {
 	layer++; //层数++
-	// test
-	cout << "layer=" << layer << ", funcName=" << functionDefinition->functionID.first << "\n\n";
+	//test
+	//cout<<"layer="<<layer<<", funcName="<<functionDefinition->functionID.first<<"\n\n";
 
 	if (functionDefinition == NULL)
 	{
@@ -316,10 +316,9 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 		return;
 	}
 
-	_SymbolRecord *record = findSymbolRecord(functionDefinition->functionID.first);
+	_SymbolRecord* record = findSymbolRecord(functionDefinition->functionID.first);
 	if (record != NULL) //重定义检查 所有function、procedure不得同名 不得与任何标识符同名
 	{
-		cout << "addDuplicateDefinitionErrorInformation: " << record->id << endl;
 		addDuplicateDefinitionErrorInformation(record->id, record->lineNumber, record->flag, record->type, functionDefinition->functionID.second);
 		return;
 	}
@@ -340,21 +339,21 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	int loc = mainSymbolTable->recordList.size() - 1;
 
 	//为什么在这里判断原因：因为返回后要做重定位操作，需要把此时的函数先在符号表里存下来，否则返回后重定位会超前做上一层的
-	if (layer > 5)
+	if(layer > 5)
 	{
 		addGeneralErrorInformation("[too much layers!] in \"" + functionDefinition->functionID.first + "\" at line " + itos(functionDefinition->functionID.second));
 		layer--;
-		return;
+		return;		
 	}
 
-	// test
-	if (functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5)
-	{
+	//test
+	if(functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5){
 		for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
 		{
-			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);
-			relocation();
+			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
+			relocation();		
 		}
+	
 	}
 
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
@@ -367,11 +366,11 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	//对自定义类型进行语义分析
 	for (int i = 0; i < functionDefinition->typedefList.size(); i++)
 		SemanticAnalyseTypedef(functionDefinition->typedefList[i]);
-
-	// test
+	
+	//test
 	//先获得函数指针
 	record = findSymbolRecord(functionDefinition->functionID.first);
-	record->functionPtr = functionDefinition->codeGen(); //返回函数指针（Function::Create的返回值）
+	record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
 
 	//对变量定义进行语义分析
 	for (int i = 0; i < functionDefinition->variantList.size(); i++)
@@ -380,21 +379,21 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	// if(functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5){
 	// 	for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
 	// 	{
-	// 		SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);
-	// 		relocation();
+	// 		SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
+	// 		relocation();		
 	// 	}
-
+	
 	// }
-
+	
 	// //先获得函数指针
 	// record = findSymbolRecord(functionDefinition->functionID.first);
 	// record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
-
+	
 	//对compound进行语义分析(在这一步获取函数返回值funcRetValue)
-	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound), 1);
+	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound),1);
 
 	layer--; //层数--
-	// CreateRet
+	//CreateRet
 	functionDefinition->CreateFuncRet(record->funcRetValue);
 }
 
@@ -443,7 +442,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 	{
 		_Compound *compound = reinterpret_cast<_Compound *>(statement); //对复合语句块中的每一条语句进行语义分析
 		for (int i = 0; i < compound->statementList.size(); i++)
-			SemanticAnalyseStatement(compound->statementList[i], 1);
+			SemanticAnalyseStatement(compound->statementList[i],1);
 	}
 	else if (statement->type == "repeat")
 	{
@@ -460,9 +459,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			repeatStatement->statementType = "void";
 		expflag = 0;
 		for (int i = 0; i < repeatStatement->_do.size(); ++i)
-			SemanticAnalyseStatement(repeatStatement->_do[i], 0); //对循环体语句进行语义分析
+			SemanticAnalyseStatement(repeatStatement->_do[i],0); //对循环体语句进行语义分析
 		expflag = 1;
-		if (flag == 1)
+		if(flag == 1)
 			repeatStatement->codeGen();
 	}
 	else if (statement->type == "while")
@@ -479,9 +478,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		else
 			whileStatement->statementType = "void";
 		expflag = 0;
-		SemanticAnalyseStatement(whileStatement->_do, 0); //对循环体语句进行语义分析
+		SemanticAnalyseStatement(whileStatement->_do,0); //对循环体语句进行语义分析
 		expflag = 1;
-		if (flag == 1 && whileStatement->statementType != "error")
+		if(flag == 1 && whileStatement->statementType != "error")
 			whileStatement->codeGen();
 	}
 	else if (statement->type == "for")
@@ -526,9 +525,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 		//对循环体语句进行语义分析
 		expflag = 0;
-		SemanticAnalyseStatement(forStatement->_do, 0);
+		SemanticAnalyseStatement(forStatement->_do,0);
 		expflag = 1;
-		if (flag == 1 && forStatement->statementType != "error")
+		if(flag == 1 && forStatement->statementType != "error")
 			forStatement->codeGen();
 	}
 	else if (statement->type == "if")
@@ -542,10 +541,10 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 		else
 			ifStatement->statementType = "void";
-		SemanticAnalyseStatement(ifStatement->then, 0); //对then语句进行语义分析
-		if (ifStatement->els != NULL)					//对else语句进行语句分析
-			SemanticAnalyseStatement(ifStatement->els, 0);
-		if (flag == 1 && ifStatement->statementType != "error")
+		SemanticAnalyseStatement(ifStatement->then,0); //对then语句进行语义分析
+		if (ifStatement->els != NULL)				 //对else语句进行语句分析
+			SemanticAnalyseStatement(ifStatement->els,0);
+		if(flag == 1 && ifStatement->statementType != "error")
 			ifStatement->codeGen();
 	}
 	else if (statement->type == "case")
@@ -576,6 +575,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		assignStatement->statementType = "void";
 		assignStatement->variantReference->locFlag = -1; //标记为左值
 		string leftType = SemanticAnalyseVariantReference(assignStatement->variantReference);
+
 		if (assignStatement->variantReference->kind == "constant")
 		{
 			//左值不能为常量 checked
@@ -583,7 +583,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			return;
 		}
 		else if (mainSymbolTable->custom[assignStatement->variantReference->variantId.first].size() > 0)
-		{ //左值为自定义类型名
+		{	//左值为自定义类型名
 			addGeneralErrorInformation("[Type name as l-value error!] <Line" + itos(assignStatement->variantReference->variantId.second) + "> Type name \"" + assignStatement->variantReference->variantId.first + "\" can't be referenced as l-value.");
 			return;
 		}
@@ -599,8 +599,8 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				assignStatement->statementType = "error";
 			}
 			assignStatement->isReturnStatement = true;
-
-			if (leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
+			
+			if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
 				assignStatement->codeGen(leftType, rightType);
 
 			return;
@@ -620,11 +620,10 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			}
 		}
 
-		// codeGen
-		if (leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
-		{
-			_SymbolRecord *leftVar = findSymbolRecord(assignStatement->variantReference->variantId.first);
-			leftVar->llValue = assignStatement->codeGen(leftType, rightType); //返回左值的llValue
+		//codeGen
+		if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1){
+			_SymbolRecord* leftVar = findSymbolRecord(assignStatement->variantReference->variantId.first);
+			leftVar->llValue = assignStatement->codeGen(leftType, rightType);	//返回左值的llValue
 		}
 	}
 
@@ -648,17 +647,6 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			return;
 		}
 
-		if (record->id == "read" || record->id == "write")
-		{
-			if (procedureCall->actualParaList.size() == 0)
-			{ // read、write的参数个数不能为 0 checked
-				string tmp = record->id;
-				// tmp[0] -= 'a' - 'A';
-				addGeneralErrorInformation("[" + tmp + " actual parameter missing!] <Line " + itos(procedureCall->procedureId.second) + "> procedure \"" + record->id + "\" must have at least one actual parameter.");
-				procedureCall->statementType = "error";
-				return;
-			}
-		}
 		if (record->id == "read" || record->id == "write")
 		{
 			if (procedureCall->actualParaList.size() == 0)
@@ -724,6 +712,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				procedureCall->writecodeGen(type_arr);
 			return;
 		}
+
 		if (record->amount == -1) //如果是变参过程 本编译器支持从变参过程只有read和write
 		{
 			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
@@ -784,7 +773,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			}
 		}
 
-		// codeGen
+		//codeGen
 		procedureCall->codeGen();
 	}
 	else
@@ -797,7 +786,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 //对函数调用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 {
-	// cout<<"SemanticAnalyseFunctionCall: "<<functionCall->functionId.first<<endl;
+	//cout<<"SemanticAnalyseFunctionCall: "<<functionCall->functionId.first<<endl;
 	if (functionCall == NULL)
 	{
 		cout << "[SemanticAnalyseFunctionCall] pointer of _FunctionCall is null" << endl;
@@ -805,29 +794,29 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 	}
 
 	std::pair<string, int> FCID = functionCall->functionId;
-	// if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
+	//if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
 	//[hmz]
-	// if (mainSymbolTable->idToLoc[FCID.first].size() == 0) //找不到函数声明
+	//if (mainSymbolTable->idToLoc[FCID.first].size() == 0) //找不到函数声明
 	//[pl]
 	_SymbolRecord *record = findSymbolRecord(FCID.first);
 	if (record == NULL)
 	{ //未定义
-		cout << "[SemanticAnalyseFunctionCall]	function undefined in this scope: " << FCID.first << endl;
+		cout<<"[SemanticAnalyseFunctionCall]	function undefined in this scope: "<<FCID.first<<endl;
 		addUndefinedErrorInformation(FCID.first, FCID.second);
 		return "error";
 	}
-
-	// int decID = mainSymbolTable->idToLoc[FCID.first].top();
-	// functionCall->returnType = mainSymbolTable->recordList[decID]->type;
+	
+	//int decID = mainSymbolTable->idToLoc[FCID.first].top();
+	//functionCall->returnType = mainSymbolTable->recordList[decID]->type;
 	if (record->flag != "function")
 	{ //标识符对应的记录不是function
 		addPreFlagErrorInformation(FCID.first, FCID.second, "function", record->lineNumber, record->flag);
 		return "error";
 	}
 
-	// int decParaSize = mainSymbolTable->recordList[decID]->amount;
-	// if (decParaSize != functionCall->actualParaList.size()) //参数表数目不对
-	int decParaSize = record->amount; //形参个数
+	//int decParaSize = mainSymbolTable->recordList[decID]->amount;
+	//if (decParaSize != functionCall->actualParaList.size()) //参数表数目不对
+	int decParaSize = record->amount;						//形参个数
 	int ParaSize = functionCall->actualParaList.size();
 	if (decParaSize != ParaSize) //参数表数目不对
 	{
@@ -835,20 +824,23 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 		return "error";
 	}
 
-	// int ParaSize = functionCall->actualParaList.size();
-	// if(ParaSize > decParaSize)
+	//int ParaSize = functionCall->actualParaList.size();
+	//if(ParaSize > decParaSize)
 	//	ParaSize = decParaSize;
 	for (int i = 0; i < ParaSize; ++i) //判断每个参数的类型
 	{
-		// SemanticAnalyseExpression(functionCall->actualParaList[i]);
-		// string decType = mainSymbolTable->recordList[decID + i + 1]->type;
-		// string expType = functionCall->actualParaList[i]->expressionType;
-		// string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
-		// if (flag == "var parameter")
+		//SemanticAnalyseExpression(functionCall->actualParaList[i]);
+		//string decType = mainSymbolTable->recordList[decID + i + 1]->type;
+		//string expType = functionCall->actualParaList[i]->expressionType;
+		//string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
+		//if (flag == "var parameter")
 		//{
 		//	if (expType != decType)
 		//		addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
+		expflag = 0;
 		string actualType = SemanticAnalyseExpression(functionCall->actualParaList[i]);
+		
+		expflag = 1;
 		string formalType = record->findXthFormalParaType(i);
 		bool isRefered = record->isXthFormalParaRefered(i); //检查是否是传引用参数
 		if (isRefered)
@@ -866,14 +858,14 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 		}
 		else
 		{
-			// if (expType != decType && !(expType == "integer" && decType == "real"))
+			//if (expType != decType && !(expType == "integer" && decType == "real"))
 			//{
 			//	addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
-			// }
-			// else if (expType == "integer" && decType == "real")
+			//}
+			//else if (expType == "integer" && decType == "real")
 			if (actualType != formalType) //如果类型不一致
 			{
-				// semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
+				//semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
 				//传值参数支持integer到real的隐式类型转换
 				if (actualType == "integer" && formalType == "real")
 				{
@@ -887,7 +879,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 			}
 		}
 	}
-	// return functionCall->returnType;
+	//return functionCall->returnType;
 	return record->type;
 }
 
@@ -899,7 +891,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 		cout << "[SemanticAnalyseExpression] pointer of _Expression is null" << endl;
 		return "error";
 	}
-	cout << "expression->type:" << expression->type << endl;
+	
 	//表达式类型为变量 <ok>
 	if (expression->type == "var")
 	{
@@ -923,13 +915,12 @@ string SemanticAnalyseExpression(_Expression *&expression)
 				expression->totalIntValue = -expression->totalIntValue;
 			expression->totalIntValueValid = true;
 		}
-		if (variantReferenceType == "boolean" && expression->variantReference->kind == "constant")
-		{
+		if(variantReferenceType=="boolean"&&expression->variantReference->kind=="constant"){
 			_SymbolRecord *record = findSymbolRecord(expression->variantReference->variantId.first);
-			expression->boolValue = record->value;
+			expression->boolValue=record->value;
 		}
-
-		if (expflag == 1)
+		
+		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
 		return expression->expressionType = variantReferenceType;
 	}
@@ -939,31 +930,28 @@ string SemanticAnalyseExpression(_Expression *&expression)
 	{
 		expression->totalIntValue = expression->intNum;
 		expression->totalIntValueValid = true;
-		if (expflag == 1)
+		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
 		return expression->expressionType = "integer";
 	}
 
 	//表达式类型为real <ok>
-	else if (expression->type == "real")
-	{
-		if (expflag == 1)
+	else if (expression->type == "real"){
+		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
 		return expression->expressionType = "real";
 	}
 
 	//表达式类型为char <ok>
-	else if (expression->type == "char")
-	{
-		if (expflag == 1)
+	else if (expression->type == "char"){
+		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
 		return expression->expressionType = "char";
 	}
 
 	//表达式类型为布尔类型boolean
-	else if (expression->type == "boolean")
-	{
-		if (expflag == 1)
+	else if (expression->type == "boolean"){
+		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
 		return expression->expressionType = "boolean";
 	}
@@ -971,7 +959,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 	//表达式类型为函数调用 <ok>
 	else if (expression->type == "function") //获得函数调用的返回值类型
 	{
-		if (expflag == 1)
+		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
 		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
 	}
@@ -986,10 +974,9 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			string epType1 = SemanticAnalyseExpression(expression->operand1);
 			string epType2 = SemanticAnalyseExpression(expression->operand2);
 			//类型兼容
-			if ((epType1 == epType2 && epType1 != "error") || (epType1 == "integer" && epType2 == "real") || (epType1 == "real" && epType2 == "integer"))
-			{
-				if (expflag == 1)
-					expression->llvalue = expression->codeGen();
+			if ((epType1 == epType2 && epType1 != "error") || (epType1 == "integer" && epType2 == "real") || (epType1 == "real" && epType2 == "integer")){
+				if(expflag == 1)
+					expression->llvalue = expression->codeGen()	;
 				return expression->expressionType = "boolean";
 			}
 			//类型错误或类型不兼容
@@ -1006,17 +993,15 @@ string SemanticAnalyseExpression(_Expression *&expression)
 		{
 			string type = SemanticAnalyseExpression(expression->operand1);
 			//类型兼容
-			if (type == "boolean")
-			{
-				if (expression->operand1->boolValue == "false")
-					expression->boolValue = "true";
-				else
-				{
-					expression->boolValue = "false";
+			if (type == "boolean"){
+				if(expression->operand1->boolValue=="false")
+					expression->boolValue="true";
+				else{
+					expression->boolValue="false";
 				}
-				if (expflag == 1)
+				if(expflag == 1)
 					expression->llvalue = expression->codeGen();
-
+				
 				return expression->expressionType = "boolean";
 			}
 			//类型错误或类型不兼容
@@ -1037,9 +1022,8 @@ string SemanticAnalyseExpression(_Expression *&expression)
 				expression->totalIntValue = -expression->operand1->totalIntValue;
 				expression->totalIntValueValid = true;
 			}
-			if (epType == "integer" || epType == "real")
-			{
-				if (expflag == 1)
+			if (epType == "integer" || epType == "real"){
+				if(expflag == 1)
 					expression->llvalue = expression->codeGen();
 				return expression->expressionType = epType;
 			}
@@ -1061,12 +1045,11 @@ string SemanticAnalyseExpression(_Expression *&expression)
 				expression->totalIntValue = expression->operand1->totalIntValue;
 				expression->totalIntValueValid = true;
 			}
-			// bool类型记录值
-			if (expression->expressionType == "boolean")
-			{
-				expression->boolValue = expression->operand1->boolValue;
+			//bool类型记录值
+			if(expression->expressionType=="boolean"){
+				expression->boolValue=expression->operand1->boolValue;
 			}
-			if (expflag == 1)
+			if(expflag == 1)
 				expression->llvalue = expression->codeGen();
 			return expression->expressionType;
 		}
@@ -1096,7 +1079,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			//类型处理
 			if ((epType1 == "integer" || epType1 == "real") && (epType2 == "integer" || epType2 == "real"))
 			{
-				if (expflag == 1)
+				if(expflag == 1)
 					expression->llvalue = expression->codeGen();
 				if (epType1 == "integer" && epType2 == "integer")
 					return expression->expressionType = "integer";
@@ -1128,7 +1111,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 						expression->totalIntValue = expression->operand1->totalIntValue % expression->operand2->totalIntValue;
 					expression->totalIntValueValid = true;
 				}
-				if (expflag == 1)
+				if(expflag == 1)
 					expression->llvalue = expression->codeGen();
 				return expression->expressionType = "integer";
 			}
@@ -1144,24 +1127,21 @@ string SemanticAnalyseExpression(_Expression *&expression)
 		{
 			string epType1 = SemanticAnalyseExpression(expression->operand1);
 			string epType2 = SemanticAnalyseExpression(expression->operand2);
-			// bool值记录结果
-			if (epType1 == "boolean" && epType2 == "boolean")
-			{
-				if (expression->operation == "and")
-				{
-					if (expression->operand1->boolValue == "true" && expression->operand2->boolValue == "true")
-						expression->boolValue = "true";
-					else
-						expression->boolValue = "false";
+			//bool值记录结果
+			if (epType1 == "boolean" && epType2 == "boolean"){
+				if(expression->operation=="and"){
+					if(expression->operand1->boolValue=="true"&&expression->operand2->boolValue=="true")
+						expression->boolValue="true";
+					else 
+						expression->boolValue="false";
 				}
-				else
-				{
-					if (expression->operand1->boolValue == "true" || expression->operand2->boolValue == "true")
-						expression->boolValue = "true";
-					else
-						expression->boolValue = "false";
+				else{
+					if(expression->operand1->boolValue=="true"||expression->operand2->boolValue=="true")
+						expression->boolValue="true";
+					else 
+						expression->boolValue="false";
 				}
-				if (expflag == 1)
+				if(expflag == 1)
 					expression->llvalue = expression->codeGen();
 				return expression->expressionType = "boolean";
 			}
@@ -1192,7 +1172,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 //只有当前函数名可以作为左值
 string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 {
-
+	
 	if (variantReference == NULL)
 	{
 		cout << "[SemanticAnalyseVariantReference] pointer of _VariantReference is null" << endl;
@@ -1257,20 +1237,20 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			if (recordSource != NULL)
 			{
 				//数组、结构体变量不作替换
-				if (recordSource->flag == "array" || recordSource->flag == "records")
-				{
-					variantReference->kind = recordSource->flag;
+				if(recordSource->flag=="array"||recordSource->flag=="records"){
+					variantReference->kind=recordSource->flag;
 					return variantReference->variantType = record->type;
 				}
 				return variantReference->variantType = recordSource->type;
 			}
+
+
 		}
 		return variantReference->variantType = record->type;
 	}
 
 	//数组元素
-	else if (record->flag == "array")
-	{
+	else if(record->flag =="array"){
 		variantReference->kind = "var";
 
 		//引用时的下标维数和符号表所存不一致
@@ -1311,34 +1291,34 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 	}
 
 	//结构体属性
-	else if (record->flag == "records")
+	else if(record->flag =="records")
 	{
 		//检查属性是否与结构体匹配
 		for (int i = 0; i < record->records.size(); i++)
 		{
 			if (record->records[i]->id == variantReference->IdvpartList[0]->IdvpartId.first)
-			{
-				variantReference->kind = "var";
+			{			
+				variantReference->kind="var";	
 				return variantReference->variantType = record->records[i]->type;
 			}
 		}
 
 		//被引用的属性不存在
-		addVariantReferenceErrorInformation(variantReference->variantId.second, "record member reference is illegal");
+		addVariantReferenceErrorInformation(variantReference->variantId.second,"record member reference is illegal");
 		return variantReference->variantType = "error";
 	}
 
 	//结构体.属性、数组元素作类型检查与替换(即处理结构中含数组、数组中含结构体的嵌套)
 	else if (record->flag == "normal variant")
-	{
-		variantReference->kind = "var";
+	{	
+		variantReference->kind="var";
 		string curType = record->type;
 
 		for (int n = 0; n < variantReference->IdvpartList.size(); n++)
 		{
 
-			// if (curType == "integer" || curType == "real" || curType == "char" || curType == "boolean")
-			if (context.typeSystem.isBasicType(curType))
+			//if (curType == "integer" || curType == "real" || curType == "char" || curType == "boolean")
+			if(context.typeSystem.isBasicType(curType))
 			{
 				addVariantReferenceErrorInformation(variantReference->variantId.second, "illegal array element access or illegal record attribute access");
 				return variantReference->variantType = "error";
@@ -1375,7 +1355,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			}
 			else
 			{
-				cout << "flag of " << variantReference->variantId.first << " is not record or array" << endl;
+				cout << "[SemanticAnalyseVariantReference]	flag of " << variantReference->variantId.first << " is not record or array" << endl;
 			}
 
 			//获取当前类型
@@ -1385,16 +1365,16 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			if (curType == "error")
 				return variantReference->variantType = "error";
 		}
-		// if(!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
-		if (!context.typeSystem.isBasicType(curType))
-			variantReference->kind = curType;
+		//if(!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
+		if(!context.typeSystem.isBasicType(curType))
+			variantReference->kind=curType;
 
 		return variantReference->variantType = curType;
 	}
 
 	else
 	{
-		cout << "[SemanticAnalyseVariantReference] flag of variantReference symbolRecord is illegal: " << endl;
+		cout << "[SemanticAnalyseVariantReference] flag of variantReference symbolRecord is illegal: " <<endl;
 		return variantReference->variantType = "error";
 	}
 }
@@ -1427,9 +1407,9 @@ void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, str
 	string errorInformation = "[Duplicate defined error!] <Line " + itos(curLineNumber) + "> ";
 	if (preLineNumber >= 0)
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a " + preFlag + " at line " + itos(preLineNumber) + ".";
-	else if (preLineNumber == -1)
+	else if(preLineNumber == -1)
 		errorInformation += "\"" + preId + "\"" + " has already been defined as a lib program.";
-	else
+	else 
 		errorInformation += "\"" + preId + "\"" + " has the same name as the main program.";
 
 	semanticErrorInformation.push_back(errorInformation);
@@ -1464,7 +1444,7 @@ void addPreFlagErrorInformation(string curId, int curLineNumber, string curFlag,
 
 void addUsageTypeErrorInformation(string curId, int curLineNumber, string curType, string usage, string correctType)
 {
-	string errorInformation = "[Usage type error!] <Line " + itos(curLineNumber) + "> ";
+	string errorInformation  = "[Usage type error!] <Line " + itos(curLineNumber) + "> ";
 	errorInformation += "\"" + curId + "\"" + " used for " + usage + " should be " + correctType + " but not " + curType + ".";
 	semanticErrorInformation.push_back(errorInformation);
 	// CHECK_ERROR_BOUND
@@ -1484,7 +1464,7 @@ void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReferen
 	string varRef, exp;
 	// inputVariantRef(leftVariantReference, varRef, 1);
 	// inputExpression(rightExpression, exp, 1);
-	// errorInformation += "Left \"" + varRef + "\" type is " + leftVariantReference->variantType + " while right \"" + exp + "\" type is " + rightExpression->expressionType + ".";
+	//errorInformation += "Left \"" + varRef + "\" type is " + leftVariantReference->variantType + " while right \"" + exp + "\" type is " + rightExpression->expressionType + ".";
 	errorInformation += "Left type is " + leftVariantReference->variantType + " while right type is " + rightExpression->expressionType + ".";
 	semanticErrorInformation.push_back(errorInformation);
 	// CHECK_ERROR_BOUND
@@ -1605,17 +1585,17 @@ int isLibName(string id)
 {
 	if (lib.count(id)) //检查是否与库函数同名
 		return -1;
-	else if (id == mainSymbolTable->recordList[0]->id) //检查是否与主程序同名
+	else if(id == mainSymbolTable->recordList[0]->id)	//检查是否与主程序同名
 		return -2;
 	return 0;
 }
 
-bool isReDef(string id, int &loc)
+bool isReDef(string id,int& loc)
 {
 	if (mainSymbolTable->idToLoc[id].size() > 0) //如果此常量已经出现过
 	{
-		loc = mainSymbolTable->idToLoc[id].top();	  //获取最近一次出现的位置
-		if (mainSymbolTable->indexTable.back() < loc) //如果和当前变量在同一个作用域
+		loc = mainSymbolTable->idToLoc[id].top(); //获取最近一次出现的位置
+		if (mainSymbolTable->indexTable.back() < loc)		 //如果和当前变量在同一个作用域
 			return 1;
 	}
 	return 0;
