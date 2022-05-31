@@ -1081,8 +1081,14 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			{
 				if(expflag == 1)
 					expression->llvalue = expression->codeGen();
-				if (epType1 == "integer" && epType2 == "integer")
+				// if (epType1 == "integer" && epType2 == "integer")
+				// 	return expression->expressionType = "integer";
+				//如果是除法（"/"），则运算结果一定为浮点型
+				if (epType1 == "integer" && epType2 == "integer"){
+					if(expression->operation == "/")
+						return expression->expressionType = "real";
 					return expression->expressionType = "integer";
+				}
 				return expression->expressionType = "real";
 			}
 			if (epType1 != "error" && epType1 != "integer" && epType1 != "real")
