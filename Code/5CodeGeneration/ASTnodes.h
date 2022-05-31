@@ -1,13 +1,12 @@
 #ifndef ASTNODES_H
 #define ASTNODES_H
 
-#include<llvm/IR/Value.h>
-#include<llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
+#include <llvm/IR/Type.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <memory>
-
 
 using namespace std;
 class _Program;
@@ -36,8 +35,8 @@ class _Branch;
 class _Program //程序(相当于program_head)
 {
 public:
-    pair<string, int> programId;         // PASCAL程序名称标识符及行号
-    vector<pair<string, int> > paraList; // PASCAL程序参数列表及行号
+    pair<string, int> programId;        // PASCAL程序名称标识符及行号
+    vector<pair<string, int>> paraList; // PASCAL程序参数列表及行号
     _SubProgram *subProgram;
 
 public:
@@ -56,7 +55,7 @@ public:
 public:
     _SubProgram();
     ~_SubProgram();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 
 class _Constant //常量定义
@@ -76,7 +75,7 @@ public:
 public:
     _Constant() {}
     ~_Constant() {}
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 
 class _TypeDef //变量定义
@@ -94,9 +93,9 @@ public:
 class _Type //类型
 {
 public:
-    pair<string, int> type;                 //基本类型及行号 "integer"、"char"、"real"、"boolean"
-    int flag;                               // 0表示非数组，1表示数组
-    vector<pair<int, int> > arrayRangeList; // flag=1时，表示数组各维上下界
+    pair<string, int> type;                //基本类型及行号 "integer"、"char"、"real"、"boolean"
+    int flag;                              // 0表示非数组，1表示数组
+    vector<pair<int, int>> arrayRangeList; // flag=1时，表示数组各维上下界
     vector<_Variant *> recordList;
 
 public:
@@ -105,14 +104,14 @@ public:
     //     this->type = make_pair(type, lineNo);
     //     this->flag = flag;
     // }
-    _Type(pair<string, int> _type, int _flag, vector<pair<int, int> > _arrayRangeList);
+    _Type(pair<string, int> _type, int _flag, vector<pair<int, int>> _arrayRangeList);
     ~_Type() {}
 
     //创建数组的LLVM类型
-    llvm::Type* InitArrayType(string arrTypeName, string type);  //arrTypeName:自定义类型名，type:数组元素类型
-    
+    llvm::Type *InitArrayType(string arrTypeName, string type); // arrTypeName:自定义类型名，type:数组元素类型
+
     //创建record的LLVM类型
-    llvm::Type* InitRecordType(string recTypeName);  //recTypeName:自定义类型名
+    llvm::Type *InitRecordType(string recTypeName); // recTypeName:自定义类型名
 };
 
 class _Variant //变量定义
@@ -128,7 +127,7 @@ public:
     // }
     _Variant(pair<string, int> _variantId, _Type *_type);
     ~_Variant();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 
 class _FunctionDefinition
@@ -146,9 +145,9 @@ public:
 public:
     _FunctionDefinition();
     ~_FunctionDefinition();
-    llvm::Function* codeGen();
-    //llvm::Function* codeGen(llvm::Value* funcRetValue);
-    void CreateFuncRet(llvm::Value* funcRetValue);
+    llvm::Function *codeGen();
+    // llvm::Function* codeGen(llvm::Value* funcRetValue);
+    void CreateFuncRet(llvm::Value *funcRetValue);
 };
 
 class _FormalParameter //形式参数
@@ -161,7 +160,7 @@ public:
     _FormalParameter();
     _FormalParameter(pair<string, int> _paraId, string _type, int _flag);
     ~_FormalParameter() {}
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 
 class _Statement
@@ -174,7 +173,7 @@ public:
 public:
     _Statement() {}
     ~_Statement() {}
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 
 class _Compound : public _Statement
@@ -196,7 +195,7 @@ public:
 public:
     _AssignStatement();
     ~_AssignStatement();
-    llvm::Value* codeGen(string leftType, string rightType);
+    llvm::Value *codeGen(string leftType, string rightType);
 };
 
 class _ProcedureCall : public _Statement
@@ -208,6 +207,8 @@ public:
 public:
     _ProcedureCall();
     ~_ProcedureCall();
+    void writecodeGen(int type_arr[]);
+    void readcodeGen(int type_arr[]);
     void codeGen();
 };
 
@@ -220,7 +221,7 @@ public:
 public:
     _FunctionCall();
     ~_FunctionCall();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 
 class _Expression
@@ -244,7 +245,7 @@ public:
 
     int isMinusShow; //是否为负
 
-    string boolValue;//bool类型记录值，值为“true”或false
+    string boolValue; // bool类型记录值，值为“true”或false
 
     string operation;     //具体操作符
     string operationType; //操作符类型,"relop","mulop","addop","single"
@@ -252,11 +253,12 @@ public:
 
     int lineNo; //行号, 用表达式中最先出现的操作数的行号表示
 
-    llvm::Value* llvalue;
+    llvm::Value *llvalue;
+
 public:
     _Expression();
     ~_Expression();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
     //语义分析相关
 public:
     int totalIntValue;
@@ -270,12 +272,12 @@ public:
     pair<string, int> variantId; //变量或常量标识符和行号
     //如果这个变量是结构体或数组：
     vector<_Idvpart *> IdvpartList; //结构体.属性或数组元素
-    //IdvpartList:考虑多层访问  a.b.c; a[b].c
+    // IdvpartList:考虑多层访问  a.b.c; a[b].c
 
 public:
     _VariantReference();
     ~_VariantReference();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 
 public:
     int locFlag;        //-1表示左值，1表示右值，0表示什么都不是 左值特判
@@ -292,7 +294,7 @@ public:
 public:
     _Idvpart();
     ~_Idvpart();
-    llvm::Value* codeGen(_VariantReference* varRef);
+    llvm::Value *codeGen(_VariantReference *varRef);
 };
 
 class _IfStatement : public _Statement
@@ -305,7 +307,7 @@ public:
 public:
     _IfStatement();
     ~_IfStatement();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 class _CaseStatement : public _Statement
 {
@@ -320,7 +322,7 @@ class _Branch
 {
 public:
     vector<_Expression *> condition;
-    _Statement* _do;
+    _Statement *_do;
     _Branch();
     ~_Branch();
 };
@@ -334,14 +336,13 @@ public:
     _Statement *_do;      //循环体语句
                           //行号由for的位置决定
 public:
-    _Expression *condition;//判断条件
-    _AssignStatement *increment;//增量
-    _AssignStatement *initial;//初始化
+    _Expression *condition;      //判断条件
+    _AssignStatement *increment; //增量
+    _AssignStatement *initial;   //初始化
     _ForStatement();
     ~_ForStatement();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
-
 
 class _RepeatStatement : public _Statement
 {
@@ -352,7 +353,7 @@ public:
 public:
     _RepeatStatement();
     ~_RepeatStatement();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 
 class _WhileStatement : public _Statement
@@ -364,6 +365,6 @@ public:
 public:
     _WhileStatement();
     ~_WhileStatement();
-    llvm::Value* codeGen();
+    llvm::Value *codeGen();
 };
 #endif
