@@ -21,6 +21,6 @@
 
 using namespace std;
 
-void ObjCodeGen(CodeGenContext& context, string& filename, int outputType);
-
+// void ObjCodeGen(CodeGenContext& context, string& filename, int outputType);
+void ObjCodeGen(CodeGenContext& context, string& filename);
 #endif
