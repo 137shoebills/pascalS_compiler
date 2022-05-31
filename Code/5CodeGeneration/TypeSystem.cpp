@@ -18,13 +18,21 @@ llvm::Type* TypeSystem::getllType(string type){
         return this->int64Ty;
 
     //数组类型(这里type是数组的类型名)
-    if (this->arrayTypes.find(type) != this->arrayTypes.end())
+    if (this->arrayTypes.find(type) != this->arrayTypes.end()){
         return this->arrayTypes[type];
+    }
     // record类型
-    else if (this->recordTypes.find(type) != this->recordTypes.end())
+    else if (this->recordTypes.find(type) != this->recordTypes.end()){
         return this->recordTypes[type];
+    }
     //类型名是type部分起的别名
+    //custom不仅包含别名，还包含数组类型名和record类型名
     else if(mainSymbolTable->custom.find(type) != mainSymbolTable->custom.end()){
+        //排除在var部分声明的、未记录到类型系统中的数组和record变量
+        if(type[type.size()-1] == '_'){
+            if(findSymbolRecord(type.substr(0,type.size()-1)))
+                return nullptr;
+        }
         int loc = mainSymbolTable->custom[type].top();
         return this->getllType(mainSymbolTable->recordList[loc]->type);
     }
@@ -75,7 +83,7 @@ string TypeSystem::getRecordMemberType(string recName, string memName)
     return "error_type";
 }
 
-//新增数组变量对应的LLVM类型
+//新增数组的LLVM类型
 void TypeSystem::addArrayType(string typeName, llvm::ArrayType* ArrayType, string memberType, vector<pair<int,int>> arrayRangeList){
     arrayTypes[typeName] = ArrayType;
     arrayMemberTypes[typeName] = memberType;
