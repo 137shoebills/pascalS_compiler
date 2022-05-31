@@ -8,6 +8,7 @@
 #include <string>
 #include <memory>
 
+
 using namespace std;
 class _Program;
 class _SubProgram;
@@ -63,7 +64,7 @@ class _Constant //常量定义
                 //在代码生成的时候，可以根据常量的范围对类型进行进一步的细化
 public:
     pair<string, int> constId;
-    string type; //常数类型,分为"id","integer","real","char"
+    string type; //常数类型,分为"boolean","integer","real","char"
 
     pair<string, int> valueId;
     char charValue;
@@ -108,10 +109,10 @@ public:
     ~_Type() {}
 
     //创建数组的LLVM类型
-    llvm::Type *InitArrayType(string arrTypeName, string type); // arrTypeName:自定义类型名，type:数组元素类型
-
+    llvm::Type *InitArrayType(string arrTypeName, string type);  // arrTypeName:自定义类型名，type:数组元素类型
+    
     //创建record的LLVM类型
-    llvm::Type *InitRecordType(string recTypeName); // recTypeName:自定义类型名
+    llvm::Type *InitRecordType(string recTypeName);  // recTypeName:自定义类型名
 };
 
 class _Variant //变量定义
@@ -254,7 +255,6 @@ public:
     int lineNo; //行号, 用表达式中最先出现的操作数的行号表示
 
     llvm::Value *llvalue;
-
 public:
     _Expression();
     ~_Expression();
@@ -322,6 +322,7 @@ class _Branch
 {
 public:
     vector<_Expression *> condition;
+    //vector<_Constant *> condition;
     _Statement *_do;
     _Branch();
     ~_Branch();
@@ -343,6 +344,7 @@ public:
     ~_ForStatement();
     llvm::Value *codeGen();
 };
+
 
 class _RepeatStatement : public _Statement
 {
