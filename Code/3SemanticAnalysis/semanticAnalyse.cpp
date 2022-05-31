@@ -492,6 +492,35 @@ void SemanticAnalyseStatement(_Statement *statement)
 		if (ifStatement->els != NULL)				 //对else语句进行语句分析
 			SemanticAnalyseStatement(ifStatement->els);
 	}
+	else if (statement->type == "case")
+	{
+		_CaseStatement *caseStatement = reinterpret_cast<_CaseStatement *>(statement);
+		string type = SemanticAnalyseExpression(caseStatement->caseid);
+		cout << "\nCaseidType:" << type << endl;
+		if (type != "integer" && type != "char" && type != "boolean" && type != "real")
+		{	//非基本类型不能作case判断
+			addExpressionTypeErrorInformation(caseStatement->caseid, type, "integer,char,real or boolean", "case statement");
+			caseStatement->statementType = "error";
+			return;
+		}
+		else
+			caseStatement->statementType = "void";
+
+		for (int i = 0; i < caseStatement->branch.size();++i)
+		{
+			for (int j = 0; j < caseStatement->branch[i]->condition.size();++j)
+			{
+				string branchType = caseStatement->branch[i]->condition[j]->type;
+				if(branchType != type)	//分支选项类型与caseId类型不一致
+				{
+					addGeneralErrorInformation("[Case option type dismatch!] <Line " + itos(caseStatement->branch[i]->condition[j]->valueId.second) + "> case option " + itos(i + 1) + " is " + branchType + " while caseId is " + type + ".");
+					caseStatement->type == "error";
+					return;
+				}
+			}
+			SemanticAnalyseStatement(caseStatement->branch[i]->_do);
+		}
+	}
 	else if (statement->type == "assign")
 	{ //左值特判
 		_AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(statement);

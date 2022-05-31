@@ -63,7 +63,7 @@ class _Constant //常量定义
                 //在代码生成的时候，可以根据常量的范围对类型进行进一步的细化
 public:
     pair<string, int> constId;
-    string type; //常数类型,分为"id","integer","real","char"
+    string type; //常数类型,分为"boolean","integer","real","char"
 
     pair<string, int> valueId;
     char charValue;
@@ -302,15 +302,14 @@ class _CaseStatement : public _Statement
 public:
     _Expression *caseid;
     vector<_Branch *> branch;
-    vector<_Statement *> _do;
     _CaseStatement();
     ~_CaseStatement();
 };
 class _Branch
 {
 public:
-    vector<_Expression *> condition;
-    _Statement* _do;
+    vector<_Constant *> condition;
+    _Statement *_do;
     _Branch();
     ~_Branch();
 };

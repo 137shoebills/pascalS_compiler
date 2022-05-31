@@ -79,6 +79,24 @@ void printstatement(_Statement *statement){
                 for(int i = 0;i < _repeatStatement->_do.size();i++)
                 printstatement(_repeatStatement->_do[i]);}
         }
+        else if(statement->type == "case")
+        {
+            _CaseStatement *caseStatement = new _CaseStatement;
+            caseStatement = (_CaseStatement *)statement;
+            cout << "CaseID:" << endl;
+            printExp(caseStatement->caseid);
+            cout << "caseBranchSize:" << caseStatement->branch.size() << endl;
+            for (int i = 0; i < caseStatement->branch.size(); ++i)
+            {
+                for (int j = 0; j < caseStatement->branch[i]->condition.size();++j)
+                {
+                    cout << "   condition " << i << ": ";
+                    cout << caseStatement->branch[i]->condition[j]->boolvalue << endl;
+                }
+                cout << "       Do:" << endl;
+                printstatement(caseStatement->branch[i]->_do);
+            }
+        }
     }
 }
 void printfuncall(_FunctionCall* functionCall){
@@ -270,13 +288,13 @@ void dfssubP(_SubProgram* subProgram){
     }
 }
 void dfsAST(_Program* ASTRoot){
-    // cout<<"~~_Program->programId:"<<ASTRoot->programId.first<<" "<<ASTRoot->programId.second<<endl;
-    // cout<<"~~_Program->paraList: ";
-    // for(int i = 0;i < ASTRoot->paraList.size();i++)
-    //     cout<<ASTRoot->paraList[i].first<<" "<<ASTRoot->paraList[i].second<<" ";
-    // cout<<endl;
-    // cout<<"~~_Program->subProgram: ";
-    // dfssubP(ASTRoot->subProgram);
+    cout<<"~~_Program->programId:"<<ASTRoot->programId.first<<" "<<ASTRoot->programId.second<<endl;
+    cout<<"~~_Program->paraList: ";
+    for(int i = 0;i < ASTRoot->paraList.size();i++)
+        cout<<ASTRoot->paraList[i].first<<" "<<ASTRoot->paraList[i].second<<" ";
+    cout<<endl;
+    cout<<"~~_Program->subProgram: ";
+    dfssubP(ASTRoot->subProgram);
 }
 int str2int(string str){
     int res=0;
@@ -685,7 +703,7 @@ _Statement* getStatement(Token *now){
         _caseStatement->type = "case";
         _caseStatement->lineNo = now->children[0]->lineNo;
         _caseStatement->caseid = getExpression(now->children[1]);
-        getCaseBody(now->children[3],_caseStatement);
+        getCaseBody(now->children[3], _caseStatement);
         return _caseStatement;
     }
     else if(now->children[0]->type=="FOR"){
@@ -730,7 +748,7 @@ void getCaseBody(Token *now,_CaseStatement* &_caseStatement){
         return;
     }
     if(now->children.size() > 0){
-        getBranchlist(now,_caseStatement);
+        getBranchlist(now->children[0],_caseStatement);
     }
 }
 void getBranchlist(Token *now,_CaseStatement* &_caseStatement){
@@ -754,19 +772,20 @@ void getBranch(Token *now,_CaseStatement* &_caseStatement){
     }
     vector<_Constant *> constlist;
     _Branch* branch = new _Branch;
-    getConstlist(now->children[0],constlist);
-    for(int i = 0;i < constlist.size();i++){
-        _Expression * condition = new _Expression;
-        //构建for循环条件condition
-        condition->operationType="relop";
-        condition->type="compound";
-        condition->operation="=";
-        condition->operand1 = new _Expression;
-        condition->operand1=_caseStatement->caseid;
-        condition->operand2 = new _Expression;
-        const2exp(constlist[i], condition->operand2);
-        branch->condition.push_back(condition);
-    }
+    //获取分支的常量列表
+    getConstlist(now->children[0],branch->condition);
+    // for(int i = 0;i < constlist.size();i++){
+    //     _Expression * condition = new _Expression;
+    //     //构建for循环条件condition
+    //     condition->operationType="relop";
+    //     condition->type="compound";
+    //     condition->operation="=";
+    //     condition->operand1 = new _Expression;
+    //     condition->operand1=_caseStatement->caseid;
+    //     condition->operand2 = new _Expression;
+    //     const2exp(constlist[i], condition->operand2);
+    //     branch->condition.push_back(condition);
+    // }
     branch->_do = getStatement(now->children[2]);
     _caseStatement->branch.push_back(branch);
     
