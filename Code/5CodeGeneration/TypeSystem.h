@@ -21,7 +21,7 @@ extern llvm::Value* LogErrorV(string str);
 extern _SymbolRecord* findSymbolRecord(string);
 
 class TypeSystem{
-private:
+public:
     llvm::LLVMContext& llvmContext;
     map<string, vector<NameType>> recordMembers;    //record列表
     map<string, llvm::StructType*> recordTypes;     //record类型的名称对应的LLVM Type
@@ -61,6 +61,7 @@ public:
 
     //判断是否为基本类型
     bool isBasicType(string type);
+
 };
 
 #endif
