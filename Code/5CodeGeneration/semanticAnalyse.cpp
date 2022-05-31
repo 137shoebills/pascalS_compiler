@@ -6,9 +6,9 @@
 #include "CodeGen.h"
 
 using namespace std;
-
+extern bool have_error;
 int layer = 0; //标记程序的嵌套层数
-
+int expflag = 1;
 set<string> lib; //存放库函数名
 extern _SymbolTable *mainSymbolTable;
 extern CodeGenContext context;				
@@ -446,7 +446,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 	else if (statement->type == "repeat")
 	{
 		_RepeatStatement *repeatStatement = reinterpret_cast<_RepeatStatement *>(statement);
+		expflag = 0;
 		string type = SemanticAnalyseExpression(repeatStatement->condition);
+		expflag = 1;
 		if (type != "boolean")
 		{ // repeat语句类型检查,condition表达式类型检查 checked
 			addExpressionTypeErrorInformation(repeatStatement->condition, type, "boolean", "condition of repeat-until statement");
@@ -454,15 +456,19 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 		else
 			repeatStatement->statementType = "void";
+		expflag = 0;
 		for (int i = 0; i < repeatStatement->_do.size(); ++i)
 			SemanticAnalyseStatement(repeatStatement->_do[i],0); //对循环体语句进行语义分析
+		expflag = 1;
 		if(flag == 1)
 			repeatStatement->codeGen();
 	}
 	else if (statement->type == "while")
 	{
 		_WhileStatement *whileStatement = reinterpret_cast<_WhileStatement *>(statement);
+		expflag = 0;
 		string type = SemanticAnalyseExpression(whileStatement->condition);
+		expflag = 1;
 		if (type != "boolean")
 		{ // while语句类型检查,condition表达式类型检查 checked
 			addExpressionTypeErrorInformation(whileStatement->condition, type, "boolean", "condition of while statement");
@@ -470,7 +476,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 		else
 			whileStatement->statementType = "void";
+		expflag = 0;
 		SemanticAnalyseStatement(whileStatement->_do,0); //对循环体语句进行语义分析
+		expflag = 1;
 		if(flag == 1 && whileStatement->statementType != "error")
 			whileStatement->codeGen();
 	}
@@ -498,20 +506,26 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 		// for语句类型检查,start和end表达式类型检查
 		forStatement->statementType = "void";
+		expflag = 0;
 		string type = SemanticAnalyseExpression(forStatement->start);
+		expflag = 1;
 		if (type != "integer")
 		{ // checked
 			addExpressionTypeErrorInformation(forStatement->start, type, "integer", "start value of for statement");
 			forStatement->statementType = "error";
 		}
+		expflag = 0;
 		type = SemanticAnalyseExpression(forStatement->end);
+		expflag = 1;
 		if (type != "integer")
 		{ // checked
 			addExpressionTypeErrorInformation(forStatement->end, type, "integer", "end value of for statement");
 			forStatement->statementType = "error";
 		}
 		//对循环体语句进行语义分析
+		expflag = 0;
 		SemanticAnalyseStatement(forStatement->_do,0);
+		expflag = 1;
 		if(flag == 1 && forStatement->statementType != "error")
 			forStatement->codeGen();
 	}
@@ -563,7 +577,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			}
 			assignStatement->isReturnStatement = true;
 			
-			if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error")
+			if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
 				assignStatement->codeGen(leftType, rightType);
 
 			return;
@@ -836,6 +850,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			expression->boolValue=record->value;
 		}
 		
+		if(expflag == 1)
 		expression->llvalue = expression->codeGen();
 		return expression->expressionType = variantReferenceType;
 	}
@@ -845,24 +860,28 @@ string SemanticAnalyseExpression(_Expression *&expression)
 	{
 		expression->totalIntValue = expression->intNum;
 		expression->totalIntValueValid = true;
+		if(expflag == 1)
 		expression->llvalue = expression->codeGen();
 		return expression->expressionType = "integer";
 	}
 
 	//表达式类型为real <ok>
 	else if (expression->type == "real"){
+		if(expflag == 1)
 		expression->llvalue = expression->codeGen();
 		return expression->expressionType = "real";
 	}
 
 	//表达式类型为char <ok>
 	else if (expression->type == "char"){
+		if(expflag == 1)
 		expression->llvalue = expression->codeGen();
 		return expression->expressionType = "char";
 	}
 
 	//表达式类型为布尔类型boolean
 	else if (expression->type == "boolean"){
+		if(expflag == 1)
 		expression->llvalue = expression->codeGen();
 		return expression->expressionType = "boolean";
 	}
@@ -870,6 +889,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 	//表达式类型为函数调用 <ok>
 	else if (expression->type == "function") //获得函数调用的返回值类型
 	{
+		if(expflag == 1)
 		expression->llvalue = expression->codeGen();
 		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
 	}
@@ -885,6 +905,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			string epType2 = SemanticAnalyseExpression(expression->operand2);
 			//类型兼容
 			if ((epType1 == epType2 && epType1 != "error") || (epType1 == "integer" && epType2 == "real") || (epType1 == "real" && epType2 == "integer")){
+				if(expflag == 1)
 				expression->llvalue = expression->codeGen()	;
 				return expression->expressionType = "boolean";
 			}
@@ -908,6 +929,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 				else{
 					expression->boolValue="false";
 				}
+				if(expflag == 1)
 				expression->llvalue = expression->codeGen();
 				
 				return expression->expressionType = "boolean";
@@ -931,6 +953,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 				expression->totalIntValueValid = true;
 			}
 			if (epType == "integer" || epType == "real"){
+				if(expflag == 1)
 				expression->llvalue = expression->codeGen();
 				return expression->expressionType = epType;
 			}
@@ -956,6 +979,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			if(expression->expressionType=="boolean"){
 				expression->boolValue=expression->operand1->boolValue;
 			}
+			if(expflag == 1)
 			expression->llvalue = expression->codeGen();
 			return expression->expressionType;
 		}
@@ -985,6 +1009,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			//类型处理
 			if ((epType1 == "integer" || epType1 == "real") && (epType2 == "integer" || epType2 == "real"))
 			{
+				if(expflag == 1)
 				expression->llvalue = expression->codeGen();
 				if (epType1 == "integer" && epType2 == "integer")
 					return expression->expressionType = "integer";
@@ -1016,6 +1041,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 						expression->totalIntValue = expression->operand1->totalIntValue % expression->operand2->totalIntValue;
 					expression->totalIntValueValid = true;
 				}
+				if(expflag == 1)
 				expression->llvalue = expression->codeGen();
 				return expression->expressionType = "integer";
 			}
@@ -1045,6 +1071,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 					else 
 						expression->boolValue="false";
 				}
+				if(expflag == 1)
 				expression->llvalue = expression->codeGen();
 				return expression->expressionType = "boolean";
 			}

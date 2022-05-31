@@ -2,7 +2,8 @@
 #include "ObjGen.h" //test
 #include "semanticAnalyse.h"
 #define ISTYPE(value, id) (value->getType()->getTypeID() == id)
-
+int expcogen = 1;
+extern int expflag;
 CodeGenContext context;
 
 bool have_error = false;
@@ -397,21 +398,21 @@ llvm::Value* _Expression::codeGen(){
           ret = this->functionCall->codeGen();
       }
       else if(this->type=="compound" && this->operation=="bracket"){
-          ret = this->operand1->llvalue;
-          //ret = this->operand1->codeGen();
+	  	if(!expcogen)
+            this->operand1->llvalue = this->operand1->codeGen();
+          
+            ret = this->operand1->llvalue;
+
       }
       else if(this->type=="compound" && this->operation=="not"){
-        // if(this->operand1->boolValue == "true")
-        if(this->operand1->boolValue == "t")
-            //ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 1, true);
-            ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true);
-        else
-            //ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 0, true); 
-            ret = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.llvmContext), 1, true); 
+        if(!expcogen)
+            this->operand1->llvalue = this->operand1->codeGen();
+          ret = context.builder->CreateNot(this->operand1->llvalue,"not");
       }
         else if(this->type=="compound" && this->operation=="minus"){
           llvm::Value* temp;
-          this->operand1->llvalue = this->operand1->codeGen();
+		  if(expcogen == 0)
+            this->operand1->llvalue = this->operand1->codeGen();
 
 		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::DoubleTyID) {
 			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, (double)0.0);
@@ -424,19 +425,17 @@ llvm::Value* _Expression::codeGen(){
       }
       else if(this->type=="compound"){
           if(this->expressionType != "error"){
-              llvm::Value* L = this->operand1->llvalue;
-              llvm::Value* R = this->operand2->llvalue;
-              //llvm::Value* L = this->operand1->codeGen();
-              //llvm::Value* R = this->operand2->codeGen();
+              llvm::Value* L = expcogen ? this->operand1->llvalue : this->operand1->codeGen();
+              llvm::Value* R = expcogen ? this->operand2->llvalue : this->operand2->codeGen();
               bool fp = false;
 
-              if( (L->getType()->getTypeID() == llvm::Type::DoubleTyID) || (R->getType()->getTypeID() == llvm::Type::DoubleTyID) ){  // type upgrade
+              if( (L->getType()->getTypeID() == llvm::Type::FloatTyID) || (R->getType()->getTypeID() == llvm::Type::FloatTyID) ){  // type upgrade
                   fp = true;
-                  if( (R->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
-                      R = context.builder->CreateUIToFP(R, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
+                  if( (R->getType()->getTypeID() != llvm::Type::FloatTyID) ){
+                      R = context.builder->CreateUIToFP(R, llvm::Type::getFloatTy(context.llvmContext), "ftmp");
                   }
-                  if( (L->getType()->getTypeID() != llvm::Type::DoubleTyID) ){
-                      L = context.builder->CreateUIToFP(L, llvm::Type::getDoubleTy(context.llvmContext), "ftmp");
+                  if( (L->getType()->getTypeID() != llvm::Type::FloatTyID) ){
+                      L = context.builder->CreateUIToFP(L, llvm::Type::getFloatTy(context.llvmContext), "ftmp");
                   }
               }
               if( !L || !R ){
@@ -633,6 +632,7 @@ llvm::Value* _IfStatement::codeGen(){
 }
 
 llvm::Value* _ForStatement::codeGen(){
+	expcogen = 0;
     cout << "_ForStatement::codeGen" << endl;
 
       llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
@@ -669,16 +669,16 @@ llvm::Value* _ForStatement::codeGen(){
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
       context.builder->SetInsertPoint(after);
-
+		expcogen = 1;
       return nullptr;
 }
 
 llvm::Value* _WhileStatement::codeGen(){
     cout << "_WhileStatement::codeGen" << endl;
-
+	expcogen = 0;
       llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
   	  llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "while_body", theFunction);
-  	  llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "while_end", theFunction);
+  	  llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "while_end");
       llvm::Value* condValue = this->condition->codeGen();
       if( !condValue )
           return nullptr;
@@ -695,16 +695,18 @@ llvm::Value* _WhileStatement::codeGen(){
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
       context.builder->SetInsertPoint(after);
+	expcogen = 1;
       return nullptr;
 }
 
 llvm::Value* _RepeatStatement::codeGen(){
     cout << "_RepeatStatement::codeGen" << endl;
+	expcogen = 0;
     for(int i = 0; i < this->_do.size(); i++)
         this->_do[i]->codeGen();
     llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
   	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "repeat_body", theFunction);
-  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "repeat_end", theFunction);
+  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "repeat_end");
 
     llvm::Value* condValue = this->condition->codeGen();
     if(!condValue)
@@ -723,6 +725,7 @@ llvm::Value* _RepeatStatement::codeGen(){
       // insert the after block
       theFunction->getBasicBlockList().push_back(after);
       context.builder->SetInsertPoint(after);
+	expcogen = 1;
       return nullptr;
 
 }
