@@ -800,6 +800,7 @@ llvm::Value* _CaseStatement::codeGen(){
             context.builder->CreateCondBr(condValue, body_vec[size], size == len - 1 ? after : cond_vec[size+1]);
             context.builder->SetInsertPoint(body_vec[size]);
             this->branch[i]->_do->codeGen();
+			context.builder->CreateBr(after);
             size++;
         }
     }
