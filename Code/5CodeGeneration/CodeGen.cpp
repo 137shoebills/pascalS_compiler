@@ -685,7 +685,10 @@ llvm::Value *_Statement::codeGen()
     {
         _AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(this);
         string leftType = SemanticAnalyseVariantReference(assignStatement->variantReference);
+		if(!expcogen)
+		        expflag = 0;
         string rightType = SemanticAnalyseExpression(assignStatement->expression);
+        expflag = 1;				
         if (assignStatement->variantReference->kind == "function return reference")
         {
             if (leftType != "error" && rightType != "error" && assignStatement->statementType != "error")
