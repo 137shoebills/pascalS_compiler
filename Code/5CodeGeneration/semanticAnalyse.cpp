@@ -655,7 +655,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		{
 			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
 			{
+				expflag = 0;
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
+				expflag = 1;
 				if (actualType == "error") //要求支持变参过程的参数类型不能为error
 					procedureCall->statementType = "error";
 			}
@@ -671,7 +673,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		// 形参在符号表中的定位
 		for (int i = 0; i < procedureCall->actualParaList.size(); i++)
 		{ //检查实参和形参的类型一致性
+			expflag = 0;
 			string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
+			expflag = 1;
 			string formalType = record->findXthFormalParaType(i);
 			bool isRefered = record->isXthFormalParaRefered(i); //是否是引用调用
 			if (isRefered && !(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
