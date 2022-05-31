@@ -574,23 +574,23 @@ llvm::Value* _Expression::codeGen(){
               else if(this->operation == "*")
                   ret = fp ? context.builder->CreateFMul(L, R, "mulftmp") : context.builder->CreateMul(L, R, "multmp");
               else if(this->operation == "/"){
-                  ret = fp ? context.builder->CreateFDiv(L, R, "divftmp") : context.builder->CreateSDiv(L, R, "divtmp");
+                  //类型转换：将两个operator都转换成浮点型
+                  if(ISTYPE(L, llvm::Type::IntegerTyID)){
+                      auto realValue = context.builder->CreateSIToFP(L, context.typeSystem.realTy);
+                      L = realValue;
+                  }
+                  if(ISTYPE(R, llvm::Type::IntegerTyID)){
+                      auto realValue = context.builder->CreateSIToFP(R, context.typeSystem.realTy);
+                      R = realValue;
+                  }
+                  ret = context.builder->CreateFDiv(L, R, "divftmp");
               }
               else if(this->operation == "and")
                   ret = fp ? LogErrorV("Double type has no AND operation") : context.builder->CreateAnd(L, R, "andtmp");
               else if(this->operation == "or")
                   ret = fp ? LogErrorV("Double type has no OR operation") : context.builder->CreateOr(L, R, "ortmp");
-              else if(this->operation == "div"){
-                  //dsy test
-                  //cout<<"op1="<<this->operand1->totalIntValue<<", op2="<<this->operand2->totalIntValue<<endl;
-                  //op1和op2的totalIntValue都为0，如下，totalIntValueValid标志位为0，表示该值未启用
-                  //cout<<"totalIntValue valid="<<this->operand1->totalIntValueValid<<endl;
-                    //❓如何做整除？
-                  ret = fp ? LogErrorV("Double type has no DIV operation") : llvm::ConstantInt::get(
-                      llvm::Type::getInt32Ty(context.llvmContext), 
-                      int(this->operand1->totalIntValue/this->operand2->totalIntValue), true);
-              
-              }
+              else if(this->operation == "div")
+                  ret = fp ? LogErrorV("Double type has no DIV operation") : context.builder->CreateSDiv(L, R, "divtmp");
               else if(this->operation == "mod")
                   ret = fp ? LogErrorV("Double type has no Mod operation") : context.builder->CreateSRem(L, R, "modtmp");
               else if(this->operation == ">=")
