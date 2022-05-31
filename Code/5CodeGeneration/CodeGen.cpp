@@ -540,7 +540,12 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
     //获取右值（LLVM Value*）
     //右值类型：常量，普通变量，数组元素，record成员，函数调用（返回值）
     //llvm::Value* rValue = this->expression->codeGen();
-    llvm::Value* rValue = this->expression->llvalue;
+	
+	llvm::Value* rValue;
+		if(!expcogen)
+	        rValue = this->expression->codeGen();
+	    else
+			rValue = this->expression->llvalue;
 
     if(!rValue) {
         return LogErrorV("[_AssignStatement::codeGen]   rightValue codeGen failed");
