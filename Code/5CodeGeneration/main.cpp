@@ -3,6 +3,7 @@
 //#include "semanticAnalyse.cpp"
 #include "ParseT2AST.h"
 #include "semanticAnalyse.h"
+#include "CodeGen.h"
 #include "ObjGen.h"
 #include <fstream>
 #include <sstream>
@@ -13,6 +14,7 @@ extern vector<string> lexicalErrorInformation; //存放词法分析错误
 extern vector<string> syntaxErrorInformation;  //存放语法错误信息
 extern vector<string> semanticErrorInformation; //存储错误信息的列表
 extern vector<string> semanticWarningInformation;//存储警告信息的列表
+extern bool codeGen_error;
 
 string itos(int num)
 {
@@ -27,7 +29,8 @@ void predeal(char *filename);
 int main(int argc, char **argv)
 {
     // yydebug = 1;
-    if (argc < 3)
+    if(argc < 2)
+    //if (argc < 3)
     {
         cout << "Missing parameter!\n";
         return 0;
@@ -68,18 +71,16 @@ int main(int argc, char **argv)
     cout << "\nSemantic Warnings:\n";
     outputErrorInformation(semanticWarningInformation);
 
-    // char *output_file = argv[2];
-    // string output_filename = output_file;
-    // //cout<<"target file will be written to: "<<output_filename<<endl;
-    // int outputType = 0;
-    // if(output_filename[output_filename.size()-1] == 's')
-    //     outputType = ASSEMBLY_FILE;
-    // else if(output_filename[output_filename.size()-1] == 'o')
-    //     outputType = OBJECT_FILE;
-    // else
-    //     cout<<"Unsupported target file type: " + output_filename << endl;
-    // if(outputType)
-    //     ObjCodeGen(context, output_filename, outputType);
+    //若语义分析或中间代码生成出错，则不再进行目标代码生成
+    if(semanticErrorInformation.size() > 0 || codeGen_error){
+        cout<<"Semantic/codeGen errors, stop generating target file"<<endl;
+        return -1;
+    }
+    
+    //char *output_file = argv[2];
+    string output_filename = "output.s";
+    cout<<"target file will be written to: "<<output_filename<<endl;
+    ObjCodeGen(context, output_filename);
     
     return 0;
 }
