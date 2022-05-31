@@ -659,6 +659,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				if (actualType == "error") //要求支持变参过程的参数类型不能为error
 					procedureCall->statementType = "error";
 			}
+			procedureCall->codeGen();
 			return;
 		}
 		if (procedureCall->actualParaList.size() != record->amount)
