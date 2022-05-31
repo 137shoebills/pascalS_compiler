@@ -317,6 +317,7 @@ public:
     vector<_Statement *> _do;
     _CaseStatement();
     ~_CaseStatement();
+	llvm::Value* codeGen();
 };
 class _Branch
 {

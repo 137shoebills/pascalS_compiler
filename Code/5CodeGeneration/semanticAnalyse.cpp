@@ -548,6 +548,27 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		if (flag == 1 && ifStatement->statementType != "error")
 			ifStatement->codeGen();
 	}
+	else if (statement->type == "case")
+	{
+		cout<<"caseseanti"<<endl;
+		_CaseStatement *caseStatement = reinterpret_cast<_CaseStatement *>(statement);
+		string type = SemanticAnalyseExpression(caseStatement->caseid);
+		if (type != "integer" && type != "char" && type != "boolean" && type != "real")
+		{	//非基本类型不能作case判断
+			addExpressionTypeErrorInformation(caseStatement->caseid, type, "integer,char,real or boolean", "case statement");
+			caseStatement->statementType = "error";
+			return;
+		}
+		else
+			caseStatement->statementType = "void";
+
+		for (int i = 0; i < caseStatement->branch.size();++i)
+		{
+			SemanticAnalyseStatement(caseStatement->branch[i]->_do,0);
+		}
+		if (flag == 1 && caseStatement->statementType != "error")
+			caseStatement->codeGen();
+	}
 	else if (statement->type == "assign")
 	{ //左值特判
 		_AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(statement);

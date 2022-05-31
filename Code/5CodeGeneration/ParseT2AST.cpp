@@ -78,6 +78,27 @@ void printstatement(_Statement *statement){
                 for(int i = 0;i < _repeatStatement->_do.size();i++)
                 printstatement(_repeatStatement->_do[i]);}
         }
+		else if(statement->type == "case")
+	           {
+                   cout<<"!"<<endl;
+                   cout<<"caseAST"<<endl;
+	               _CaseStatement *caseStatement = new _CaseStatement;
+	               caseStatement = (_CaseStatement *)statement;
+	               cout << "CaseID:" << endl;
+	               printExp(caseStatement->caseid);
+	               cout << "caseBranchSize:" << caseStatement->branch.size() << endl;
+	               for (int i = 0; i < caseStatement->branch.size(); ++i)
+	               {
+	                   for (int j = 0; j < caseStatement->branch[i]->condition.size();++j)
+	                   {
+	                       cout << "   condition " << i << ": ";
+	                       cout << caseStatement->branch[i]->condition[j]->boolValue << endl;
+	                   }
+	                   cout << "       Do:" << endl;
+	                   printstatement(caseStatement->branch[i]->_do);
+	               }
+	           }
+			   
     }
 }
 void printfuncall(_FunctionCall* functionCall){
@@ -729,7 +750,7 @@ void getCaseBody(Token *now,_CaseStatement* &_caseStatement){
         return;
     }
     if(now->children.size() > 0){
-        getBranchlist(now,_caseStatement);
+        getBranchlist(now->children[0],_caseStatement);
     }
 }
 void getBranchlist(Token *now,_CaseStatement* &_caseStatement){
@@ -780,7 +801,7 @@ void getConstlist(Token *now,vector<_Constant *> &constlist){
     setConst(now->children[loc], _constant);
     constlist.push_back(_constant);
     if(loc > 0){
-        getConstlist(now, constlist);
+        getConstlist(now->children[0], constlist);
     }
     else{
         reverse(constlist.begin(), constlist.end());

@@ -681,6 +681,10 @@ llvm::Value *_Statement::codeGen()
         _IfStatement *ifStatement = reinterpret_cast<_IfStatement *>(this);
         ifStatement->codeGen();
     }
+	else if (this->type == "case"){
+        _CaseStatement *casestatement = reinterpret_cast<_CaseStatement *>(this);
+        casestatement->codeGen();
+    }
     else if (this->type == "assign")
     {
         _AssignStatement *assignStatement = reinterpret_cast<_AssignStatement *>(this);
@@ -833,6 +837,42 @@ llvm::Value *_IfStatement::codeGen()
     }
     theFunction->getBasicBlockList().push_back(mergeBB);
     context.builder->SetInsertPoint(mergeBB);
+    return nullptr;
+}
+llvm::Value* _CaseStatement::codeGen(){
+    expcogen = 0;
+    cout << "_CaseStatement::codeGen" << endl;
+    llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
+    vector<llvm::BasicBlock *> cond_vec;
+    vector<llvm::BasicBlock *> body_vec;
+    int len = 0;
+    for(int i = 0;i < this->branch.size();i++)
+        for(int j = 0;j < this->branch[i]->condition.size();j++)
+            len++;
+    for(int i = 0;i < len;i++){
+        cond_vec.push_back(llvm::BasicBlock::Create(context.llvmContext, "case_branch", theFunction));
+        body_vec.push_back(llvm::BasicBlock::Create(context.llvmContext, "case_body", theFunction));
+    }
+    llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "casecont");
+    context.builder->CreateBr(len == 0 ? after : cond_vec[0]);
+    int size = 0;
+    
+    for (int i = 0; i < this->branch.size(); i++) {
+        for(int j = 0;j < this->branch[i]->condition.size();j++){
+             context.builder->SetInsertPoint(cond_vec[size]);
+             llvm::Value* condValue = this->branch[i]->condition[j]->codeGen();
+             if( !condValue )
+                return nullptr;
+            condValue = CastToBoolean(context, condValue);
+            context.builder->CreateCondBr(condValue, body_vec[size], size == len - 1 ? after : cond_vec[size+1]);
+            context.builder->SetInsertPoint(body_vec[size]);
+            this->branch[i]->_do->codeGen();
+            size++;
+        }
+    }
+    theFunction->getBasicBlockList().push_back(after);
+    context.builder->SetInsertPoint(after);
+    expcogen = 1;
     return nullptr;
 }
 
