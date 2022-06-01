@@ -448,7 +448,9 @@ void _ProcedureCall::writecodeGen(int type_arr[])
     for (auto it = actualParaList.begin(); it != actualParaList.end(); it++, ++i)
     {
         args.clear();
-        //args.push_back((*it)->codeGen()); //获取实参的值
+		if(expcogen == 0)
+        args.push_back((*it)->codeGen()); //获取实参的值
+        else
         args.push_back((*it)->llvalue);
         if (!args.back())                 //若某个参数codeGen失败，立即返回
         {
@@ -618,6 +620,7 @@ llvm::Value* _Expression::codeGen(){
 }
 //语句codegen
 llvm::Value* _Statement::codeGen(){
+    cout<<"_Statement::codeGen"<<endl;
     if(this->type == "repeat"){
         _RepeatStatement *repeatStatement = reinterpret_cast<_RepeatStatement *>(this);
         repeatStatement->codeGen();
@@ -790,9 +793,9 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
 
 llvm::Value* _IfStatement::codeGen(){
     cout << "_IfStatement::codeGen" << endl;
-
+	expcogen = 0;
       //llvm::Value* condValue = this->condition->codeGen();
-      llvm::Value* condValue = this->condition->llvalue;
+      llvm::Value* condValue = this->condition->codeGen();
 
       if( !condValue )
           return nullptr;
@@ -822,6 +825,7 @@ llvm::Value* _IfStatement::codeGen(){
       }
       theFunction->getBasicBlockList().push_back(mergeBB);
       context.builder->SetInsertPoint(mergeBB);
+	  expcogen = 1;
       return nullptr;
 }
 
