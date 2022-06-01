@@ -540,7 +540,7 @@ llvm::Value* _Expression::codeGen(){
           if(expcogen == 0)
             this->operand1->llvalue = this->operand1->codeGen();
 
-		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::DoubleTyID) {
+		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::FloatTyID) {
 			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, (double)0.0);
 			  ret = context.builder->CreateFSub(temp, this->operand1->llvalue, "subtmp");
 		  }
