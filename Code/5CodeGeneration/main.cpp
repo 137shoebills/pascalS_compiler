@@ -1,6 +1,4 @@
 #include "main.h"
-//#include "ParseT2AST.cpp"
-//#include "semanticAnalyse.cpp"
 #include "ParseT2AST.h"
 #include "semanticAnalyse.h"
 #include "CodeGen.h"
@@ -30,12 +28,41 @@ int main(int argc, char **argv)
 {
     // yydebug = 1;
 
-    if(argc < 2)    //使用默认输出文件名"output.s"
-    //if (argc < 3) //可指定输出文件名
+    string output_filename = "output.s";     //默认目标代码生成文件
+    string compilerName = "gcc";             //默认C编译器
+	string exeName = "PascalCompiler.exe";         //默认的编译C程序后获得的可执行文件名
+
+    if(argc < 2)    //使用默认输出文件名"Complier.exe"
     {
         cout << "Missing parameter!\n";
         return 0;
     }
+    else if(argc > 3)
+    {
+        cout << "Too much parameter more than three!\n";
+        return 0;
+    }
+    else if(argc == 3)
+    {
+        exeName = argv[2];
+    }
+
+    if(!strcmp(argv[1],"--help") || !strcmp(argv[1],"-h")) //帮助选项
+    { 
+        cout << "Please put \"./compiler xxx.pas [xxx.exe]\" to run the pascalS-compiler!\n";
+        return 0;
+    }
+    else if(!strcmp(argv[1],"--version") || !strcmp(argv[1],"-v")) //版本选项
+    {
+        cout << "version:2022.6\n";
+        return 0;
+    }
+    else if(!strcmp(argv[1],"--developer") || !strcmp(argv[1],"-d")) //生成者选项
+    {
+        cout << "developers: Hu Minzhen ; Deng Shuyu ; Yang Lan ; Yuan Jie ; Pan Ling ; Zheng Siyang...\n";
+        return 0;
+    }
+
     char *filename = argv[1];
     predeal(filename);
     
@@ -47,42 +74,62 @@ int main(int argc, char **argv)
     else
     {
         yyin = fp;
-        cout << "Begin Parsing:\n";
         yyparse();
-        cout << "End Parsing.\n";
-        if (ParseTreeHead)
-        {
-            cout << "\nParseTree:\n";
-            dfs(ParseTreeHead);
-        }
     }
 
     fclose(fp);
 
-    cout << "\nLexical Errrors:\n";
-    outputErrorInformation(lexicalErrorInformation);
-    cout << "\nParse Errors:\n";
-    outputErrorInformation(syntaxErrorInformation);
+    // if (ParseTreeHead) //打印语法分析树
+    // {
+    //     cout << "\nParseTree:\n";
+    //     dfs(ParseTreeHead);
+    // }
+
+    if(lexicalErrorInformation.size() > 0)
+    {
+        cout << "\n***************Lexical Errrors:***************\n";
+        outputErrorInformation(lexicalErrorInformation);
+    }
+    else{
+        cout << "Lexical Succeed!\n";
+    }
+    if(syntaxErrorInformation.size() > 0) //若语法分析出错则退出编译
+    {
+        cout << "\n***************Parse Errors:***************\n";
+        outputErrorInformation(syntaxErrorInformation);      
+        return -1; 
+    }
+    else{
+        cout << "Parse Succeed!\n";
+    }
+
     _Program *ASTRoot = getProgram(ParseTreeHead);
-    cout<<"\n";
 
     SemanticAnalyse(ASTRoot);
-    cout << "\nSemantic Errors:\n";
-    outputErrorInformation(semanticErrorInformation);
-    cout << "\nSemantic Warnings:\n";
-    outputErrorInformation(semanticWarningInformation);
+    if(semanticWarningInformation.size() > 0)
+    {
+        cout << "\n***************Semantic Warnings:***************\n";
+        outputErrorInformation(semanticWarningInformation);        
+    }
+    if(semanticErrorInformation.size() > 0)
+    {
+        cout << "\n***************Semantic Errors:***************\n";
+        outputErrorInformation(semanticErrorInformation);        
+    }
 
     //若语义分析或中间代码生成出错，则不再进行目标代码生成
     if(semanticErrorInformation.size() > 0 || codeGen_error){
-        cout<<"Semantic/codeGen errors, stop generating target file"<<endl;
+        cout<<"***************Semantic/codeGen errors, stop generating target file***************"<<endl;
         return -1;
     }
     
-    //string output_filename = argv[2]; //可指定输出文件名
-    string output_filename = "output.s";
-    cout<<"\ntarget file will be written to: "<<output_filename<<endl;
+    cout << "SemanticAnalyse and CodeGen Succeed!\n";
     ObjCodeGen(context, output_filename);
-    
+    cout << "ObjGen Succeed!\n";
+
+    string cmd= compilerName + " " + output_filename + " IOdll.c -o " + exeName;
+    system(cmd.c_str());
+
     return 0;
 }
 
