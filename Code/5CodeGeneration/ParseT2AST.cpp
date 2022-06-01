@@ -414,14 +414,12 @@ void setConst(Token *now,_Constant* &_constant){//pascal在定义常量时，并
         _constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
     else if(now->children[loc]->type=="UINUM"){
-        _constant->type="integer";
-        _constant->intValue=str2int(now->children[loc]->value);
+        _constant->type=getUINUM(_constant->intValue,_constant->realValue,now->children[loc]->value);
         _constant->strOfVal = now->children[loc]->value;
         _constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
     else if(now->children[loc]->type=="UFNUM"){
-        _constant->type="real";
-        _constant->realValue=str2float(now->children[loc]->value);
+        _constant->type=getUFNUM(_constant->intValue,_constant->realValue,now->children[loc]->value);
         _constant->strOfVal = now->children[loc]->value;
         _constant->isMinusShow = (loc == 1 && now->children[0]->type == "MINUS");
     }
@@ -989,15 +987,13 @@ _Expression* getFactor(Token *now){
     _Expression* _expression = new _Expression;
     _expression->operand1=_expression->operand2=NULL;
     if(now->children[0]->type=="UINUM"){
-        _expression->type="integer";
         _expression->strOfNum = now->children[0]->value;
-        _expression->intNum=str2int(now->children[0]->value);
+        _expression->type=getUINUM( _expression->intNum, _expression->realNum,now->children[0]->value);
         _expression->lineNo=now->children[0]->lineNo;
     }
     else if(now->children[0]->type=="UFNUM"){
-        _expression->type="real";
         _expression->strOfNum = now->children[0]->value;
-        _expression->realNum=str2float(now->children[0]->value);
+        _expression->type=getUFNUM(_expression->intNum,_expression->realNum,now->children[0]->value);
         _expression->lineNo=now->children[0]->lineNo;
     }
     else if(now->children[0]->type=="IDENTIFIER" && now->children.size()==2){
@@ -1117,4 +1113,98 @@ void const2exp(_Constant * constant,_Expression *& _expression){
         _expression->strOfNum = constant->strOfVal;
     }
     
+}
+
+string getUINUM(int &intTarget,float &floatTarget,string value){
+    float temp=0;
+    int temp2=0;
+    int exp=0;
+    bool haveExp=false;
+    string type;
+    int i;
+    for(i=0;!haveExp&&i<value.size();i++){
+        if(value[i]=='e')
+            haveExp=true;
+        else {
+            temp=temp*10+(value[i]-'0');
+            temp2=temp2*10+(value[i]-'0');
+        }
+    }
+    if(haveExp){
+        bool sign=false;
+        if(value[i]=='-'){
+            sign=true;
+            i++;
+        }
+        for(;i<value.size();i++)
+            exp=exp*10+(value[i]-'0');
+        exp=sign?(-1*exp):exp;
+        temp=temp*pow(10,exp);
+    }
+    if(temp>__INT32_MAX__){
+        type="real";
+        floatTarget=temp;
+    }
+    else{
+        int intVal=int(temp);
+        if(fabs(temp-intVal)<=1e-6){
+            type="integer";
+            intTarget=intVal;
+        }
+        else{
+            type="real";
+            floatTarget=temp;
+        }
+    }
+    return type;
+}
+
+string getUFNUM(int &intTarget,float &floatTarget,string value){
+    string type;
+    float temp=0;
+    int temp2=0;
+    bool haveExp=false;
+    int exp=0;
+    int i=0;
+    float dot=0.1;
+    bool afterDot=false;
+    for(;!haveExp&&i<value.size();i++){
+        if(value[i]=='e')
+            haveExp=true;
+        else if(value[i]=='.')
+            afterDot=true;
+        else if(afterDot){
+            temp=temp+(value[i]-'0')*dot;
+            dot/=10;
+        }
+        else
+            temp=temp*10+(value[i]-'0');
+    }
+    if(haveExp){
+        bool sign=false;
+        if(value[i]=='-'){
+            sign=true;
+            i++;
+        }
+        for(;i<value.size();i++)
+            exp=exp*10+(value[i]-'0');
+        exp=sign?(-1*exp):exp;
+        temp=temp*pow(10,exp);
+    }
+    if(temp>__INT32_MAX__){
+        type="real";
+        floatTarget=temp;
+    }
+    else{
+        int intVal=int(temp);
+        if(fabs(temp-intVal)<=1e-6){
+            type="integer";
+            intTarget=intVal;
+        }
+        else{
+            type="real";
+            floatTarget=temp;
+        }
+    }
+    return type;
 }
