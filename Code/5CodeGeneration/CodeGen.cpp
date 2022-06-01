@@ -448,7 +448,8 @@ void _ProcedureCall::writecodeGen(int type_arr[])
     for (auto it = actualParaList.begin(); it != actualParaList.end(); it++, ++i)
     {
         args.clear();
-        args.push_back((*it)->codeGen()); //获取实参的值
+        //args.push_back((*it)->codeGen()); //获取实参的值
+	args.push_back((*it)->llvalue);	    //获取实参的值
         if (!args.back())                 //若某个参数codeGen失败，立即返回
         {
             //报错：参数解析失败
