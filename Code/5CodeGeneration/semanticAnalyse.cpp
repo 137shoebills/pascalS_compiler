@@ -21,7 +21,7 @@ vector<string> semanticWarningInformation; //存储警告信息的列表
 void SemanticAnalyse(_Program *ASTRoot)
 {
 	createSymbolTableAndInit();
-	context.InitCodeGen();
+	context.InitCodeGen();	//初始化库函数
 	SemanticAnalyseProgram(ASTRoot);
 }
 
@@ -91,24 +91,32 @@ void SemanticAnalyseSubprogram(_SubProgram *subprogram)
 		cout << "[SemanticAnalyseSubprogram] pointer of _Subprogram is null" << endl;
 		return;
 	}
-
-	//test
-	for (int i = 0; i < subprogram->subprogramDefinitionList.size(); i++)
-	{
-		SemanticAnalyseSubprogramDefinition(subprogram->subprogramDefinitionList[i]);
-		relocation();
-	}
 	
 	for (int i = 0; i < subprogram->constList.size(); i++)
 		SemanticAnalyseConst(subprogram->constList[i]);
 	for (int i = 0; i < subprogram->typedefList.size(); i++)
 		SemanticAnalyseTypedef(subprogram->typedefList[i]);
+	for (int i = 0; i < subprogram->variantList.size(); i++)
+		SemanticAnalyseVariant(subprogram->variantList[i]);
 	
+	//子程序定义恢复位置
+	for (int i = 0; i < subprogram->subprogramDefinitionList.size(); i++)
+	{
+		SemanticAnalyseSubprogramDefinition(subprogram->subprogramDefinitionList[i]);
+		relocation();
+	}
+
 	//创建主函数
 	subprogram->codeGen();
 
-	for (int i = 0; i < subprogram->variantList.size(); i++)
-		SemanticAnalyseVariant(subprogram->variantList[i]);
+	//给变量分配空间
+	for(int i = 0; i < subprogram->variantList.size(); i++)
+	{
+		//codeGen
+		llvm::Value* addr = subprogram->variantList[i]->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
+		_SymbolRecord* varRec = findSymbolRecord(subprogram->variantList[i]->variantId.first);
+		varRec->llValue = addr;
+	}
 
 	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(subprogram->compound),1);
 }
@@ -128,7 +136,7 @@ void SemanticAnalyseConst(_Constant *constant)
 		addDuplicateDefinitionErrorInformation(CID.first, nameError, "", "", CID.second);
 	else if (isReDef(CID.first,loc))
 		addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, CID.second);
-
+	
 	// if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
 	// {
 	// 	long long maxint = 32767;
@@ -296,11 +304,11 @@ void SemanticAnalyseVariant(_Variant *variant)
 		mainSymbolTable->addVar(VID.first, VID.second, type);
 	}
 
-	//codeGen
-	llvm::Value* value = variant->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
+	// //codeGen
+	// llvm::Value* value = variant->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
 
-	loc = mainSymbolTable->idToLoc[VID.first].top();
-	mainSymbolTable->recordList[loc]->llValue = value;
+	// loc = mainSymbolTable->idToLoc[VID.first].top();
+	// mainSymbolTable->recordList[loc]->llValue = value;
 }
 
 //对子程序定义进行语义分析
@@ -346,16 +354,6 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 		return;		
 	}
 
-	//test
-	if(functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5){
-		for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
-		{
-			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
-			relocation();		
-		}
-	
-	}
-
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
 	for (int i = 0; i < functionDefinition->formalParaList.size(); i++)
 		SemanticAnalyseFormalParameter(functionDefinition->formalParaList[i]);
@@ -366,29 +364,32 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	//对自定义类型进行语义分析
 	for (int i = 0; i < functionDefinition->typedefList.size(); i++)
 		SemanticAnalyseTypedef(functionDefinition->typedefList[i]);
+	//对变量定义进行语义分析
+	for (int i = 0; i < functionDefinition->variantList.size(); i++)
+		SemanticAnalyseVariant(functionDefinition->variantList[i]);
 	
-	//test
+	//子程序定义恢复位置
+	if(functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5){
+		for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
+		{
+			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
+			relocation();		
+		}
+	}
+
 	//先获得函数指针
 	record = findSymbolRecord(functionDefinition->functionID.first);
 	record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
 
-	//对变量定义进行语义分析
+	//给变量分配空间
 	for (int i = 0; i < functionDefinition->variantList.size(); i++)
-		SemanticAnalyseVariant(functionDefinition->variantList[i]);
+	{
+		//codeGen
+		llvm::Value* addr = functionDefinition->variantList[i]->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
+		_SymbolRecord* varRec = findSymbolRecord(functionDefinition->variantList[i]->variantId.first);
+		varRec->llValue = addr;
+	}
 
-	// if(functionDefinition->subprogramDefinitionList.size() > 0 && layer <= 5){
-	// 	for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
-	// 	{
-	// 		SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
-	// 		relocation();		
-	// 	}
-	
-	// }
-	
-	// //先获得函数指针
-	// record = findSymbolRecord(functionDefinition->functionID.first);
-	// record->functionPtr = functionDefinition->codeGen();	//返回函数指针（Function::Create的返回值）
-	
 	//对compound进行语义分析(在这一步获取函数返回值funcRetValue)
 	SemanticAnalyseStatement(reinterpret_cast<_Statement *>(functionDefinition->compound),1);
 
@@ -542,6 +543,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 		else
 			ifStatement->statementType = "void";
+		
 		SemanticAnalyseStatement(ifStatement->then,0); //对then语句进行语义分析
 		if (ifStatement->els != NULL)				 //对else语句进行语句分析
 			SemanticAnalyseStatement(ifStatement->els,0);
@@ -701,6 +703,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				//expflag = 0;
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
 				//expflag = 1;
+
 				// checked
 				if (actualType == "error")
 				{
@@ -731,7 +734,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				if (actualType == "error") //要求支持变参过程的参数类型不能为error
 					procedureCall->statementType = "error";
 			}
-			if (flag == 1)
+			if(flag == 1)
 			procedureCall->codeGen();
 			return;
 		}
@@ -783,7 +786,6 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 
 		//codeGen
-		if (flag == 1)
 		procedureCall->codeGen();
 	}
 	else
@@ -971,7 +973,13 @@ string SemanticAnalyseExpression(_Expression *&expression)
 	{
 		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
-		return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
+		//return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
+		expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
+		//dsy test
+		//对于传引用参数：把形参的地址改成实参的地址
+		//predealVarPara(expression);
+
+		return expression->expressionType;
 	}
 
 	//含有运算符的表达式
