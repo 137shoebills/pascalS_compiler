@@ -694,9 +694,9 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			int type_arr[procedureCall->actualParaList.size()];
 			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
 			{
-				expflag = 0;
+				//expflag = 0;
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
-				expflag = 1;
+				//expflag = 1;
 				// checked
 				if (actualType == "error")
 				{
