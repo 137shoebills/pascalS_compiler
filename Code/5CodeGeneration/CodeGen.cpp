@@ -469,17 +469,16 @@ void _ProcedureCall::readcodeGen(int type_arr[])
     int i = 0;
     for (auto it = actualParaList.begin(); it != actualParaList.end(); it++, ++i)
     {
-        // arg = (*it)->codeGen(); //获取实参的值
-        // if (!arg)               //若某个参数codeGen失败，立即返回
-        // {
-        //     //报错：参数解析失败
-        //     LogErrorV("[_FunctionCall::codeGen]  Para codeGen failed: " + (*it)->variantReference->variantId.first);
-        //     return;
-        // }
         llvm::Value *ret = context.builder->CreateCall(DLLpt[type_arr[i]], args, "Calltmp");
         _SymbolRecord *leftVar = findSymbolRecord(this->actualParaList[i]->variantReference->variantId.first);
-        llvm::Value *lValue = leftVar->llValue;
-        context.builder->CreateStore(ret, lValue);
+        llvm::Value *addr = nullptr;
+        //数组元素/record成员：获取指针
+        if(this->actualParaList[i]->variantReference->IdvpartList.size()!=0)
+            addr = getItemPtr(this->actualParaList[i]->variantReference);
+        else    //普通变量，直接查符号表 
+            addr = leftVar->llValue;
+
+        context.builder->CreateStore(ret, addr);
     }
     return;
 }
