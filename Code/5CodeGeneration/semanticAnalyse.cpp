@@ -129,35 +129,35 @@ void SemanticAnalyseConst(_Constant *constant)
 	else if (isReDef(CID.first,loc))
 		addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, CID.second);
 
-	if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
-	{
-		long long maxint = 32767;
-		long long res = 0;
-		int len = int(constant->strOfVal.length());
-		bool ff = 0;
-		for (int i = 0; i < len; ++i)
-		{
-			res = res * 10;
-			res += int(constant->strOfVal[i] - '0');
-			if ((res > maxint && !constant->isMinusShow) || res > (maxint + 1))
-			{
-				ff = 1;
-				break;
-			}
-		}
-		if (ff)
-		{
-			float z = 0;
-			for (int i = 0; i < len; ++i)
-			{
-				z = z * 10;
-				z += int(constant->strOfVal[i] - '0');
-			}
-			constant->type = "real";
-			constant->realValue = z;
-			semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
-		}
-	}
+	// if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
+	// {
+	// 	long long maxint = 32767;
+	// 	long long res = 0;
+	// 	int len = int(constant->strOfVal.length());
+	// 	bool ff = 0;
+	// 	for (int i = 0; i < len; ++i)
+	// 	{
+	// 		res = res * 10;
+	// 		res += int(constant->strOfVal[i] - '0');
+	// 		if ((res > maxint && !constant->isMinusShow) || res > (maxint + 1))
+	// 		{
+	// 			ff = 1;
+	// 			break;
+	// 		}
+	// 	}
+	// 	if (ff)
+	// 	{
+	// 		float z = 0;
+	// 		for (int i = 0; i < len; ++i)
+	// 		{
+	// 			z = z * 10;
+	// 			z += int(constant->strOfVal[i] - '0');
+	// 		}
+	// 		constant->type = "real";
+	// 		constant->realValue = z;
+	// 		semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
+	// 	}
+	// }
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
 	
 	//codeGen
