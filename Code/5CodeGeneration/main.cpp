@@ -78,7 +78,7 @@ int main(int argc, char **argv)
     }
     
     //char *output_file = argv[2];
-    string output_filename = "output.s";
+    string output_filename = argv[2];
     cout<<"target file will be written to: "<<output_filename<<endl;
     ObjCodeGen(context, output_filename);
     
