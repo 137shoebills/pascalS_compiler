@@ -444,12 +444,12 @@ void _ProcedureCall::writecodeGen(int type_arr[])
     //对每一个参数进行codeGen
     vector<llvm::Value *> args;
     int i = 0;
-    expcogen = 0;
+    
     for (auto it = actualParaList.begin(); it != actualParaList.end(); it++, ++i)
     {
         args.clear();
         //args.push_back((*it)->codeGen()); //获取实参的值
-	args.push_back((*it)->llvalue);	    //获取实参的值
+        args.push_back((*it)->llvalue);
         if (!args.back())                 //若某个参数codeGen失败，立即返回
         {
             //报错：参数解析失败
@@ -458,7 +458,7 @@ void _ProcedureCall::writecodeGen(int type_arr[])
         }
         context.builder->CreateCall(DLLpt[type_arr[i]], args, "Calltmp");
     }
-    expcogen = 1;
+    
     return;
 }
 void _ProcedureCall::readcodeGen(int type_arr[])
@@ -469,13 +469,13 @@ void _ProcedureCall::readcodeGen(int type_arr[])
     int i = 0;
     for (auto it = actualParaList.begin(); it != actualParaList.end(); it++, ++i)
     {
-        arg = (*it)->codeGen(); //获取实参的值
-        if (!arg)               //若某个参数codeGen失败，立即返回
-        {
-            //报错：参数解析失败
-            LogErrorV("[_FunctionCall::codeGen]  Para codeGen failed: " + (*it)->variantReference->variantId.first);
-            return;
-        }
+        // arg = (*it)->codeGen(); //获取实参的值
+        // if (!arg)               //若某个参数codeGen失败，立即返回
+        // {
+        //     //报错：参数解析失败
+        //     LogErrorV("[_FunctionCall::codeGen]  Para codeGen failed: " + (*it)->variantReference->variantId.first);
+        //     return;
+        // }
         llvm::Value *ret = context.builder->CreateCall(DLLpt[type_arr[i]], args, "Calltmp");
         _SymbolRecord *leftVar = findSymbolRecord(this->actualParaList[i]->variantReference->variantId.first);
         llvm::Value *lValue = leftVar->llValue;
@@ -541,7 +541,7 @@ llvm::Value* _Expression::codeGen(){
           if(expcogen == 0)
             this->operand1->llvalue = this->operand1->codeGen();
 
-		  if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::FloatTyID) {
+          if( this->operand1->llvalue->getType()->getTypeID() == llvm::Type::FloatTyID) {
 			  temp = llvm::ConstantFP::get(context.typeSystem.realTy, (double)0.0);
 			  ret = context.builder->CreateFSub(temp, this->operand1->llvalue, "subtmp");
 		  }
@@ -801,7 +801,7 @@ llvm::Value* _CaseStatement::codeGen(){
             context.builder->CreateCondBr(condValue, body_vec[size], size == len - 1 ? after : cond_vec[size+1]);
             context.builder->SetInsertPoint(body_vec[size]);
             this->branch[i]->_do->codeGen();
-			context.builder->CreateBr(after);
+            context.builder->CreateBr(after);
             size++;
         }
     }
@@ -934,7 +934,13 @@ llvm::Value* _VariantReference::codeGen(){
         {
             return context.builder->CreateLoad(addr, false, "");
         }
-        if(varRef->flag == "value parameter"){
+        if(varRef->flag == "value parameter")
+        {
+            cout<<"value parameter: "<<varRef->id<<endl;
+            return context.builder->CreateLoad(addr, false, "");
+        }
+        else if(varRef->flag == "var parameter"){
+            cout<<"var parameter: "<<varRef->id<<endl;
             return context.builder->CreateLoad(addr, false, "");
         }
     }
@@ -1152,6 +1158,39 @@ llvm::Value* getItemPtr(_VariantReference* varRef)
     ptr = cur_base;
     return ptr;
 }
+
+// //处理传引用参数
+// void predealVarPara(_Expression* funcExpr)
+// {
+//     cout<<"predealVarPara"<<endl;
+
+//     _SymbolRecord* funcRec = findSymbolRecord(funcExpr->functionCall->functionId.first);
+//     vector<_FormalParameter*> formalParaList(funcRec->paras);                       //形参列表
+//     vector<_Expression*> actualParaList(funcExpr->functionCall->actualParaList);    //实参列表
+
+//     int i = 0;
+//     for(auto &it : funcRec->functionPtr->args())
+//     {
+//         _SymbolRecord* actualPara = findSymbolRecord(actualParaList[i]->variantReference->variantId.first);
+//         _SymbolRecord* varPara = findSymbolRecord(formalParaList[i]->paraId.first);
+//         //查不到varPara，因为已经被pop掉了
+//         //cout<<"varPara "<<varPara->id <<"'s flag="<<varPara->flag<<endl;
+//         //打印varPara->id直接段错误
+//         if(varPara->flag == "var parameter") //若为传引用参数
+//         {
+//             cout<<"here\n";
+//             cout<<varPara->id << "is var parameter"<<endl;
+//             //将参数store到实参的地址中
+//             context.builder->CreateStore(&it, actualPara->llValue, false);
+//             //修改符号表中形参的地址为对应实参的地址
+//             varPara->llValue = actualPara->llValue;
+
+//             cout<<"[predealVarPara] store "<< varPara->id << "'s value to "
+//                 << actualPara->id << "'s addr\n\n";
+//         }
+//         i++;
+//     }
+// }
 
 //unique_ptr<_Expression> LogError(const char *str)
 llvm::Value* LogError(const char *str)
