@@ -684,7 +684,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				else if (actualType == "boolean")
 					type_arr[i] = 7;
 			}
-			if (!f)
+			if (!f && flag == 1)
 				procedureCall->readcodeGen(type_arr);
 			return;
 		}
@@ -712,7 +712,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				else if (actualType == "boolean")
 					type_arr[i] = 3;
 			}
-			if (!f)
+			if (!f && flag == 1)
 				procedureCall->writecodeGen(type_arr);
 			return;
 		}
@@ -727,6 +727,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 				if (actualType == "error") //要求支持变参过程的参数类型不能为error
 					procedureCall->statementType = "error";
 			}
+			if (flag == 1)
 			procedureCall->codeGen();
 			return;
 		}
@@ -778,6 +779,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		}
 
 		//codeGen
+		if (flag == 1)
 		procedureCall->codeGen();
 	}
 	else
