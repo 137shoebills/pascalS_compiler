@@ -60,5 +60,6 @@ void printidvpart(vector<_Idvpart*> idvpartlist);
 void printExp(_Expression* expression);
 void printfuncall(_FunctionCall* functionCall);
 void printstatement(_Statement *statement);
-
+string getUINUM(int &intTarget,float &floatTarget,string value);
+string getUFNUM(int &intTarget,float &floatTarget,string value);
 #endif
