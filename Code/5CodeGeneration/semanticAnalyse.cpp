@@ -533,6 +533,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 	else if (statement->type == "if")
 	{
 		_IfStatement *ifStatement = reinterpret_cast<_IfStatement *>(statement);
+		expflag = 0;
 		string type = SemanticAnalyseExpression(ifStatement->condition);
 		if (type != "boolean")
 		{ // if语句类型检查,condition表达式类型检查 checked
@@ -544,12 +545,14 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		SemanticAnalyseStatement(ifStatement->then,0); //对then语句进行语义分析
 		if (ifStatement->els != NULL)				 //对else语句进行语句分析
 			SemanticAnalyseStatement(ifStatement->els,0);
+		expflag = 1;
 		if(flag == 1 && ifStatement->statementType != "error")
 			ifStatement->codeGen();
 	}
 	else if (statement->type == "case")
 	{
 		cout<<"caseseanti"<<endl;
+		expflag = 0;
 		_CaseStatement *caseStatement = reinterpret_cast<_CaseStatement *>(statement);
 		string type = SemanticAnalyseExpression(caseStatement->caseid);
 		if (type != "integer" && type != "char" && type != "boolean" && type != "real")
@@ -565,6 +568,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		{
 			SemanticAnalyseStatement(caseStatement->branch[i]->_do,0);
 		}
+		expflag = 1;
 		if (flag == 1 && caseStatement->statementType != "error")
 			caseStatement->codeGen();
 	}
