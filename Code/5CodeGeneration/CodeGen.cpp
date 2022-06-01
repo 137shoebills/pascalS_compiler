@@ -660,10 +660,63 @@ llvm::Value* _Statement::codeGen(){
 			leftVar->llValue = assignStatement->codeGen(leftType, rightType);	//返回左值的llValue
 		}
     }
-    else if (this->type == "procedure"){
-		_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(this);
-        procedureCall->codeGen();
-    }
+	else if (this->type == "procedure"){
+			_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(this);
+	        if(procedureCall->procedureId.first == "write"){
+	            int f = 0;
+				int type_arr[procedureCall->actualParaList.size()];
+				for (int i = 0; i < procedureCall->actualParaList.size(); i++)
+				{
+					//expflag = 0;
+					string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
+					//expflag = 1;
+					// checked
+					if (actualType == "error")
+					{
+						procedureCall->statementType = "error";
+						f = 1;
+					}
+					if (actualType == "integer")
+						type_arr[i] = 0;
+					else if (actualType == "real")
+						type_arr[i] = 1;
+					else if (actualType == "char")
+						type_arr[i] = 2;
+					else if (actualType == "boolean")
+						type_arr[i] = 3;
+				}
+				if (!f)
+					procedureCall->writecodeGen(type_arr);
+	        }
+	        else if(procedureCall->procedureId.first == "read"){
+	            int f = 0;
+	            int type_arr[procedureCall->actualParaList.size()];
+				for (int i = 0; i < procedureCall->actualParaList.size(); i++)
+				{
+					expflag = 0;
+					string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
+					expflag = 1;
+					// checked
+					if (!(procedureCall->actualParaList[i]->type == "var" && (procedureCall->actualParaList[i]->variantReference->kind == "var" || procedureCall->actualParaList[i]->variantReference->kind == "array")))
+						addactualParameterOfReadErrorInformation(procedureCall->actualParaList[i]->lineNo, procedureCall->procedureId.first, i + 1, procedureCall->actualParaList[i]);
+					if (actualType == "error")
+					{
+						procedureCall->statementType = "error";
+						f = 1;
+					}
+					if (actualType == "integer")
+						type_arr[i] = 4;
+					else if (actualType == "real")
+						type_arr[i] = 5;
+					else if (actualType == "char")
+						type_arr[i] = 6;
+					else if (actualType == "boolean")
+						type_arr[i] = 7;
+				}
+	            procedureCall->readcodeGen(type_arr);}
+	        else
+	        procedureCall->codeGen();
+	    }
     else{
         return LogErrorV("[_Statement::codeGen] Unknown stmt type: " + this->type);
     }
