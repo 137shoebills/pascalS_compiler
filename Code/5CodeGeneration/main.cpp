@@ -29,8 +29,9 @@ void predeal(char *filename);
 int main(int argc, char **argv)
 {
     // yydebug = 1;
-    if(argc < 2)
-    //if (argc < 3)
+
+    if(argc < 2)    //使用默认输出文件名"output.s"
+    //if (argc < 3) //可指定输出文件名
     {
         cout << "Missing parameter!\n";
         return 0;
@@ -77,9 +78,9 @@ int main(int argc, char **argv)
         return -1;
     }
     
-    //char *output_file = argv[2];
-    string output_filename = argv[2];
-    cout<<"target file will be written to: "<<output_filename<<endl;
+    //string output_filename = argv[2]; //可指定输出文件名
+    string output_filename = "output.s";
+    cout<<"\ntarget file will be written to: "<<output_filename<<endl;
     ObjCodeGen(context, output_filename);
     
     return 0;
