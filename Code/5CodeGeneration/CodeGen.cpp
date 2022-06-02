@@ -944,37 +944,28 @@ llvm::Value* _WhileStatement::codeGen(){
 }
 
 llvm::Value* _RepeatStatement::codeGen(){
-    expcogen = 0;
-    cout << "_RepeatStatement::codeGen" << endl;
-    for(int i = 0; i < this->_do.size(); i++){
-        this->_do[i]->codeGen();
-		expcogen = 0;
-	}
-    llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
-  	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "repeat_body", theFunction);
-  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "repeat_end");
-
-    llvm::Value* condValue = this->condition->codeGen();
-    if(!condValue)
-        return nullptr;
+	expcogen = 0;
+	    cout << "_RepeatStatement::codeGen" << endl;
     
-      condValue = CastToBoolean(context, condValue);
-      // fall to the block
-      context.builder->CreateCondBr(condValue, after, block);
-      context.builder->SetInsertPoint(block);
-      for(int i = 0; i < this->_do.size(); i++){
-        this->_do[i]->codeGen();
-		expcogen = 0;
-	}
-      // execute the again or stop
-      condValue = this->condition->codeGen();
-      condValue = CastToBoolean(context, condValue);
-      context.builder->CreateCondBr(condValue, after, block);
-      // insert the after block
-      theFunction->getBasicBlockList().push_back(after);
-      context.builder->SetInsertPoint(after);
-      expcogen = 1;
-      return nullptr;
+	    llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
+	  	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "repeat_body", theFunction);
+	  	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "repeat_end");
+	    context.builder->CreateBr(block);
+	    context.builder->SetInsertPoint(block);
+	    for(int i = 0; i < this->_do.size(); i++){
+	        this->_do[i]->codeGen();
+	        expcogen = 0;}
+	    llvm::Value* condValue = this->condition->codeGen();
+	    if(!condValue)
+	        return nullptr;
+    
+	      condValue = CastToBoolean(context, condValue);
+	      // fall to the block
+	      context.builder->CreateCondBr(condValue, after, block);
+	       theFunction->getBasicBlockList().push_back(after);
+	      context.builder->SetInsertPoint(after);
+	      expcogen = 1;
+	      return nullptr;
 }
 
 //变量引用codeGen
