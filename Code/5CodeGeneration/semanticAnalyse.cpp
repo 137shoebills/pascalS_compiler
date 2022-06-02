@@ -9,7 +9,7 @@ using namespace std;
 extern bool codeGen_error;
 int layer = 0; //标记程序的嵌套层数
 int expflag = 1;
-int isMulti = 0; //标记是否重定义
+int isMulti = 0; //标记是否重定义或者多重嵌套超限
 
 set<string> lib; //存放库函数名
 extern _SymbolTable *mainSymbolTable;
@@ -355,6 +355,7 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	{
 		addGeneralErrorInformation("[too much layers!] in \"" + functionDefinition->functionID.first + "\" at line " + itos(functionDefinition->functionID.second));
 		layer--;
+		isMulti = 1;
 		return;		
 	}
 
