@@ -9,6 +9,7 @@ using namespace std;
 extern bool codeGen_error;
 int layer = 0; //标记程序的嵌套层数
 int expflag = 1;
+int isMulti = 0; //标记是否重定义
 
 set<string> lib; //存放库函数名
 extern _SymbolTable *mainSymbolTable;
@@ -68,12 +69,13 @@ void SemanticAnalyseProgram(_Program *program)
 
 	SemanticAnalyseSubprogram(program->subProgram);
 
-	context.builder->CreateRet(nullptr);
 	
 	if(codeGen_error || semanticErrorInformation.size() > 0){	//若语义分析或codeGen出错，不打印ir
 		cout<<"\n\ncodeGen_error!\n\n";
 		return;
 	}
+
+	context.builder->CreateRet(nullptr);
 
 	cout<<"------------------LLVM IR-------------------"<<endl;
 	//llvm::PassManager pm;
@@ -103,9 +105,11 @@ void SemanticAnalyseSubprogram(_SubProgram *subprogram)
 	for (int i = 0; i < subprogram->subprogramDefinitionList.size(); i++)
 	{
 		SemanticAnalyseSubprogramDefinition(subprogram->subprogramDefinitionList[i]);
+		if(isMulti) return;
 		relocation();
 	}
 
+	if(isMulti) return;
 	//创建主函数
 	subprogram->codeGen();
 
@@ -373,6 +377,7 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 		for (int i = 0; i < functionDefinition->subprogramDefinitionList.size(); i++)
 		{
 			SemanticAnalyseSubprogramDefinition(functionDefinition->subprogramDefinitionList[i]);	
+			if(isMulti) return;
 			relocation();		
 		}
 	}
@@ -1439,6 +1444,7 @@ void addDuplicateDefinitionErrorInformation(string preId, int preLineNumber, str
 		errorInformation += "\"" + preId + "\"" + " has the same name as the main program.";
 
 	semanticErrorInformation.push_back(errorInformation);
+	isMulti = 1;
 	// CHECK_ERROR_BOUND
 }
 
