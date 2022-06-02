@@ -419,12 +419,17 @@ llvm::Value *_FunctionCall::codeGen()
     expcogen = 0;
     for (auto it = actualParaList.begin(); it != actualParaList.end(); it++)
     {
-        args.push_back((*it)->codeGen()); //获取实参的值
-        if (!args.back())                 //若某个参数codeGen失败，立即返回
-        {
+        llvm::Value *value = (*it)->codeGen();  //获取实参的值
+        if(!value){            //若某个参数codeGen失败，立即返回
             //报错：参数解析失败
             return LogErrorV("[_FunctionCall::codeGen]  Para codeGen failed: " + (*it)->variantReference->variantId.first);
         }
+        //实参类型转换
+        string formalType = funcRec->findXthFormalParaType(it-actualParaList.begin());
+        if(formalType == "real"){
+            value = context.builder->CreateSIToFP(value, context.typeSystem.realTy);
+        }
+        args.push_back(value);
     }
     expcogen = 1;
 
