@@ -815,6 +815,7 @@ llvm::Value* _IfStatement::codeGen(){
       //插入指令
       context.builder->SetInsertPoint(thenBB);
       this->then->codeGen();
+	  expcogen = 0;
       thenBB = context.builder->GetInsertBlock();
       if( thenBB->getTerminator() == nullptr ){
           context.builder->CreateBr(mergeBB);
@@ -823,6 +824,7 @@ llvm::Value* _IfStatement::codeGen(){
           theFunction->getBasicBlockList().push_back(elsBB);
           context.builder->SetInsertPoint(elsBB);
           this->els->codeGen();
+		  expcogen = 0;
           context.builder->CreateBr(mergeBB);
       }
       theFunction->getBasicBlockList().push_back(mergeBB);
@@ -859,6 +861,7 @@ llvm::Value* _CaseStatement::codeGen(){
             context.builder->CreateCondBr(condValue, body_vec[size], size == len - 1 ? after : cond_vec[size+1]);
             context.builder->SetInsertPoint(body_vec[size]);
             this->branch[i]->_do->codeGen();
+			expcogen = 0;
             context.builder->CreateBr(after);
             size++;
         }
@@ -893,7 +896,7 @@ llvm::Value* _ForStatement::codeGen(){
       context.builder->SetInsertPoint(block);
 
       this->_do->codeGen();
-
+	  expcogen = 0;
       // do increment
       if( this->increment ){
           this->increment->codeGen("integer", "integer");
@@ -928,6 +931,7 @@ llvm::Value* _WhileStatement::codeGen(){
       context.builder->CreateCondBr(condValue, block, after);
       context.builder->SetInsertPoint(block);
       this->_do->codeGen();
+	  expcogen = 0;
       // execute the again or stop
       condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
@@ -942,8 +946,10 @@ llvm::Value* _WhileStatement::codeGen(){
 llvm::Value* _RepeatStatement::codeGen(){
     expcogen = 0;
     cout << "_RepeatStatement::codeGen" << endl;
-    for(int i = 0; i < this->_do.size(); i++)
+    for(int i = 0; i < this->_do.size(); i++){
         this->_do[i]->codeGen();
+		expcogen = 0;
+	}
     llvm::Function* theFunction = context.builder->GetInsertBlock()->getParent();
   	llvm::BasicBlock *block = llvm::BasicBlock::Create(context.llvmContext, "repeat_body", theFunction);
   	llvm::BasicBlock *after = llvm::BasicBlock::Create(context.llvmContext, "repeat_end");
@@ -956,8 +962,10 @@ llvm::Value* _RepeatStatement::codeGen(){
       // fall to the block
       context.builder->CreateCondBr(condValue, after, block);
       context.builder->SetInsertPoint(block);
-      for(int i = 0; i < this->_do.size(); i++)
+      for(int i = 0; i < this->_do.size(); i++){
         this->_do[i]->codeGen();
+		expcogen = 0;
+	}
       // execute the again or stop
       condValue = this->condition->codeGen();
       condValue = CastToBoolean(context, condValue);
