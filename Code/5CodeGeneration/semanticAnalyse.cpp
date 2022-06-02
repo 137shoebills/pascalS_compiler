@@ -545,6 +545,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			ifStatement->statementType = "void";
 		
 		SemanticAnalyseStatement(ifStatement->then,0); //对then语句进行语义分析
+		expflag = 0;
 		if (ifStatement->els != NULL)				 //对else语句进行语句分析
 			SemanticAnalyseStatement(ifStatement->els,0);
 		expflag = 1;
@@ -569,6 +570,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 		for (int i = 0; i < caseStatement->branch.size();++i)
 		{
 			SemanticAnalyseStatement(caseStatement->branch[i]->_do,0);
+			expflag = 0;
 		}
 		expflag = 1;
 		if (flag == 1 && caseStatement->statementType != "error")
