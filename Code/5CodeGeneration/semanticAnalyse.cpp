@@ -10,6 +10,7 @@ extern bool codeGen_error;
 int layer = 0; //标记程序的嵌套层数
 int expflag = 1;
 int isMulti = 0; //标记是否重定义或者多重嵌套超限
+bool gotRetValue;	//函数返回值是否已获取，用于终止对函数体的分析
 
 set<string> lib; //存放库函数名
 extern _SymbolTable *mainSymbolTable;
@@ -68,7 +69,6 @@ void SemanticAnalyseProgram(_Program *program)
 	mainSymbolTable->addProcedure("write", -1, -1, tmp);
 
 	SemanticAnalyseSubprogram(program->subProgram);
-
 	
 	if(codeGen_error || semanticErrorInformation.size() > 0){	//若语义分析或codeGen出错，不打印ir
 		cout<<"\n\ncodeGen_error!\n\n";
@@ -100,7 +100,7 @@ void SemanticAnalyseSubprogram(_SubProgram *subprogram)
 		SemanticAnalyseTypedef(subprogram->typedefList[i]);
 	for (int i = 0; i < subprogram->variantList.size(); i++)
 		SemanticAnalyseVariant(subprogram->variantList[i]);
-	
+
 	//子程序定义恢复位置
 	for (int i = 0; i < subprogram->subprogramDefinitionList.size(); i++)
 	{
@@ -251,7 +251,6 @@ vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pai
 
 	if (type == 0) //表示此时不是type中定义新类型，而是声明语句
 	{
-		//cout<<"define new record type in var:"<<VID.first+"_"<<"\n\n";
 		mainSymbolTable->addRecords(VID.first + "_", VID.second, records); // id名后加_下划线表示record类型名
 		mainSymbolTable->addVar(VID.first, VID.second, VID.first + "_");
 	}
@@ -319,8 +318,6 @@ void SemanticAnalyseVariant(_Variant *variant)
 void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition)
 {
 	layer++; //层数++
-	//test
-	//cout<<"layer="<<layer<<", funcName="<<functionDefinition->functionID.first<<"\n\n";
 
 	if (functionDefinition == NULL)
 	{
@@ -362,7 +359,6 @@ void SemanticAnalyseSubprogramDefinition(_FunctionDefinition *functionDefinition
 	//对形式参数列表进行语义分析，并将形式参数添加到子符号表中
 	for (int i = 0; i < functionDefinition->formalParaList.size(); i++)
 		SemanticAnalyseFormalParameter(functionDefinition->formalParaList[i]);
-
 	//对常量定义进行语义分析
 	for (int i = 0; i < functionDefinition->constList.size(); i++)
 		SemanticAnalyseConst(functionDefinition->constList[i]);
@@ -448,8 +444,14 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 	if (statement->type == "compound")
 	{
 		_Compound *compound = reinterpret_cast<_Compound *>(statement); //对复合语句块中的每一条语句进行语义分析
+		// for (int i = 0; i < compound->statementList.size(); i++)
+		// 	SemanticAnalyseStatement(compound->statementList[i],1);
+		gotRetValue = false;
 		for (int i = 0; i < compound->statementList.size(); i++)
-			SemanticAnalyseStatement(compound->statementList[i],1);
+		{
+			if(!gotRetValue)	//不再识别函数返回语句之后的语句
+				SemanticAnalyseStatement(compound->statementList[i],1);
+		}
 	}
 	else if (statement->type == "repeat")
 	{
@@ -614,8 +616,13 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			}
 			assignStatement->isReturnStatement = true;
 			
+			// if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
+			// 	assignStatement->codeGen(leftType, rightType);
 			if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
+			{
 				assignStatement->codeGen(leftType, rightType);
+				gotRetValue = true;
+			}
 
 			return;
 		}
@@ -806,7 +813,6 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 //对函数调用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 {
-	//cout<<"SemanticAnalyseFunctionCall: "<<functionCall->functionId.first<<endl;
 	if (functionCall == NULL)
 	{
 		cout << "[SemanticAnalyseFunctionCall] pointer of _FunctionCall is null" << endl;
@@ -821,7 +827,6 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 	_SymbolRecord *record = findSymbolRecord(FCID.first);
 	if (record == NULL)
 	{ //未定义
-		cout<<"[SemanticAnalyseFunctionCall]	function undefined in this scope: "<<FCID.first<<endl;
 		addUndefinedErrorInformation(FCID.first, FCID.second);
 		return "error";
 	}
