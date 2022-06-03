@@ -54,7 +54,6 @@ public:
     TypeSystem typeSystem;    //自定义类型系统
 
     CodeGenContext(): typeSystem(llvmContext) {
-        //Module = make_unique<llvm::Module>("Program", this->llvmContext);
         Module = make_unique<llvm::Module>("main", this->llvmContext);
     }
     //初始化库函数
