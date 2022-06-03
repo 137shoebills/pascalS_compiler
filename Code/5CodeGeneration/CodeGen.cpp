@@ -468,7 +468,6 @@ llvm::Value* _Expression::codeGen(){
       else if(this->type=="compound" && this->operation=="bracket"){
           if(!expcogen)
             this->operand1->llvalue = this->operand1->codeGen();
-
           ret = this->operand1->llvalue;
       }
       else if(this->type=="compound" && this->operation=="not"){
@@ -495,7 +494,13 @@ llvm::Value* _Expression::codeGen(){
               llvm::Value* L = expcogen ? this->operand1->llvalue : this->operand1->codeGen();
               llvm::Value* R = expcogen ? this->operand2->llvalue : this->operand2->codeGen();
               bool fp = false;
-
+			  if( !L || !R ){
+			      if(!L)
+			      	LogErrorV("Expression L value failed");
+			      else
+			      	LogErrorV("Expression R value failed");
+			  	  return nullptr;
+			  }
               if( (L->getType()->getTypeID() == llvm::Type::FloatTyID) || (R->getType()->getTypeID() == llvm::Type::FloatTyID) ){  // type upgrade
                   fp = true;
                   if( (R->getType()->getTypeID() != llvm::Type::FloatTyID) ){
