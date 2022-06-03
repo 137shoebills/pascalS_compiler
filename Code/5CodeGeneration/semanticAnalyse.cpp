@@ -78,7 +78,6 @@ void SemanticAnalyseProgram(_Program *program)
 	context.builder->CreateRet(nullptr);
 
 	cout<<"------------------LLVM IR-------------------"<<endl;
-	//llvm::PassManager pm;
 	llvm::legacy::PassManager pm;
 	pm.add(llvm::createPrintModulePass(llvm::outs()));
 	pm.run(*(context.Module));
@@ -141,35 +140,6 @@ void SemanticAnalyseConst(_Constant *constant)
 	else if (isReDef(CID.first,loc))
 		addDuplicateDefinitionErrorInformation(CID.first, mainSymbolTable->recordList[loc]->lineNumber, mainSymbolTable->recordList[loc]->flag, mainSymbolTable->recordList[loc]->type, CID.second);
 	
-	// if (constant->type == "integer") //若常量整数值超出int范围，则将其化为float
-	// {
-	// 	long long maxint = 32767;
-	// 	long long res = 0;
-	// 	int len = int(constant->strOfVal.length());
-	// 	bool ff = 0;
-	// 	for (int i = 0; i < len; ++i)
-	// 	{
-	// 		res = res * 10;
-	// 		res += int(constant->strOfVal[i] - '0');
-	// 		if ((res > maxint && !constant->isMinusShow) || res > (maxint + 1))
-	// 		{
-	// 			ff = 1;
-	// 			break;
-	// 		}
-	// 	}
-	// 	if (ff)
-	// 	{
-	// 		float z = 0;
-	// 		for (int i = 0; i < len; ++i)
-	// 		{
-	// 			z = z * 10;
-	// 			z += int(constant->strOfVal[i] - '0');
-	// 		}
-	// 		constant->type = "real";
-	// 		constant->realValue = z;
-	// 		semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(CID.second) + "> The integer constant " + CID.first + "is out of range.Automatically converted to real!\n");
-	// 	}
-	// }
 	mainSymbolTable->addConst(CID.first, CID.second, constant->type, constant->isMinusShow, constant->strOfVal);
 	
 	//codeGen
@@ -293,7 +263,6 @@ void SemanticAnalyseVariant(_Variant *variant)
 		mainSymbolTable->addVar(VID.first, VID.second,VID.first+"_");
 	}
 	 //非标准类型时进行类型检查
-	//else if (type != "integer" && type != "char" && type != "real" && type != "boolean")
 	else if(!context.typeSystem.isBasicType(type))
 	{
 		_SymbolRecord *recordSource = findSymbolRecord(type);	
@@ -306,12 +275,6 @@ void SemanticAnalyseVariant(_Variant *variant)
 	{
 		mainSymbolTable->addVar(VID.first, VID.second, type);
 	}
-
-	// //codeGen
-	// llvm::Value* value = variant->codeGen();	//返回局部变量地址（CreateAlloca的返回值）
-
-	// loc = mainSymbolTable->idToLoc[VID.first].top();
-	// mainSymbolTable->recordList[loc]->llValue = value;
 }
 
 //对子程序定义进行语义分析
@@ -444,8 +407,6 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 	if (statement->type == "compound")
 	{
 		_Compound *compound = reinterpret_cast<_Compound *>(statement); //对复合语句块中的每一条语句进行语义分析
-		// for (int i = 0; i < compound->statementList.size(); i++)
-		// 	SemanticAnalyseStatement(compound->statementList[i],1);
 		gotRetValue = false;
 		for (int i = 0; i < compound->statementList.size(); i++)
 		{
@@ -562,7 +523,6 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 	}
 	else if (statement->type == "case")
 	{
-		// cout<<"caseseanti"<<endl;
 		expflag = 0;
 		_CaseStatement *caseStatement = reinterpret_cast<_CaseStatement *>(statement);
 		string type = SemanticAnalyseExpression(caseStatement->caseid);
@@ -616,8 +576,6 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			}
 			assignStatement->isReturnStatement = true;
 			
-			// if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
-			// 	assignStatement->codeGen(leftType, rightType);
 			if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error" && flag == 1)
 			{
 				assignStatement->codeGen(leftType, rightType);
@@ -715,10 +673,7 @@ void SemanticAnalyseStatement(_Statement *statement, int flag)
 			int type_arr[procedureCall->actualParaList.size()];
 			for (int i = 0; i < procedureCall->actualParaList.size(); i++)
 			{
-				//expflag = 0;
 				string actualType = SemanticAnalyseExpression(procedureCall->actualParaList[i]);
-				//expflag = 1;
-
 				// checked
 				if (actualType == "error")
 				{
@@ -820,10 +775,6 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 	}
 
 	std::pair<string, int> FCID = functionCall->functionId;
-	//if (mainSymbolTable->idToLoc.count(FCID.first) == 0) //找不到函数声明
-	//[hmz]
-	//if (mainSymbolTable->idToLoc[FCID.first].size() == 0) //找不到函数声明
-	//[pl]
 	_SymbolRecord *record = findSymbolRecord(FCID.first);
 	if (record == NULL)
 	{ //未定义
@@ -831,16 +782,12 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 		return "error";
 	}
 	
-	//int decID = mainSymbolTable->idToLoc[FCID.first].top();
-	//functionCall->returnType = mainSymbolTable->recordList[decID]->type;
 	if (record->flag != "function")
 	{ //标识符对应的记录不是function
 		addPreFlagErrorInformation(FCID.first, FCID.second, "function", record->lineNumber, record->flag);
 		return "error";
 	}
 
-	//int decParaSize = mainSymbolTable->recordList[decID]->amount;
-	//if (decParaSize != functionCall->actualParaList.size()) //参数表数目不对
 	int decParaSize = record->amount;						//形参个数
 	int ParaSize = functionCall->actualParaList.size();
 	if (decParaSize != ParaSize) //参数表数目不对
@@ -849,19 +796,8 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 		return "error";
 	}
 
-	//int ParaSize = functionCall->actualParaList.size();
-	//if(ParaSize > decParaSize)
-	//	ParaSize = decParaSize;
 	for (int i = 0; i < ParaSize; ++i) //判断每个参数的类型
 	{
-		//SemanticAnalyseExpression(functionCall->actualParaList[i]);
-		//string decType = mainSymbolTable->recordList[decID + i + 1]->type;
-		//string expType = functionCall->actualParaList[i]->expressionType;
-		//string flag = mainSymbolTable->recordList[decID + i + 1]->flag;
-		//if (flag == "var parameter")
-		//{
-		//	if (expType != decType)
-		//		addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
 		expflag = 0;
 		string actualType = SemanticAnalyseExpression(functionCall->actualParaList[i]);
 		
@@ -883,14 +819,8 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 		}
 		else
 		{
-			//if (expType != decType && !(expType == "integer" && decType == "real"))
-			//{
-			//	addUsageTypeErrorInformation("arg no." + itos(i + 1), FCID.second, expType, FCID.first, decType);
-			//}
-			//else if (expType == "integer" && decType == "real")
 			if (actualType != formalType) //如果类型不一致
 			{
-				//semanticWarningInformation.push_back("[Implicit type conversion warning!] <Line" + itos(FCID.second) + "> The " + itos(i + 1) + "th actual parameter of function call is integer while the corresponding formal parameter is real.\n");
 				//传值参数支持integer到real的隐式类型转换
 				if (actualType == "integer" && formalType == "real")
 				{
@@ -904,7 +834,7 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line)
 			}
 		}
 	}
-	//return functionCall->returnType;
+
 	return record->type;
 }
 
@@ -986,11 +916,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 	{
 		if(expflag == 1)
 			expression->llvalue = expression->codeGen();
-		//return expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
 		expression->expressionType = SemanticAnalyseFunctionCall(expression->functionCall, expression->lineNo);
-		//dsy test
-		//对于传引用参数：把形参的地址改成实参的地址
-		//predealVarPara(expression);
 
 		return expression->expressionType;
 	}
@@ -1112,8 +1038,7 @@ string SemanticAnalyseExpression(_Expression *&expression)
 			{
 				if(expflag == 1)
 					expression->llvalue = expression->codeGen();
-				// if (epType1 == "integer" && epType2 == "integer")
-				// 	return expression->expressionType = "integer";
+
 				//如果是除法（"/"），则运算结果一定为浮点型
 				if (epType1 == "integer" && epType2 == "integer"){
 					if(expression->operation == "/")
@@ -1353,8 +1278,6 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 
 		for (int n = 0; n < variantReference->IdvpartList.size(); n++)
 		{
-
-			//if (curType == "integer" || curType == "real" || curType == "char" || curType == "boolean")
 			if(context.typeSystem.isBasicType(curType))
 			{
 				addVariantReferenceErrorInformation(variantReference->variantId.second, "illegal array element access or illegal record attribute access");
@@ -1402,7 +1325,7 @@ string SemanticAnalyseVariantReference(_VariantReference *variantReference)
 			if (curType == "error")
 				return variantReference->variantType = "error";
 		}
-		//if(!(curType == "integer" || curType == "real" || curType == "char" || curType == "boolean"))
+
 		if(!context.typeSystem.isBasicType(curType))
 			variantReference->kind=curType;
 
@@ -1508,7 +1431,6 @@ void addactualParameterOfReadErrorInformation(int curLineNumber, string procedur
 	semanticErrorInformation.push_back(errorInformation);
 }
 
-
 //数组下标个数不匹配、函数或过程的实参和形参的个数不匹配
 void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, int correctNumber, string usage)
 {
@@ -1537,7 +1459,6 @@ void addNumberErrorInformation(string curId, int curLineNumber, int curNumber, i
 		return;
 	}
 	semanticErrorInformation.push_back(errorInformation);
-	// CHECK_ERROR_BOUND
 }
 
 //添加数组下标越界错误信息
