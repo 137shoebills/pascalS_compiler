@@ -708,11 +708,26 @@ divop (\(|\)|\[|\]|:|,|;|\.)
         return LETTER;
     }
     else if(yytext[0] == '\''){ //引号之间有多个字符，错误处理为第一个字符
-        addLexicalErrorInformation(yytext,"Too many characters!");
-        yylval = new Token;
-        yylval -> value = charTemp[0];
-        yylval -> type = "LETTER";
-        yylval -> lineNo = yylineno;
+        //转义字符    
+        if(charTemp=="\\n"){
+            yylval = new Token;
+            yylval -> value = '\n';
+            yylval -> type = "CHAR";
+            yylval -> lineNo = yylineno;
+        }
+        else if(charTemp=="\\t"){
+            yylval = new Token;
+            yylval -> value = '\t';
+            yylval -> type = "CHAR";
+            yylval -> lineNo = yylineno;
+        }
+        else{
+            addLexicalErrorInformation(yytext,"Too many characters!");
+            yylval = new Token;
+            yylval -> value = charTemp[0];
+            yylval -> type = "LETTER";
+            yylval -> lineNo = yylineno;
+        }
 #ifdef LEXDEBUG
 		cout << "letter: " << yylval->value << endl;
 #endif
