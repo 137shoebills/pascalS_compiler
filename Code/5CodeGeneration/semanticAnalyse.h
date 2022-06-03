@@ -36,6 +36,8 @@ string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line);			 //
 string SemanticAnalyseExpression(_Expression *&expression);					 //对表达式进行语义分析
 
 void relocation(); //重定位
+void inputExpression(_Expression *expression, string &ans);                 //提取表达式内容
+void inputVariantRef(_VariantReference *leftVariantReference, string &ans); //提取变量引用内容
 
 string itos(int num); //将int转化为string
 
