@@ -1,7 +1,7 @@
 %{
 #include "main.h"
-//#include "yacc.tab.h"
-#include "yacc.hpp"     //test
+#include "yacc.tab.h"
+//#include "yacc.hpp"     //test
 
 extern "C"
 {
@@ -849,6 +849,9 @@ factor : UFNUM {
                 $$ = new Token("factor");
                 $$->children.push_back($1);
                 $$->children.push_back($2);
+            }|CHAR{
+                $$ = new Token("factor");
+                $$->children.push_back($1);
             };
 
 
