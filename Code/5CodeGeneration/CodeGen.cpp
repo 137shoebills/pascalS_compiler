@@ -82,7 +82,6 @@ void CodeGenContext::InitCodeGen()
 }
 
 //逻辑表达式判断值
-// static llvm::Value* CastToBoolean(CodeGenContext& context, llvm::Value* condValue){
 llvm::Value *CastToBoolean(CodeGenContext &context, llvm::Value *condValue)
 {
     cout << "CastToBoolean" << endl;
@@ -109,7 +108,6 @@ llvm::Value *_SubProgram::codeGen()
     cout << "_SubProgram::codeGen" << endl;
     //创建program
     llvm::FunctionType *PrgmType = llvm::FunctionType::get(llvm::Type::getVoidTy(context.llvmContext), false);
-    // llvm::Function* Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "Program",context.Module.get());
     llvm::Function *Program = llvm::Function::Create(PrgmType, llvm::GlobalValue::ExternalLinkage, "main", context.Module.get());
     llvm::BasicBlock *entryBlock = llvm::BasicBlock::Create(context.llvmContext, "", Program);
 
@@ -191,7 +189,6 @@ llvm::Value* _Variant::codeGen() {
             arrayType = this->type->InitArrayType(record->type, type);
         }
         //在栈上创建一个局部变量
-        //addr = context.builder->CreateAlloca(arrayType, "arraytmp");
         if(arrayType)
             addr = context.builder->CreateAlloca(arrayType);
     }
@@ -260,11 +257,10 @@ llvm::Function *_FunctionDefinition::codeGen()
     { //若为函数
         type_str = this->type.first;
     }
-    // else{   //若为过程，看作返回值类型为integer的函数（返回无意义的integer值0）
+    //若为过程，看作返回值类型为void的函数
     else
     {
         type_str = "void";
-        // type_str = "integer";
     }
     retType = context.typeSystem.getllType(type_str);
     if (!retType)
@@ -312,10 +308,7 @@ llvm::Function *_FunctionDefinition::codeGen()
 //构造函数返回指令
 void _FunctionDefinition::CreateFuncRet(llvm::Value *funcRetValue)
 {
-    // if(this->type.first == ""){   //若为过程，设置一个无意义的返回值（integer值0）
-    //     funcRetValue = llvm::ConstantInt::get(context.typeSystem.intTy, 0, true);
-    // }
-    if (this->type.first == "")
+    if (this->type.first == "") //若为过程，返回值类型为void
     {
         context.builder->CreateRet(nullptr);
         return;
@@ -380,7 +373,6 @@ llvm::Value *_FunctionCall::codeGen()
 void _ProcedureCall::writecodeGen(int type_arr[])
 {
     cout << "_ProcedureCall::writecodeGen" << endl;
-    // llvm::Constant *CalleeF = llvm::TheModule->getOrInsertFunction("printf",llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(Context), llvm::PointerType::get(llvm::Type::getInt8Ty(Context), 0), true);`
     //对每一个参数进行codeGen
     vector<llvm::Value *> args;
     int i = 0;
@@ -403,6 +395,7 @@ void _ProcedureCall::writecodeGen(int type_arr[])
     
     return;
 }
+
 void _ProcedureCall::readcodeGen(int type_arr[])
 {
     cout << "_ProcedureCall::readcodeGen" << endl;
@@ -454,7 +447,6 @@ llvm::Value* _Expression::codeGen(){
           ret = llvm::ConstantInt::get(context.typeSystem.charTy, this->charVal, true);
       }
       else if(this->type == "boolean"){
-          //ret = llvm::ConstantInt::get(context.typeSystem.boolTy, this->boolValue == "true"? 1 : 0, true);
           ret = llvm::ConstantInt::get(context.typeSystem.boolTy, this->boolValue == "t"? 1 : 0, true);
       }
       //变量：返回变量的值；const部分声明的常量：返回常量的值
@@ -494,7 +486,7 @@ llvm::Value* _Expression::codeGen(){
               llvm::Value* L = expcogen ? this->operand1->llvalue : this->operand1->codeGen();
               llvm::Value* R = expcogen ? this->operand2->llvalue : this->operand2->codeGen();
               bool fp = false;
-			  if( !L || !R ){
+              if( !L || !R ){
 			      if(!L)
 			      	LogErrorV("Expression L value failed");
 			      else
@@ -562,6 +554,7 @@ llvm::Value* _Expression::codeGen(){
       this->llvalue == ret;
       return ret;
 }
+
 //语句codegen
 llvm::Value* _Statement::codeGen(){
     cout<<"_Statement::codeGen"<<endl;
@@ -595,8 +588,6 @@ llvm::Value* _Statement::codeGen(){
 		expflag = 1;
 
         if (assignStatement->variantReference->kind == "function return reference"){
-			// if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error")
-			// 	assignStatement->codeGen(leftType, rightType);
             if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error")
             {
                 assignStatement->codeGen(leftType, rightType);
@@ -604,7 +595,6 @@ llvm::Value* _Statement::codeGen(){
                 context.builder->CreateRet(func->funcRetValue);
             }
 		}
-		//if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error"){
         else if(leftType != "error" && rightType != "error" && assignStatement->statementType != "error")
         {
 			_SymbolRecord* leftVar = findSymbolRecord(assignStatement->variantReference->variantId.first);
@@ -615,10 +605,6 @@ llvm::Value* _Statement::codeGen(){
 			leftVar->llValue = assignStatement->codeGen(leftType, rightType);	//返回左值的llValue
 		}
     }
-    // else if (this->type == "procedure"){
-	// 	_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(this);
-    //     procedureCall->codeGen();
-    // }
     else if (this->type == "procedure"){
 			_ProcedureCall *procedureCall = reinterpret_cast<_ProcedureCall *>(this);
 	        if(procedureCall->procedureId.first == "write"){
@@ -683,6 +669,7 @@ llvm::Value* _Statement::codeGen(){
     }
     return nullptr;
 }
+
 //赋值语句codeGen
 llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
     cout << "_AssignStatement::codeGen "<< this->lineNo << endl;
@@ -690,7 +677,6 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
     //获取右值（LLVM Value*）
     //右值类型：常量，普通变量，数组元素，record成员，函数调用（返回值）
 
-    //llvm::Value* rValue = this->expression->llvalue;
     llvm::Value* rValue;
 	if(!expcogen)
 	    rValue = this->expression->codeGen();
@@ -716,10 +702,6 @@ llvm::Value* _AssignStatement::codeGen(string leftType, string rightType){
         leftVar->funcRetValue = rightValue;     //设置函数的返回值
         return nullptr;
     }
-    // if(leftVar->flag == "value parameter"){  //左值为函数参数（传值）
-    //     leftVar->llValue = rightValue;  //暂不支持类型转换
-    //     return nullptr;
-    // }
 
     llvm::Value* lValue = leftVar->llValue; //左值变量地址（在变量声明时即获得）
     if(!lValue){
@@ -985,7 +967,6 @@ llvm::Value* _Idvpart::codeGen(_VariantReference* varRef){
 
 //创建数组类型对应的LLVM类型
 llvm::Type* _Type::InitArrayType(string arrTypeName, string type)
-//llvm::ArrayType* _Type::InitArrayType(string arrTypeName, string type)
 {
     cout << "InitArrayType" << endl;
 
@@ -1062,10 +1043,6 @@ llvm::Value* getArrayItemPtr(string varType, llvm::Value* addr, int loc)
 llvm::Value* getRecordItemPtr(string varType, llvm::Value* addr, string memberId)
 {
     cout<<"getRecordItemPtr"<<endl;
-    // CreateLoad
-    //auto recPtr = context.builder->CreateLoad(addr, "recPtr");
-    //recPtr->setAlignment(4); //按4字节对齐
-    //❓cannot convert 'int' to 'llvm::MaybeAlign'
 
     //获取该成员在record中的位置
     long index = context.typeSystem.getRecordMemberIndex(varType, memberId);
@@ -1089,7 +1066,6 @@ int calcArrayIndex(string arrTypeName, vector<_Idvpart*> IdvpartList)
 {
     cout<<"calcArrayIndex"<<endl;
 
-    //vector<pair<int,int>> rangeList(record->arrayRangeList);
     //变量的record只记录了数组类型名，首先需要查表得到数组定义
     _SymbolRecord* arrRec = findSymbolRecord(arrTypeName);
     if(!arrRec){
@@ -1168,40 +1144,6 @@ llvm::Value* getItemPtr(_VariantReference* varRef)
     return ptr;
 }
 
-// //处理传引用参数
-// void predealVarPara(_Expression* funcExpr)
-// {
-//     cout<<"predealVarPara"<<endl;
-
-//     _SymbolRecord* funcRec = findSymbolRecord(funcExpr->functionCall->functionId.first);
-//     vector<_FormalParameter*> formalParaList(funcRec->paras);                       //形参列表
-//     vector<_Expression*> actualParaList(funcExpr->functionCall->actualParaList);    //实参列表
-
-//     int i = 0;
-//     for(auto &it : funcRec->functionPtr->args())
-//     {
-//         _SymbolRecord* actualPara = findSymbolRecord(actualParaList[i]->variantReference->variantId.first);
-//         _SymbolRecord* varPara = findSymbolRecord(formalParaList[i]->paraId.first);
-//         //查不到varPara，因为已经被pop掉了
-//         //cout<<"varPara "<<varPara->id <<"'s flag="<<varPara->flag<<endl;
-//         //打印varPara->id直接段错误
-//         if(varPara->flag == "var parameter") //若为传引用参数
-//         {
-//             cout<<"here\n";
-//             cout<<varPara->id << "is var parameter"<<endl;
-//             //将参数store到实参的地址中
-//             context.builder->CreateStore(&it, actualPara->llValue, false);
-//             //修改符号表中形参的地址为对应实参的地址
-//             varPara->llValue = actualPara->llValue;
-
-//             cout<<"[predealVarPara] store "<< varPara->id << "'s value to "
-//                 << actualPara->id << "'s addr\n\n";
-//         }
-//         i++;
-//     }
-// }
-
-//unique_ptr<_Expression> LogError(const char *str)
 llvm::Value* LogError(const char *str)
 {
     fprintf(stderr, "LogError: %s\n", str);
