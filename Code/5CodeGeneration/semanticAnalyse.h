@@ -9,7 +9,6 @@
 #include <set>
 #include "symbolTable.h"
 #include "ASTnodes.h"
-//#include "main.h"
 
 extern vector<string> semanticErrorInformation;   //存储错误信息的列表
 extern vector<string> semanticWarningInformation; //存储警告信息的列表
@@ -31,7 +30,6 @@ void SemanticAnalyseStatement(_Statement *statement, int flag);							   //对�
 vector<_SymbolRecord *> SemanticAnalyseRecord(vector<_Variant *> recordList, pair<string, int> VID, int is_type); //对record类型进行语义分析
 
 string SemanticAnalyseVariantReference(_VariantReference *variantReference); //对变量引用进行语义分析
-//string SemanticAnalyseFunctionCall(_FunctionCall *functionCall);			 //对函数调用进行语义分析
 string SemanticAnalyseFunctionCall(_FunctionCall *functionCall, int line);			 //对函数调用进行语义分析
 string SemanticAnalyseExpression(_Expression *&expression);					 //对表达式进行语义分析
 
@@ -57,8 +55,6 @@ void addExpressionTypeErrorInformation(_Expression *exp, string curType, string 
 void addAssignTypeMismatchErrorInformation(_VariantReference *leftVariantReference, _Expression *rightExpression);
 //添加数组下标越界错误信息
 void addArrayRangeOutOfBoundErrorInformation(_Expression *expression, string arrayId, int X, pair<int, int> range);
-// //添加数组下界比上界大的错误信息
-// void addArrayRangeUpSideDownErrorInformation(string curId, int curLineNumber, int X, int lowBound, int highBound);
 //添加运算符两边的操作数类型不一致的错误信息
 void addOperandExpressionsTypeMismatchErrorInformation(_Expression *exp1, _Expression *exp2);
 //添加某个操作数类型错误的信息
@@ -67,8 +63,6 @@ void addSingleOperandExpressionTypeMismatchErrorInformation(_Expression *exp, st
 void addactualParameterOfReadErrorInformation(int curLineNumber, string procedureId, int X, _Expression *exp);
 //添加除0错误信息
 void addDivideZeroErrorInformation(string operation, _Expression *exp);
-// 添加read读取boolean类型变量错误的信息
-// void addReadBooleanErrorInformation(_Expression *exp, int X);
 //添加变量引用错误信息
 void addVariantReferenceErrorInformation(int line, string info);
 //将错误信息直接添加到错误信息的列表中
