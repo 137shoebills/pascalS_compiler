@@ -1545,7 +1545,7 @@ void inputVariantRef(_VariantReference *VariantReference, string &ans)
 {
 	ans += VariantReference->variantId.first;
 
-	cout << "\n变量引用类型：" << VariantReference->kind << endl;
+// 	cout << "\n变量引用类型：" << VariantReference->kind << endl;
 	if (VariantReference->kind == "array")
 		ans += "[";
 	else if (VariantReference->kind == "record")
@@ -1554,7 +1554,7 @@ void inputVariantRef(_VariantReference *VariantReference, string &ans)
 	int idPartNum = VariantReference->IdvpartList.size();
 	for (int i = 0; i < idPartNum; ++i)
 	{
-		cout << "flag:" << VariantReference->IdvpartList[i]->flag << endl;
+// 		cout << "flag:" << VariantReference->IdvpartList[i]->flag << endl;
 		int exNum = VariantReference->IdvpartList[i]->expressionList.size();
 		if (VariantReference->IdvpartList[i]->flag == 1)
 			ans += VariantReference->IdvpartList[i]->IdvpartId.first;
