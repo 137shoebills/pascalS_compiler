@@ -79,12 +79,11 @@ int main(int argc, char **argv)
 
     fclose(fp);
 
-    // if (ParseTreeHead) //打印语法分析树
-    // {
-    //     cout << "\nParseTree:\n";
-    //     dfs(ParseTreeHead);
-    // }
-
+    if (ParseTreeHead) //打印语法分析树
+    {
+        cout << "\nParseTree:\n";
+        dfs(ParseTreeHead);
+    }
     if(lexicalErrorInformation.size() > 0)
     {
         cout << "\n***************Lexical Errrors:***************\n";
@@ -129,7 +128,7 @@ int main(int argc, char **argv)
 
     string cmd= compilerName + " " + output_filename + " IOdll.c -o " + exeName;
     system(cmd.c_str());
-
+    
     return 0;
 }
 
