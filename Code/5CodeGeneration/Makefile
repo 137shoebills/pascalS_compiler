@@ -16,7 +16,7 @@ CPPFLAGS = `$(LLVMCONFIG) --cppflags` -std=c++14
 LIBS = `$(LLVMCONFIG) --libs`
 
 clean:
-	$(RM) -rf yacc.cpp yacc.hpp lex.cpp $(OBJS)
+	$(RM) -rf yacc.cpp yacc.hpp lex.cpp compiler $(OBJS)
 
 yacc.cpp: yacc.y
 	bison -d -o $@ $<
@@ -40,7 +40,6 @@ semanticAnalyse.cpp: semanticAnalyse.h CodeGen.h
 
 ObjGen.cpp: ObjGen.h
 
-#main.cpp: ObjGen.h semanticAnalyse.cpp ParseT2AST.cpp
 main.cpp: ObjGen.h semanticAnalyse.h ParseT2AST.h
 
 %.o: %.cpp
@@ -48,10 +47,3 @@ main.cpp: ObjGen.h semanticAnalyse.h ParseT2AST.h
 
 compiler: $(OBJS)
 	g++ $(CPPFLAGS) -o $@ $(OBJS) $(LIBS)
-
-# test: compiler test.input
-# 	cat test.input | ./compiler
-
-# testlink: output.o testmain.cpp
-# 	clang output.o testmain.cpp -o test
-# 	./test
