@@ -1,7 +1,7 @@
 %{
 #include "main.h"
-#include "yacc.tab.h"
-//#include "yacc.hpp"     //test
+//#include "yacc.tab.h"
+#include "yacc.hpp"     //test
 
 extern "C"
 {
