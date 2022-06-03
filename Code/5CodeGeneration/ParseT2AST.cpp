@@ -1025,7 +1025,7 @@ _Expression* getFactor(Token *now){
         _expression->operand1=getFactor(now->children[1]);
         _expression->lineNo = _expression->operand1->lineNo;
     }
-    else if (now->children[0]->type == "LETTER") {
+    else if (now->children[0]->type == "LETTER"||now->children[0]->type=="CHAR") {
         _expression->type = "char";
         _expression->charVal = now->children[0]->value[0];
         _expression->lineNo = now->children[0]->lineNo;
